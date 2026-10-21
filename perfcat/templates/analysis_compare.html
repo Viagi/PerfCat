@@ -1,0 +1,839 @@
+{% extends 'base.html' %}
+{% block title %}PerfCat - {% if lan == 'cn' %} 对比分析 {% else %} Data Comparison {% endif %}{% endblock %}
+
+{% block css %}
+<style>
+    .compare-summary-table {
+        table-layout: fixed;
+    }
+
+    .compare-summary-section-cell {
+        padding: 0 !important;
+    }
+
+    .compare-summary-grid {
+        display: grid;
+        grid-template-columns: minmax(180px, 28%) repeat(var(--metric-count), minmax(120px, 1fr));
+        width: 100%;
+    }
+
+    .compare-summary-cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2.5rem;
+        padding: .5rem .75rem;
+        text-align: center;
+        white-space: normal;
+        word-break: break-word;
+        border-right: 1px solid rgba(98, 105, 118, .16);
+        border-bottom: 1px solid rgba(98, 105, 118, .16);
+    }
+
+    .compare-summary-row-end {
+        border-right: 0;
+    }
+
+    .compare-summary-last-row {
+        border-bottom: 0;
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}
+<a class="active" style="color: #1e71df" href="/report?lan={{ lan }}">{% if lan == 'cn' %} 测试报告 {% else %} Report {% endif %}</a>
+<svg t="1635085520789" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="165732" width="200" height="200"><path d="M360.704 280.746667l45.226667-45.226667 246.570666 246.528a42.666667 42.666667 0 0 1 0 60.330667l-246.528 246.570666-45.22666601-45.269333 231.42400001-231.466667-231.466667-231.424z" p-id="165733"></path></svg>
+{{ app }}
+{% endblock %}
+
+{% block ms_auto %}
+<div class="col-auto ms-auto d-print-none">
+    <div class="btn-list">
+        <a download="compare.png" onclick="screenshot('sceen-body','compare.png')" class="btn">
+            <svg t="1681980127752" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="11730" width="50" height="50"><path d="M957.31 368.25L903.1 732.12c-6 40.19-33.93 71.32-69.35 82.48a96.61 96.61 0 0 1-44.19 3.26L213.21 727c-39.51-6.23-70-35.53-80.55-72.54l90.55-64.06L363.29 702l193.4-234.78L847.8 681.67V394c0-56.57-44.59-102.43-99.6-102.43H177.34l6.73-45.17c8.33-55.92 59.16-94.3 113.53-85.73l576.35 90.83c54.37 8.56 91.69 60.83 83.36 116.75z" fill="#C5E3FF" p-id="11731"></path><path d="M804.86 831.57a110.71 110.71 0 0 1-17.24-1.36l-576.35-90.83c-42.89-6.76-78.46-38.74-90.62-81.47a12.5 12.5 0 0 1 4.8-13.62L216 580.22a12.5 12.5 0 0 1 15 0.43l130.45 103.9L547 459.27a12.5 12.5 0 0 1 17.06-2.12L835.3 656.93V394c0-49.59-39.07-89.93-87.1-89.93H177.34A12.5 12.5 0 0 1 165 289.71l6.73-45.17a114.5 114.5 0 0 1 45.56-76.09 109.35 109.35 0 0 1 82.29-20.14l576.35 90.83c61 9.62 103.11 68.37 93.78 131L915.46 734A115.87 115.87 0 0 1 889 792.38a112.1 112.1 0 0 1-51.45 34.14 108.3 108.3 0 0 1-32.69 5.05zM147.47 659.32c11.42 29.21 37.19 50.55 67.69 55.36l576.35 90.83a83.72 83.72 0 0 0 38.49-2.84c31.84-10 55.68-38.44 60.74-72.4l54.21-363.87c7.31-49.07-25.41-95.08-72.95-102.58L295.65 173a84.54 84.54 0 0 0-63.6 15.6 89.67 89.67 0 0 0-35.62 59.63l-4.59 30.82h556.37c61.81 0 112.1 51.56 112.1 114.93v287.69a12.5 12.5 0 0 1-19.91 10.06L558.81 484.3 372.93 709.93a12.5 12.5 0 0 1-17.44 1.83L222.77 606z" fill="#3D9FF9" p-id="11732"></path><path d="M748.21 877H165.12C103.31 877 53 825.48 53 762.11V394c0-63.37 50.29-114.93 112.1-114.93h583.11c61.81 0 112.1 51.56 112.1 114.93v368.11C860.3 825.48 810 877 748.21 877zM165.13 304c-48 0-87.1 40.34-87.1 89.93v368.18C78 811.7 117.1 852 165.12 852h583.09c48 0 87.1-40.34 87.1-89.93V394c0-49.59-39.07-89.93-87.1-89.93z" fill="#3D9FF9" p-id="11733"></path><path d="M748.21 877H165.12C103.31 877 53 825.48 53 762.11V702a12.5 12.5 0 0 1 5.28-10.2L216 580.22a12.5 12.5 0 0 1 15 0.43l130.45 103.9L547 459.27a12.5 12.5 0 0 1 17.06-2.12L855.22 671.6a12.5 12.5 0 0 1 5.09 10.06v80.44a117 117 0 0 1-15.75 58.77 114.17 114.17 0 0 1-40.07 40.64A109.94 109.94 0 0 1 748.21 877zM78 708.46v53.65C78 811.7 117.1 852 165.12 852h583.09c30.88 0 58.82-16.35 74.74-43.73a92 92 0 0 0 12.36-46.21V688l-276.5-203.7-185.88 225.63a12.5 12.5 0 0 1-17.44 1.83L222.77 606z" fill="#3D9FF9" p-id="11734"></path><path d="M847.8 681.67v80.44a104.16 104.16 0 0 1-14.05 52.49c-17.39 29.91-49.19 49.94-85.54 49.94H165.12c-55 0-99.6-45.86-99.6-102.43V702l67.14-47.5 90.55-64.06L363.29 702l193.4-234.78z" fill="#C5E3FF" p-id="11735"></path><path d="M748.21 877H165.12C103.31 877 53 825.48 53 762.11V702a12.5 12.5 0 0 1 5.28-10.2L216 580.22a12.5 12.5 0 0 1 15 0.43l130.45 103.9L547 459.27a12.5 12.5 0 0 1 17.06-2.12L855.22 671.6a12.5 12.5 0 0 1 5.09 10.06v80.44a117 117 0 0 1-15.75 58.77 114.17 114.17 0 0 1-40.07 40.64A109.94 109.94 0 0 1 748.21 877zM78 708.46v53.65C78 811.7 117.1 852 165.12 852h583.09c30.88 0 58.82-16.35 74.74-43.73a92 92 0 0 0 12.36-46.21V688l-276.5-203.7-185.88 225.63a12.5 12.5 0 0 1-17.44 1.83L222.77 606z" fill="#3D9FF9" p-id="11736"></path><path d="M226.91 418.1m-69.43 0a69.43 69.43 0 1 0 138.86 0 69.43 69.43 0 1 0-138.86 0Z" fill="#C5E3FF" p-id="11737"></path><path d="M226.91 500a81.93 81.93 0 1 1 81.93-81.93A82 82 0 0 1 226.91 500z m0-138.86a56.93 56.93 0 1 0 56.93 56.93 57 57 0 0 0-56.93-56.9z" fill="#3D9FF9" p-id="11738"></path></svg>
+            {% if lan == 'cn' %} 保存图片 {% else %} Save Image {% endif %}
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block navbar_nav %}
+<ul class="navbar-nav">
+  <li class="nav-item" id="apm_tab" style="margin-left: 20px;font-weight: bolder;">
+    <a class="nav-link" href="/?platform=Android&lan={{ lan }}" >
+      <span class="nav-link-icon d-md-none d-lg-inline-block">
+        <svg t="1635060342196" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="82258" width="200" height="200"><path d="M512 512m-512 0a512 512 0 1 0 1024 0 512 512 0 1 0-1024 0Z" fill="#FBD000" p-id="82259"></path><path d="M949.6 848H92.8c-4.8 0-8-3.2-8-8s3.2-8 8-8h856.8c4.8 0 8 3.2 8 8s-4 8-8 8z" fill="#074370" p-id="82260"></path><path d="M903.2 776c0 35.2-28.8 64-64 64H203.2c-35.2 0-64-28.8-64-64V293.6c0-35.2 28.8-64 64-64h636c35.2 0 64 28.8 64 64V776z" fill="#415E6D" p-id="82261"></path><path d="M839.2 797.6H203.2c-35.2 0-64-28.8-64-64V776c0 35.2 28.8 64 64 64h636c35.2 0 64-28.8 64-64v-42.4c0 35.2-28.8 64-64 64z" fill="#324D5B" p-id="82262"></path><path d="M839.2 229.6H203.2c-35.2 0-64 28.8-64 64V728h764V293.6c0-35.2-28.8-64-64-64z" fill="#EAEAEA" p-id="82263"></path><path d="M901.6 736H144c-4.8 0-8-3.2-8-8s3.2-8 8-8h757.6c4.8 0 8 3.2 8 8s-4 8-8 8z" fill="#074370" p-id="82264"></path><path d="M816 784m-24 0a24 24 0 1 0 48 0 24 24 0 1 0-48 0Z" fill="#28A5C6" p-id="82265"></path><path d="M216 784m-16 0a16 16 0 1 0 32 0 16 16 0 1 0-32 0Z" fill="#3AD0F9" p-id="82266"></path><path d="M280 784m-16 0a16 16 0 1 0 32 0 16 16 0 1 0-32 0Z" fill="#FF4848" p-id="82267"></path><path d="M344 784m-16 0a16 16 0 1 0 32 0 16 16 0 1 0-32 0Z" fill="#75B600" p-id="82268"></path><path d="M408 784m-16 0a16 16 0 1 0 32 0 16 16 0 1 0-32 0Z" fill="#FFFFFF" p-id="82269"></path><path d="M904 592h-72c-4.8 0-8-3.2-8-8s4-8 8-8h71.2c4.8 0 8 3.2 8 8s-3.2 8-7.2 8zM639.2 664c-3.2 0-6.4-2.4-8-5.6L592 523.2l-14.4 63.2c-0.8 4-4 6.4-8 6.4H391.2c-4 0-7.2-2.4-8-6.4l-21.6-119.2-17.6 73.6c-0.8 4-5.6 7.2-9.6 5.6-4-0.8-7.2-5.6-5.6-9.6L355.2 424c0.8-4 4-6.4 8-6.4s7.2 3.2 8 6.4l27.2 152h166.4L584 488.8c0.8-3.2 4-8.8 8-8.8s6.4 4.8 8 8.8l38.4 132.8 40.8-224.8c0.8-4 4-6.4 8-6.4s7.2 2.4 8 6.4L732 576h76c4.8 0 8 3.2 8 8s-3.2 8-8 8H725.6c-4 0-7.2-2.4-8-6.4l-30.4-146.4-40 218.4c-0.8 3.2-4 6.4-8 6.4 0.8 0 0.8 0 0 0zM305.6 680c-4 0-7.2-2.4-8-6.4L268 536l-15.2 50.4c-0.8 3.2-4 5.6-8 5.6H146.4c-4.8 0-8-3.2-8-8s3.2-8 8-8h92.8l22.4-74.4c0.8-3.2 4.8-5.6 8-5.6 4 0 6.4 2.4 7.2 6.4l28.8 132.8 11.2-47.2c0.8-4 5.6-7.2 9.6-5.6 4 0.8 7.2 5.6 5.6 9.6l-19.2 82.4c0 3.2-4 5.6-7.2 5.6z" fill="#074370" p-id="82270"></path><path d="M776 304h-56c-4.8 0-8-3.2-8-8s3.2-8 8-8h56c4.8 0 8 3.2 8 8s-3.2 8-8 8zM672 304H488c-4 0-8-3.2-8-8s3.2-8 8-8h184c4 0 8 3.2 8 8s-3.2 8-8 8zM424 304H224c-4.8 0-8-3.2-8-8s4-8 8-8h200c4.8 0 8 3.2 8 8s-4 8-8 8zM711.2 344H584c-4.8 0-8-3.2-8-8s3.2-8 8-8h127.2c4.8 0 8 3.2 8 8s-3.2 8-8 8zM528 344H224c-4.8 0-8-3.2-8-8s4-8 8-8h304c4.8 0 8 3.2 8 8s-4 8-8 8z" fill="#ADADAD" p-id="82271"></path><path d="M840 848H200c-40 0-72-32-72-72V296c0-40 32-72 72-72h640c40 0 72 32 72 72v480c0 40-32 72-72 72zM200 240c-31.2 0-56 24.8-56 56v480c0 31.2 24.8 56 56 56h640c31.2 0 56-24.8 56-56V296c0-31.2-24.8-56-56-56H200z" fill="#074370" p-id="82272"></path><path d="M864 553.6c-4.8 0-8-3.2-8-8v-80c0-4.8 3.2-8 8-8s8 3.2 8 8v80c0 4.8-3.2 8-8 8zM864 425.6c-4.8 0-8-3.2-8-8V312c0-22.4-17.6-40-40-40H408c-4.8 0-8-3.2-8-8s3.2-8 8-8h408c31.2 0 56 24.8 56 56v105.6c0 4.8-3.2 8-8 8zM345.6 272H224c-4.8 0-8-3.2-8-8s3.2-8 8-8h121.6c4.8 0 8 3.2 8 8s-4 8-8 8zM64 464c-17.6 0-32-14.4-32-32s14.4-32 32-32 32 14.4 32 32-14.4 32-32 32z m0-48c-8.8 0-16 7.2-16 16s7.2 16 16 16 16-7.2 16-16-7.2-16-16-16zM656 176c-17.6 0-32-14.4-32-32s14.4-32 32-32 32 14.4 32 32-14.4 32-32 32z m0-48c-8.8 0-16 7.2-16 16s7.2 16 16 16 16-7.2 16-16-7.2-16-16-16zM474.4 124c0-3.2-3.2-6.4-8-7.2l-15.2-2.4c-4-0.8-8.8-4.8-8.8-8.8l-2.4-15.2c-0.8-4-4-8-7.2-8s-6.4 3.2-7.2 8l-2.4 15.2c-0.8 4-4.8 8.8-8.8 8.8l-15.2 2.4c-4 0.8-8 4-8 7.2s3.2 6.4 8 7.2l15.2 2.4c4 0.8 8.8 4.8 8.8 8.8l2.4 15.2c0.8 4 4 8 7.2 8s6.4-3.2 7.2-8l2.4-16.8c0.8-4 4.8-8 8.8-8.8l14.4-0.8c5.6-1.6 8.8-4 8.8-7.2zM502.4 928c0-3.2-3.2-6.4-8-7.2l-15.2-2.4c-4-0.8-8.8-4.8-8.8-8.8l-2.4-15.2c-0.8-4-4-8-7.2-8s-6.4 3.2-7.2 8l-2.4 15.2c-0.8 4-4.8 8.8-8.8 8.8l-15.2 2.4c-4 0.8-8 4-8 7.2s3.2 6.4 8 7.2l15.2 2.4c4 0.8 8.8 4.8 8.8 8.8l2.4 15.2c0.8 4 4 8 7.2 8s6.4-3.2 7.2-8l2.4-16.8c0.8-4 4.8-8 8.8-8.8l14.4-0.8c5.6-1.6 8.8-4 8.8-7.2z" fill="#FFFFFF" p-id="82273"></path></svg>
+      </span>
+      <span class="nav-link-title strong-text">{% if lan == 'cn' %} 实时采集 {% else %} APM {% endif %}</span>
+    </a>
+  </li>
+  <li class="nav-item active" id="report_tab" style="margin-left: 20px;font-weight: bolder;">
+    <a class="nav-link" href="/report?lan={{ lan }}" >
+      <span class="nav-link-icon d-md-none d-lg-inline-block">
+        <svg t="1643364122000" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="29349" width="300" height="300"><path d="M777 806.7c0 38.7-31.1 70.3-69.7 70.3H225.9c-38.7 0-69.9-31.6-69.9-70.3V174.4c0-38.7 31.2-70.4 69.9-70.4h481.4c38.7 0 69.7 31.7 69.7 70.4v632.3z" fill="#FFFFFF" p-id="29350"></path><path d="M707.3 886H225.9c-43.5 0-78.9-35.8-78.9-79.3V174.4c0-43.5 35.4-79.4 78.9-79.4h481.4c43.5 0 79.7 35.9 79.7 79.4v632.3c0 43.5-36.2 79.3-79.7 79.3zM225.9 113c-33.7 0-59.9 27.7-59.9 61.4v632.3c0 33.7 26.2 61.3 59.9 61.3h481.4c33.7 0 60.7-27.6 60.7-61.3V174.4c0-33.7-27-61.4-60.7-61.4H225.9z" fill="#282828" p-id="29351"></path><path d="M732 763.1c0 33.3-26.1 60.9-59.4 60.9H251.7c-33.3 0-59.7-27.6-59.7-60.9V226.9c0-33.3 26.4-60.9 59.7-60.9h420.9c33.3 0 59.4 27.5 59.4 60.9v536.2z" fill="#50BCFF" p-id="29352"></path><path d="M361.8 251.9H208.6c-4.9 0-8.9-4-8.9-8.9s4-8.9 8.9-8.9h153.1c4.9 0 8.9 4 8.9 8.9s-3.9 8.9-8.8 8.9zM549.2 313H208.6c-4.9 0-8.9-4-8.9-8.9s4-8.9 8.9-8.9h340.5c4.9 0 8.9 4 8.9 8.9s-3.9 8.9-8.8 8.9zM652 448.4H208.6c-4.9 0-8.9-4-8.9-8.9s4-8.9 8.9-8.9H652c4.9 0 8.9 4 8.9 8.9s-4 8.9-8.9 8.9zM588.4 515.8H208.6c-4.9 0-8.9-4-8.9-8.9s4-8.9 8.9-8.9h379.7c4.9 0 8.9 4 8.9 8.9 0.1 4.9-3.9 8.9-8.8 8.9z" fill="#282828" p-id="29353"></path><path d="M673.3 113.3c0 19.6-15.9 35.5-35.5 35.5h-346c-19.6 0-35.5-15.9-35.5-35.5v-6.7c0-19.6 15.9-35.5 35.5-35.5h346c19.6 0 35.5 15.9 35.5 35.5v6.7z" fill="#1A6DFF" p-id="29354"></path><path d="M637.8 157.6h-346c-24.5 0-44.4-19.9-44.4-44.4v-6.7c0-24.5 19.9-44.4 44.4-44.4h346c24.5 0 44.4 19.9 44.4 44.4v6.7c0 24.5-19.9 44.4-44.4 44.4zM291.9 80c-14.7 0-26.6 11.9-26.6 26.6v6.7c0 14.7 11.9 26.6 26.6 26.6h346c14.7 0 26.6-11.9 26.6-26.6v-6.7c0-14.7-11.9-26.6-26.6-26.6h-346z" fill="#282828" p-id="29355"></path><path d="M849.7 758.4c0 106.3-86.2 192.4-192.4 192.4-106.3 0-192.4-86.2-192.4-192.4C464.8 652.1 551 566 657.3 566c106.2 0 192.4 86.1 192.4 192.4z" fill="#FFFFFF" p-id="29356"></path><path d="M657.3 959.7c-111 0-201.3-90.3-201.3-201.3s90.3-201.3 201.3-201.3 201.3 90.3 201.3 201.3-90.3 201.3-201.3 201.3z m0-384.8c-101.2 0-183.5 82.3-183.5 183.5S556.1 942 657.3 942s183.6-82.3 183.6-183.6c-0.1-101.2-82.4-183.5-183.6-183.5z" fill="#282828" p-id="29357"></path><path d="M657.3 553.6v204.9h203.6c-0.2-112.7-91.2-204-203.6-204.9z" fill="#1A6DFF" p-id="29358"></path><path d="M860.9 767.3H657.3c-4.9 0-8.9-4-8.9-8.9V553.6c0-2.4 0.9-4.6 2.6-6.3 1.7-1.7 3.6-2.4 6.3-2.6 116.9 0.9 212.2 96.8 212.4 213.7 0 2.4-0.9 4.6-2.6 6.3-1.6 1.7-3.9 2.6-6.2 2.6z m-194.8-17.8h185.6C847 649.3 766.2 568 666.1 562.7v186.8z" fill="#282828" p-id="29359"></path><path d="M794.1 903.7c-2.3 0-4.6-0.9-6.3-2.6L652.1 764.7c-3.5-3.5-3.4-9.1 0-12.6 3.5-3.5 9.1-3.4 12.6 0l135.7 136.5c3.5 3.5 3.4 9.1 0 12.6-1.8 1.7-4 2.5-6.3 2.5z" fill="#282828" p-id="29360"></path></svg>
+      </span>
+      <span class="nav-link-title strong-text">{% if lan == 'cn' %} 测试报告 {% else %} Report {% endif %}</span>
+    </a>
+  </li>
+</ul>
+{% endblock %}
+
+{% macro chart_card(card_class, title, chart_id, loading_id, image_name) %}
+<div class="card {{ card_class }} mt-3">
+    <div class="card-header">
+        <div class="card-title">{{ title }}</div>
+        <div class="card-actions btn-actions">
+            <a class="btn-action cursor-pointer" id="{{ loading_id }}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+            </a>
+            <a class="btn-action cursor-pointer" onclick="screenshot('{{ card_class }}','{{ image_name }}')">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 8h.01" /><path d="M12.5 21h-6.5a3 3 0 0 1 -3 -3v-12a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v6.5" /><path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l4 4" /><path d="M14 14l1 -1c.617 -.593 1.328 -.793 2.009 -.598" /><path d="M19 16v6" /><path d="M22 19l-3 3l-3 -3" /></svg>
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="{{ chart_id }}"></div>
+    </div>
+</div>
+{% endmacro %}
+
+{% macro compare_summary_section(title, metrics, scene1, scene2) %}
+{% set visible = namespace(count=0) %}
+{% for metric in metrics %}
+{% if metric.show %}
+{% set visible.count = visible.count + 1 %}
+{% endif %}
+{% endfor %}
+{% if visible.count > 0 %}
+                    <tr class="bg-light"><th colspan="6" class="subheader">{{ title }}</th></tr>
+                    <tr>
+                        <td colspan="6" class="compare-summary-section-cell">
+                            <div class="compare-summary-grid" style="--metric-count: {{ visible.count }};">
+                                <div class="compare-summary-cell subheader">{% if lan == 'cn' %}场景{% else %}Scene{% endif %}</div>
+                                {% set header = namespace(index=0) %}
+                                {% for metric in metrics %}
+                                {% if metric.show %}
+                                {% set header.index = header.index + 1 %}
+                                <div class="compare-summary-cell subheader{% if header.index == visible.count %} compare-summary-row-end{% endif %}">{{ metric.label }}</div>
+                                {% endif %}
+                                {% endfor %}
+                                <div class="compare-summary-cell">{{ scene1 }}</div>
+                                {% set row1 = namespace(index=0) %}
+                                {% for metric in metrics %}
+                                {% if metric.show %}
+                                {% set row1.index = row1.index + 1 %}
+                                <div class="compare-summary-cell{% if row1.index == visible.count %} compare-summary-row-end{% endif %}">{{ metric.value1 }}</div>
+                                {% endif %}
+                                {% endfor %}
+                                <div class="compare-summary-cell compare-summary-last-row">{{ scene2 }}</div>
+                                {% set row2 = namespace(index=0) %}
+                                {% for metric in metrics %}
+                                {% if metric.show %}
+                                {% set row2.index = row2.index + 1 %}
+                                <div class="compare-summary-cell compare-summary-last-row{% if row2.index == visible.count %} compare-summary-row-end{% endif %}">{{ metric.value2 }}</div>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </td>
+                    </tr>
+{% endif %}
+{% endmacro %}
+
+{% block page_body %}
+{% set summary_flags1 = apm_data1.summary_flags|default({}) %}
+{% set summary_flags2 = apm_data2.summary_flags|default({}) %}
+{% set show_cpu_app = summary_flags1.get('cpu_app', apm_data1.cpuAppRate != 0) or summary_flags2.get('cpu_app', apm_data2.cpuAppRate != 0) %}
+{% set show_cpu_system = summary_flags1.get('cpu_system', apm_data1.cpuSystemRate != 0) or summary_flags2.get('cpu_system', apm_data2.cpuSystemRate != 0) %}
+{% set show_mem_total = summary_flags1.get('mem_total', apm_data1.totalPassAvg != 0) or summary_flags2.get('mem_total', apm_data2.totalPassAvg != 0) %}
+{% set show_mem_peak = summary_flags1.get('mem_peak', apm_data1.totalPassPeak != 0) or summary_flags2.get('mem_peak', apm_data2.totalPassPeak != 0) %}
+{% set show_mem_swap = platform == 'Android' and (summary_flags1.get('mem_swap', apm_data1.swapPassAvg != 0) or summary_flags2.get('mem_swap', apm_data2.swapPassAvg != 0)) %}
+{% set show_fps = summary_flags1.get('fps', apm_data1.fps != 0) or summary_flags2.get('fps', apm_data2.fps != 0) %}
+{% set show_frame_stability = summary_flags1.get('frame_stability', apm_data1.frameStability != 0) or summary_flags2.get('frame_stability', apm_data2.frameStability != 0) %}
+{% set show_jank = platform == 'Android' and (summary_flags1.get('jank', apm_data1.jank != 0) or summary_flags2.get('jank', apm_data2.jank != 0)) %}
+{% set show_battery_level = platform == 'Android' and (summary_flags1.get('battery_level', apm_data1.batteryLevel != 0) or summary_flags2.get('battery_level', apm_data2.batteryLevel != 0)) %}
+{% set show_battery_temp = summary_flags1.get('battery_temp', apm_data1.batteryTeml != 0) or summary_flags2.get('battery_temp', apm_data2.batteryTeml != 0) %}
+{% set show_battery_current = platform != 'Android' and (summary_flags1.get('battery_current', apm_data1.batteryCurrent != 0) or summary_flags2.get('battery_current', apm_data2.batteryCurrent != 0)) %}
+{% set show_battery_voltage = platform != 'Android' and (summary_flags1.get('battery_voltage', apm_data1.batteryVoltage != 0) or summary_flags2.get('battery_voltage', apm_data2.batteryVoltage != 0)) %}
+{% set show_battery_power = platform != 'Android' and (summary_flags1.get('battery_power', apm_data1.batteryPower != 0) or summary_flags2.get('battery_power', apm_data2.batteryPower != 0)) %}
+{% set show_network_recv = summary_flags1.get('network_recv', apm_data1.flow_recv != 0) or summary_flags2.get('network_recv', apm_data2.flow_recv != 0) %}
+{% set show_network_send = summary_flags1.get('network_send', apm_data1.flow_send != 0) or summary_flags2.get('network_send', apm_data2.flow_send != 0) %}
+{% set show_file_io = summary_flags1.get('file_io', apm_data1.file_io_flag) or summary_flags2.get('file_io', apm_data2.file_io_flag) %}
+{% set show_gpu = summary_flags1.get('gpu', apm_data1.gpu != 0) or summary_flags2.get('gpu', apm_data2.gpu != 0) %}
+{% set show_thermal = platform == 'Android' and (summary_flags1.get('thermal', apm_data1.thermal_flag|default(false)) or summary_flags2.get('thermal', apm_data2.thermal_flag|default(false))) %}
+{% set show_thermal_cpu_avg = platform == 'Android' and (summary_flags1.get('thermal_cpu_avg', apm_data1.thermalCpuAvg|default(0) != 0) or summary_flags2.get('thermal_cpu_avg', apm_data2.thermalCpuAvg|default(0) != 0)) %}
+{% set show_thermal_gpu_avg = platform == 'Android' and (summary_flags1.get('thermal_gpu_avg', apm_data1.thermalGpuAvg|default(0) != 0) or summary_flags2.get('thermal_gpu_avg', apm_data2.thermalGpuAvg|default(0) != 0)) %}
+{% set show_summary = show_cpu_app or show_cpu_system or show_mem_total or show_mem_peak or show_mem_swap or show_fps or show_frame_stability or show_jank or show_battery_level or show_battery_temp or show_battery_current or show_battery_voltage or show_battery_power or show_network_recv or show_network_send or show_file_io or show_gpu or show_thermal_cpu_avg or show_thermal_gpu_avg %}
+{% if show_summary %}
+<div class="col-12 mb-3">
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter table-bordered table-nowrap card-table compare-summary-table">
+                <colgroup>
+                    <col style="width: 16.6667%;">
+                    <col style="width: 16.6667%;">
+                    <col style="width: 16.6667%;">
+                    <col style="width: 16.6667%;">
+                    <col style="width: 16.6667%;">
+                    <col style="width: 16.6667%;">
+                </colgroup>
+                <tbody>
+                    {{ compare_summary_section('CPU', [
+                        {'label': '应用' if lan == 'cn' else 'APP', 'show': show_cpu_app, 'value1': apm_data1.cpuAppRate, 'value2': apm_data2.cpuAppRate},
+                        {'label': '整机' if lan == 'cn' else 'Total', 'show': show_cpu_system, 'value1': apm_data1.cpuSystemRate, 'value2': apm_data2.cpuSystemRate},
+                    ], scene1, scene2) }}
+                    {{ compare_summary_section('内存' if lan == 'cn' else 'Memory', [
+                        {'label': '总内存' if lan == 'cn' else 'Total', 'show': show_mem_total, 'value1': apm_data1.totalPassAvg, 'value2': apm_data2.totalPassAvg},
+                        {'label': '峰值' if lan == 'cn' else 'Peak', 'show': show_mem_peak, 'value1': apm_data1.totalPassPeak, 'value2': apm_data2.totalPassPeak},
+                        {'label': '交换内存' if lan == 'cn' else 'Swap', 'show': show_mem_swap, 'value1': apm_data1.swapPassAvg, 'value2': apm_data2.swapPassAvg},
+                    ], scene1, scene2) }}
+                    {{ compare_summary_section('网络' if lan == 'cn' else 'Network', [
+                        {'label': '接收' if lan == 'cn' else 'Recv', 'show': show_network_recv, 'value1': apm_data1.flow_recv, 'value2': apm_data2.flow_recv},
+                        {'label': '发送' if lan == 'cn' else 'Send', 'show': show_network_send, 'value1': apm_data1.flow_send, 'value2': apm_data2.flow_send},
+                    ], scene1, scene2) }}
+                    {{ compare_summary_section('File IO', [
+                        {'label': '读取' if lan == 'cn' else 'Read', 'show': show_file_io, 'value1': apm_data1.file_read, 'value2': apm_data2.file_read},
+                        {'label': '写入' if lan == 'cn' else 'Write', 'show': show_file_io, 'value1': apm_data1.file_write, 'value2': apm_data2.file_write},
+                    ], scene1, scene2) }}
+                    {{ compare_summary_section('FPS', [
+                        {'label': 'FPS' if lan == 'cn' else 'fps', 'show': show_fps, 'value1': apm_data1.fps, 'value2': apm_data2.fps},
+                        {'label': '流畅度' if lan == 'cn' else 'Smooth', 'show': show_frame_stability, 'value1': apm_data1.frameStability, 'value2': apm_data2.frameStability},
+                        {'label': '卡顿/分钟' if lan == 'cn' else 'jank/min', 'show': show_jank, 'value1': apm_data1.jank, 'value2': apm_data2.jank},
+                    ], scene1, scene2) }}
+                    {{ compare_summary_section('电量' if lan == 'cn' else 'Battery', [
+                        {'label': '电量' if lan == 'cn' else 'Level', 'show': show_battery_level, 'value1': apm_data1.batteryLevel, 'value2': apm_data2.batteryLevel},
+                        {'label': '温度' if lan == 'cn' else 'Temperature', 'show': show_battery_temp, 'value1': apm_data1.batteryTeml, 'value2': apm_data2.batteryTeml},
+                        {'label': '电流' if lan == 'cn' else 'Current', 'show': show_battery_current, 'value1': apm_data1.batteryCurrent, 'value2': apm_data2.batteryCurrent},
+                        {'label': '电压' if lan == 'cn' else 'Voltage', 'show': show_battery_voltage, 'value1': apm_data1.batteryVoltage, 'value2': apm_data2.batteryVoltage},
+                        {'label': '功耗' if lan == 'cn' else 'Power', 'show': show_battery_power, 'value1': apm_data1.batteryPower, 'value2': apm_data2.batteryPower},
+                    ], scene1, scene2) }}
+                    {{ compare_summary_section('GPU', [
+                        {'label': 'gpu', 'show': show_gpu, 'value1': apm_data1.gpu, 'value2': apm_data2.gpu},
+                    ], scene1, scene2) }}
+                    {{ compare_summary_section('温度传感器' if lan == 'cn' else 'Temperature', [
+                        {'label': 'CPU均温' if lan == 'cn' else 'CPU Temp', 'show': show_thermal_cpu_avg, 'value1': apm_data1.thermalCpuAvg|default(0), 'value2': apm_data2.thermalCpuAvg|default(0)},
+                        {'label': 'GPU均温' if lan == 'cn' else 'GPU Temp', 'show': show_thermal_gpu_avg, 'value1': apm_data1.thermalGpuAvg|default(0), 'value2': apm_data2.thermalGpuAvg|default(0)},
+                    ], scene1, scene2) }}
+                </tbody>
+                <tfoot></tfoot>
+          </table>
+        </div>
+      </div>
+</div>
+{% endif %}
+<div class="col-12">
+    {% if show_cpu_app %}
+    {{ chart_card('cpu-app-card', 'CPU 使用率 (%)：应用' if lan == 'cn' else 'CPU (%) : APP Usage', 'chart-cpu-app', 'cpu_app_loading', 'cpu_app.png') }}
+    {% endif %}
+    {% if show_cpu_system %}
+    {{ chart_card('cpu-system-card', 'CPU 使用率 (%)：整机' if lan == 'cn' else 'CPU (%) : System Usage', 'chart-cpu-system', 'cpu_system_loading', 'cpu_system.png') }}
+    {% endif %}
+    {% if platform == 'Android' and apm_data1.cpu_core_flag and apm_data2.cpu_core_flag %}
+    {{ chart_card('cpu-core-card', 'CPU 使用率 (%)：核心' if lan == 'cn' else 'CPU (%) : Core Usage', 'chart-cpu-core', 'cpu_core_loading', 'cpu_core.png') }}
+    {% endif %}
+    {% if show_mem_total %}
+    {{ chart_card('mem-total-card', '内存 (MB)：总内存' if lan == 'cn' else 'Memory (MB) : Total Usage', 'chart-mem-total', 'mem_total_loading', 'mem_total.png') }}
+    {% endif %}
+    {% if show_mem_swap %}
+    {{ chart_card('mem-swap-card', '内存 (MB)：交换内存' if lan == 'cn' else 'Memory (MB) : Swap Usage', 'chart-mem-swap', 'mem_swap_loading', 'mem_swap.png') }}
+    {% endif %}
+    {% if platform == 'Android' and apm_data1.mem_detail_flag and apm_data2.mem_detail_flag %}
+    {{ chart_card('mem-detail-card', '内存详情 (MB)' if lan == 'cn' else 'Memory (MB) : Detail Usage', 'chart-mem-detail', 'mem_detail_loading', 'mem_detail.png') }}
+    {% endif %}
+    {% if show_fps %}
+    {{ chart_card('fps-card', 'FPS (HZ)', 'chart-fps', 'fps_loading', 'fps.png') }}
+    {% endif %}
+    {% if show_jank %}
+    {{ chart_card('jank-card', '卡顿次数' if lan == 'cn' else 'Jank (Times)', 'chart-jank', 'jank_loading', 'jank.png') }}
+    {% endif %}
+    {% if show_battery_level %}
+    {{ chart_card('battery-level-card', '电量' if lan == 'cn' else 'Battery : Level', 'chart-battery-level', 'battery_level_loading', 'battery_level.png') }}
+    {% endif %}
+    {% if show_battery_temp %}
+    {{ chart_card('battery-temp-card', '电池温度' if lan == 'cn' else 'Battery : Temperature', 'chart-battery-temp', 'battery_temp_loading', 'battery_temp.png') }}
+    {% endif %}
+    {% if show_battery_current %}
+    {{ chart_card('battery-current-card', '电流' if lan == 'cn' else 'Battery : Current', 'chart-battery-current', 'battery_current_loading', 'battery_current.png') }}
+    {% endif %}
+    {% if show_battery_voltage %}
+    {{ chart_card('battery-voltage-card', '电压' if lan == 'cn' else 'Battery : Voltage', 'chart-battery-voltage', 'battery_voltage_loading', 'battery_voltage.png') }}
+    {% endif %}
+    {% if show_battery_power %}
+    {{ chart_card('battery-power-card', '功耗' if lan == 'cn' else 'Battery : Power', 'chart-battery-power', 'battery_power_loading', 'battery_power.png') }}
+    {% endif %}
+    {% if show_network_recv %}
+    {{ chart_card('networkdata-card-recv', '网络流量 (KB)：接收' if lan == 'cn' else 'Network Data (KB) : Recv', 'chart-networkdata-recv', 'networkdata_recv_loading', 'networkdata_recv.png') }}
+    {% endif %}
+    {% if show_network_send %}
+    {{ chart_card('networkdata-card-send', '网络流量 (KB)：发送' if lan == 'cn' else 'Network Data (KB) : Send', 'chart-networkdata-send', 'networkdata_send_loading', 'networkdata_send.png') }}
+    {% endif %}
+    {% if show_file_io %}
+    {{ chart_card('file-io-read-card', '文件 IO (KB)：读取' if lan == 'cn' else 'File IO (KB) : Read', 'chart-file-io-read', 'file_io_read_loading', 'file_io_read.png') }}
+    {{ chart_card('file-io-write-card', '文件 IO (KB)：写入' if lan == 'cn' else 'File IO (KB) : Write', 'chart-file-io-write', 'file_io_write_loading', 'file_io_write.png') }}
+    {{ chart_card('file-io-total-card', '文件 IO 累计 (KB)' if lan == 'cn' else 'File IO (KB) : Total Read / Write', 'chart-file-io-total', 'file_io_total_loading', 'file_io_total.png') }}
+    {% endif %}
+    {% if show_gpu %}
+    {{ chart_card('gpu-card', 'GPU (%)', 'chart-gpu', 'gpu_loading', 'gpu.png') }}
+    {% endif %}
+    {% if show_thermal %}
+    {{ chart_card('thermal-card', '温度传感器 (°C)' if lan == 'cn' else 'Thermal Sensor (°C)', 'chart-thermal', 'thermal_loading', 'thermal.png') }}
+    {% endif %}
+    {% if apm_data1.disk_flag and apm_data2.disk_flag %}
+    {{ chart_card('disk-used-card', '磁盘 (KB)：已用' if lan == 'cn' else 'Disk (KB) : Used', 'chart-disk-used', 'disk_used_loading', 'disk_used.png') }}
+    {{ chart_card('disk-free-card', '磁盘 (KB)：可用' if lan == 'cn' else 'Disk (KB) : Free', 'chart-disk-free', 'disk_free_loading', 'disk_free.png') }}
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+
+    $(document).ready(function() {
+        initCompareChart('chart-cpu-app', 'cpu_app_loading', 'cpu');
+        initCompareChart('chart-cpu-system', 'cpu_system_loading', 'cpu_system');
+        initCompareMultiSeriesChart('chart-cpu-core', 'cpu_core_loading', 'cpu_core', buildCpuCoreSeries);
+        initCompareChart('chart-mem-total', 'mem_total_loading', 'memory');
+        initCompareChart('chart-mem-swap', 'mem_swap_loading', 'mem_swap');
+        initCompareMultiSeriesChart('chart-mem-detail', 'mem_detail_loading', 'mem_detail', buildMemoryDetailSeries);
+        initCompareChart('chart-fps', 'fps_loading', 'fps');
+        initCompareChart('chart-jank', 'jank_loading', 'jank');
+        initCompareChart('chart-battery-level', 'battery_level_loading', 'battery');
+        initCompareChart('chart-battery-temp', 'battery_temp_loading', 'battery_temp');
+        initCompareChart('chart-battery-current', 'battery_current_loading', 'battery_current');
+        initCompareChart('chart-battery-voltage', 'battery_voltage_loading', 'battery_voltage');
+        initCompareChart('chart-battery-power', 'battery_power_loading', 'battery_power');
+        initCompareChart('chart-networkdata-recv', 'networkdata_recv_loading', 'net_recv');
+        initCompareChart('chart-networkdata-send', 'networkdata_send_loading', 'net_send');
+        initCompareChart('chart-file-io-read', 'file_io_read_loading', 'file_read');
+        initCompareChart('chart-file-io-write', 'file_io_write_loading', 'file_write');
+        initCompareMultiSeriesChart('chart-file-io-total', 'file_io_total_loading', 'file_io', buildFileIOTotalSeries);
+        initCompareChart('chart-gpu', 'gpu_loading', 'gpu');
+        initCompareMultiSeriesChart('chart-thermal', 'thermal_loading', 'thermal', buildThermalSeries);
+        initCompareChart('chart-disk-used', 'disk_used_loading', 'disk_used');
+        initCompareChart('chart-disk-free', 'disk_free_loading', 'disk_free');
+    });
+
+    function saveHtml(platform, scene){
+        if(platform=='Android'){
+            saveAndroidHtml(scene)
+        }else{
+            saveiOSHtml(scene)
+        }
+    }
+
+    function options(type,dataLabels=false) {
+        let options = {
+            chart: {
+                type: type,
+                fontFamily: 'inherit',
+                height: 240,
+                parentHeightOffset: 0,
+                toolbar: {
+                    show: false,
+                },
+                animations: {
+                    enabled: false
+                },
+            },
+            dataLabels: {
+                enabled: dataLabels
+            },
+            fill: {
+                opacity: 1
+            },
+            stroke: {
+                width: 2,
+                lineCap: "round",
+                curve: "smooth",
+            },
+            series: [],
+            grid: {
+                padding: {
+                    top: -20,
+                    bottom: -4
+                },
+            strokeDashArray: 4,
+            },
+            xaxis: {
+                name: "time",
+                tickAmount:6,
+                labels: {
+                    rotate: 0,
+                },
+                crosshairs: {
+                    show: false
+                }
+            },
+            tooltip: {
+                enabled: false
+            }
+        };
+        return options
+    }
+
+    const compareSeriesPointCache = new WeakMap();
+
+    function formatCompareSeconds(seconds) {
+        if (seconds === null || seconds === undefined || isNaN(seconds)) {
+            return '0:00';
+        }
+        const totalSeconds = Math.max(0, Math.round(seconds));
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        return mins + ':' + (secs < 10 ? '0' : '') + secs;
+    }
+
+    function formatCompareValue(value) {
+        if (!Number.isFinite(value)) {
+            return '';
+        }
+        const rounded = Math.round(value * 100) / 100;
+        return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
+    }
+
+    function escapeCompareHtml(value) {
+        return String(value === null || value === undefined ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function normalizeComparePoint(point, index) {
+        let x;
+        let y;
+        if (Array.isArray(point)) {
+            x = Number(point[0]);
+            y = Number(point[1]);
+        } else if (point && typeof point === 'object') {
+            x = Number(point.x);
+            y = Number(point.y);
+        } else {
+            x = index;
+            y = Number(point);
+        }
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+            return null;
+        }
+        return {x: x, y: y};
+    }
+
+    function getCompareSeriesPoints(data) {
+        if (!Array.isArray(data) || data.length === 0) {
+            return [];
+        }
+        const cached = compareSeriesPointCache.get(data);
+        if (cached) {
+            return cached;
+        }
+        const points = [];
+        let sorted = true;
+        data.forEach(function(point, index) {
+            const normalized = normalizeComparePoint(point, index);
+            if (!normalized) {
+                return;
+            }
+            if (points.length > 0 && normalized.x < points[points.length - 1].x) {
+                sorted = false;
+            }
+            points.push(normalized);
+        });
+        if (!sorted) {
+            points.sort(function(a, b) {
+                return a.x - b.x;
+            });
+        }
+        compareSeriesPointCache.set(data, points);
+        return points;
+    }
+
+    function interpolateCompareValue(data, targetX) {
+        const points = getCompareSeriesPoints(data);
+        if (points.length === 0 || targetX < points[0].x || targetX > points[points.length - 1].x) {
+            return null;
+        }
+
+        let low = 0;
+        let high = points.length - 1;
+        while (low <= high) {
+            const mid = Math.floor((low + high) / 2);
+            if (points[mid].x === targetX) {
+                return points[mid].y;
+            }
+            if (points[mid].x < targetX) {
+                low = mid + 1;
+            } else {
+                high = mid - 1;
+            }
+        }
+
+        const right = points[low];
+        const left = points[low - 1];
+        if (!left || !right) {
+            return null;
+        }
+        if (right.x === left.x) {
+            return left.y;
+        }
+
+        const ratio = (targetX - left.x) / (right.x - left.x);
+        return left.y + (right.y - left.y) * ratio;
+    }
+
+    function getCompareChartPlotBounds(chart) {
+        if (!chart || !chart.w || !chart.el) {
+            return null;
+        }
+        const globals = chart.w.globals;
+        if (!globals || !globals.gridWidth) {
+            return null;
+        }
+        const svg = chart.el.querySelector('svg');
+        if (!svg) {
+            return null;
+        }
+        const svgRect = svg.getBoundingClientRect();
+        const chartRect = chart.el.getBoundingClientRect();
+        return {
+            left: globals.translateX + (svgRect.left - chartRect.left),
+            top: globals.translateY + (svgRect.top - chartRect.top),
+            width: globals.gridWidth,
+            height: globals.gridHeight,
+            minX: globals.minX || 0,
+            maxX: globals.maxX || 0
+        };
+    }
+
+    function getCompareTooltip() {
+        let tooltip = document.querySelector('.compare-crosshair-tooltip');
+        if (tooltip) {
+            return tooltip;
+        }
+        tooltip = document.createElement('div');
+        tooltip.className = 'compare-crosshair-tooltip';
+        tooltip.style.cssText = `
+            position: fixed;
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            display: none;
+            z-index: 1000;
+            max-width: 320px;
+            max-height: 260px;
+            overflow-y: auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        `;
+        document.body.appendChild(tooltip);
+        return tooltip;
+    }
+
+    function hideCompareCrosshair(chart) {
+        const tooltip = document.querySelector('.compare-crosshair-tooltip');
+        if (tooltip) {
+            tooltip.style.display = 'none';
+        }
+        const line = chart && chart.el ? chart.el.querySelector('.compare-crosshair-line') : null;
+        if (line) {
+            line.style.display = 'none';
+        }
+    }
+
+    function setupCompareCrosshair(chart) {
+        if (!chart || !chart.el || chart.el._compareCrosshairBound) {
+            return;
+        }
+
+        const chartEl = chart.el;
+        chartEl._compareCrosshairBound = true;
+        chartEl.style.position = 'relative';
+
+        function getOrCreateLine() {
+            let line = chartEl.querySelector('.compare-crosshair-line');
+            if (!line) {
+                line = document.createElement('div');
+                line.className = 'compare-crosshair-line';
+                line.style.cssText = `
+                    position: absolute;
+                    width: 2px;
+                    background-color: #2196F3;
+                    pointer-events: none;
+                    display: none;
+                    z-index: 100;
+                `;
+                chartEl.appendChild(line);
+            }
+            return line;
+        }
+
+        chartEl.addEventListener('mousemove', function(event) {
+            const bounds = getCompareChartPlotBounds(chart);
+            if (!bounds || bounds.width <= 0 || bounds.maxX <= bounds.minX) {
+                hideCompareCrosshair(chart);
+                return;
+            }
+
+            const chartRect = chartEl.getBoundingClientRect();
+            const mouseX = event.clientX - chartRect.left;
+            const relativeX = (mouseX - bounds.left) / bounds.width;
+            if (relativeX < 0 || relativeX > 1) {
+                hideCompareCrosshair(chart);
+                return;
+            }
+
+            const targetX = bounds.minX + relativeX * (bounds.maxX - bounds.minX);
+            const line = getOrCreateLine();
+            line.style.left = (bounds.left + relativeX * bounds.width) + 'px';
+            line.style.top = bounds.top + 'px';
+            line.style.height = bounds.height + 'px';
+            line.style.display = 'block';
+
+            const configuredSeries = (chart.w.config && chart.w.config.series) || [];
+            const initialSeries = (chart.w.globals && chart.w.globals.initialSeries) || [];
+            const series = configuredSeries.length > 0 ? configuredSeries : initialSeries;
+            const colors = (chart.w.globals && chart.w.globals.colors) || [];
+            const rows = [];
+
+            series.forEach(function(item, index) {
+                if (!item || !Array.isArray(item.data) || item.data.length === 0) {
+                    return;
+                }
+                const value = interpolateCompareValue(item.data, targetX);
+                if (value === null || !Number.isFinite(value)) {
+                    return;
+                }
+                const color = colors[index] || '#999';
+                rows.push(`
+                    <div style="display:flex;align-items:center;margin:2px 0;gap:6px;">
+                        <span style="width:8px;height:8px;background:${color};border-radius:50%;flex:0 0 auto;"></span>
+                        <span style="min-width:0;word-break:break-word;">${escapeCompareHtml(item.name || 'Series ' + (index + 1))}: ${formatCompareValue(value)}</span>
+                    </div>
+                `);
+            });
+
+            const tooltip = getCompareTooltip();
+            if (rows.length === 0) {
+                tooltip.style.display = 'none';
+                return;
+            }
+
+            tooltip.innerHTML = `
+                <div style="margin-bottom:4px;font-weight:bold;border-bottom:1px solid #555;padding-bottom:4px;">${formatCompareSeconds(targetX)}</div>
+                ${rows.join('')}
+            `;
+            tooltip.style.left = (event.clientX + 15) + 'px';
+            tooltip.style.top = (event.clientY - 10) + 'px';
+            tooltip.style.display = 'block';
+
+            const tooltipRect = tooltip.getBoundingClientRect();
+            if (tooltipRect.right > window.innerWidth) {
+                tooltip.style.left = (event.clientX - tooltipRect.width - 15) + 'px';
+            }
+            if (tooltipRect.bottom > window.innerHeight) {
+                tooltip.style.top = (event.clientY - tooltipRect.height - 10) + 'px';
+            }
+        });
+
+        chartEl.addEventListener('mouseleave', function() {
+            hideCompareCrosshair(chart);
+        });
+    }
+
+    function hasChartData(seriesList) {
+        return (seriesList || []).some(function(series) {
+            return Array.isArray(series.data) && series.data.length > 0;
+        });
+    }
+
+    function updateCompareSeries(chart, cardElement, seriesList) {
+        if (!hasChartData(seriesList)) {
+            cardElement.hide();
+            chart.updateSeries([]);
+            hideCompareCrosshair(chart);
+            return false;
+        }
+        cardElement.show();
+        chart.updateSeries(seriesList);
+        setupCompareCrosshair(chart);
+        return true;
+    }
+
+    function loadCompareChart(chart, target, cardElement) {
+        $.ajax({
+            url: '/apm/log/compare',
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene1:'{{ scene1 }}',
+                scene2:'{{ scene2 }}',
+                target:target,
+                platform:platform
+            },
+            beforeSend: function () {
+                SwalLoading(uiText('正在加载', 'Loading'), '')
+            },
+            complete: function () {
+                swal.close();
+            },
+            success: function (data) {
+                if(data['status'] !== 1){
+                    console.error(data['msg'] || 'load compare chart failed');
+                    updateCompareSeries(chart, cardElement, []);
+                    return;
+                }
+                updateCompareSeries(chart, cardElement, [{
+                    name: '{{ scene1 }}',
+                    data: data['scene1'] || []
+                },{
+                    name: '{{ scene2 }}',
+                    data: data['scene2'] || []
+                }])
+            }
+        });
+    }
+
+    function loadCompareMultiSeriesChart(chart, target, seriesBuilder, cardElement) {
+        $.ajax({
+            url: '/apm/log/compare',
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene1:'{{ scene1 }}',
+                scene2:'{{ scene2 }}',
+                target:target,
+                platform:platform
+            },
+            beforeSend: function () {
+                SwalLoading(uiText('正在加载', 'Loading'), '')
+            },
+            complete: function () {
+                swal.close();
+            },
+            success: function (data) {
+                if(data['status'] !== 1){
+                    console.error(data['msg'] || 'load compare chart failed');
+                    updateCompareSeries(chart, cardElement, []);
+                    return;
+                }
+                updateCompareSeries(chart, cardElement, seriesBuilder(data));
+            }
+        });
+    }
+
+    function buildMemoryDetailSeries(data) {
+        const metrics = [
+            ['java_heap', 'Java Heap'],
+            ['native_heap', 'Native Heap'],
+            ['code_pss', 'Code PSS'],
+            ['stack_pss', 'Stack PSS'],
+            ['graphics_pss', 'Graphics PSS'],
+            ['private_pss', 'Private PSS'],
+            ['system_pss', 'System PSS'],
+        ];
+        const scene1 = data['scene1'] || {};
+        const scene2 = data['scene2'] || {};
+        const series = [];
+
+        metrics.forEach(function(metric) {
+            const key = metric[0];
+            const label = metric[1];
+            series.push({name: '{{ scene1 }} ' + label, data: scene1[key] || []});
+            series.push({name: '{{ scene2 }} ' + label, data: scene2[key] || []});
+        });
+        return series;
+    }
+
+    function buildCpuCoreSeries(data) {
+        const scene1 = data['scene1'] || {};
+        const scene2 = data['scene2'] || {};
+        const cores = Math.max(
+            Number(data['cores']) || 0,
+            Number(data['scene1Cores']) || 0,
+            Number(data['scene2Cores']) || 0
+        );
+        const series = [];
+
+        for (let i = 0; i < cores; i++) {
+            const key = 'cpu' + i;
+            series.push({name: '{{ scene1 }} ' + key, data: scene1[key] || []});
+            series.push({name: '{{ scene2 }} ' + key, data: scene2[key] || []});
+        }
+        return series;
+    }
+
+    function cumulativeSeries(points) {
+        let total = 0;
+        return (points || []).map(function(point) {
+            const value = Number(point && point.y != null ? point.y : 0);
+            total += isFinite(value) ? value : 0;
+            return {
+                x: point ? point.x : 0,
+                y: Number(total.toFixed(2))
+            };
+        });
+    }
+
+    function buildFileIOTotalSeries(data) {
+        return [
+            {name: '{{ scene1 }} Total Read', data: cumulativeSeries(data['readScene1'])},
+            {name: '{{ scene1 }} Total Write', data: cumulativeSeries(data['writeScene1'])},
+            {name: '{{ scene2 }} Total Read', data: cumulativeSeries(data['readScene2'])},
+            {name: '{{ scene2 }} Total Write', data: cumulativeSeries(data['writeScene2'])},
+        ];
+    }
+
+    function buildThermalSeries(data) {
+        const metrics = [
+            ['CPU', 'CPU'],
+            ['GPU', 'GPU'],
+            ['Memory', lan == 'cn' ? '内存' : 'Memory'],
+            ['Battery', lan == 'cn' ? '电池' : 'Battery'],
+        ];
+        const scene1 = data['scene1'] || {};
+        const scene2 = data['scene2'] || {};
+        const series = [];
+
+        metrics.forEach(function(metric) {
+            const key = metric[0];
+            const label = metric[1];
+            series.push({name: '{{ scene1 }} ' + label, data: scene1[key] || []});
+            series.push({name: '{{ scene2 }} ' + label, data: scene2[key] || []});
+        });
+        return series;
+    }
+
+    function initCompareChart(chartId, loadingId, target) {
+        let chartElement = document.querySelector("#" + chartId);
+        if(!chartElement){
+            return null;
+        }
+        let compareChart = new ApexCharts(chartElement, options('line'));
+        compareChart.render();
+        let cardElement = $(chartElement).closest('.card');
+        $('#' + loadingId).click(function () {
+            loadCompareChart(compareChart, target, cardElement);
+        });
+        $('#' + loadingId).click();
+        return compareChart;
+    }
+
+    function initCompareMultiSeriesChart(chartId, loadingId, target, seriesBuilder) {
+        let chartElement = document.querySelector("#" + chartId);
+        if(!chartElement){
+            return null;
+        }
+        let compareChart = new ApexCharts(chartElement, options('line'));
+        compareChart.render();
+        let cardElement = $(chartElement).closest('.card');
+        $('#' + loadingId).click(function () {
+            loadCompareMultiSeriesChart(compareChart, target, seriesBuilder, cardElement);
+        });
+        $('#' + loadingId).click();
+        return compareChart;
+    }
+</script>
+{% endblock %}
