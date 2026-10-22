@@ -142,6 +142,9 @@ target in ['cpu','memory','memory_detail','network','fps','battery','gpu']
   - 🌱2-devices: 使用两台不同的设备测试同一个app。
   - 🌱2-apps: 使用两台配置相同的设备测试两个不同的app。
 * **API收集性能数据:** 支持python、API收集性能数据，帮助用户轻松集成在CI/CD流程。
+* **Unity 采集:** 在 APM 会话中同时录制 Unity Profiler / MemoryProfiler 原始数据；优先使用工程内脚本，未集成时自动回退到 PlayerConnection 协议（已验证 Unity 2022.3，无需改游戏）。
+* **Deep Profiler / Profiler Modules:** 像 Unity Profiler 一样勾选要采集的 Module，并支持 Deep Profiler 开关；协议模式下可在采集中热切换（Deep Profiler 需构建时开启 Deep Profiling Support）。
+* **Unity 采集技术文档:** [docs/UNITY_CAPTURE.md](docs/UNITY_CAPTURE.md) — 已支持的 PlayerConnection 版本、线协议格式、Area→Category 映射，以及新增 Unity 版本 / Profiler 功能的扩展清单。
 
 ## 浏览器
 

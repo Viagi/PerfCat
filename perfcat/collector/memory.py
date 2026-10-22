@@ -160,25 +160,54 @@ class Memory(ReusableCollector):
         return totalPass, swapPass
 
     def _parse_android_memory_detail(self, output):
-        m_java = re.search(r"Java Heap:\s*(\d+)", output)
-        m_native = re.search(r"Native Heap:\s*(\d+)", output)
-        m_code = re.search(r"Code:\s*(\d+)", output)
-        m_stack = re.search(r"Stack:\s*(\d+)", output)
-        m_graphics = re.search(r"Graphics:\s*(\d+)", output)
-        m_private = re.search(r"Private Other:\s*(\d+)", output)
-        m_system = re.search(r"System:\s*(\d+)", output)
-        if not all(
-            (m_java, m_native, m_code, m_stack, m_graphics, m_private, m_system)
-        ):
+        """解析 dumpsys meminfo 的两代格式。
+
+        旧格式：Java Heap: / Native Heap: / Code: / Stack: / Graphics: /
+        Private Other: / System:
+        新格式（Android 12+ 常见）：Dalvik Heap / Native Heap / Stack /
+        Gfx dev / GL mtrack / EGL mtrack / Unknown，且没有冒号。
+        """
+        def row_pss(label):
+            match = re.search(
+                r"^\s*" + re.escape(label) + r"\s+(\d+)", output, re.MULTILINE
+            )
+            return int(match.group(1)) if match else None
+
+        java = row_pss("Java Heap")
+        if java is None:
+            java = row_pss("Dalvik Heap")
+        native = row_pss("Native Heap")
+        code = row_pss("Code")
+        if code is None:
+            code = sum(
+                row_pss(label) or 0
+                for label in (
+                    ".so mmap", ".jar mmap", ".apk mmap",
+                    ".dex mmap", ".oat mmap", ".art mmap",
+                )
+            ) or None
+        stack = row_pss("Stack")
+        graphics = row_pss("Graphics")
+        if graphics is None:
+            graphics = sum(
+                row_pss(label) or 0
+                for label in ("Gfx dev", "GL mtrack", "EGL mtrack")
+            ) or None
+        private = row_pss("Private Other")
+        if private is None:
+            private = row_pss("Unknown")
+        system = row_pss("System") or 0
+
+        if java is None or native is None:
             return None
         return dict(
-            java_heap=round(float(float(m_java.group(1))) / 1024, 2),
-            native_heap=round(float(float(m_native.group(1))) / 1024, 2),
-            code_pss=round(float(float(m_code.group(1))) / 1024, 2),
-            stack_pss=round(float(float(m_stack.group(1))) / 1024, 2),
-            graphics_pss=round(float(float(m_graphics.group(1))) / 1024, 2),
-            private_pss=round(float(float(m_private.group(1))) / 1024, 2),
-            system_pss=round(float(float(m_system.group(1))) / 1024, 2),
+            java_heap=round(float(java) / 1024, 2),
+            native_heap=round(float(native) / 1024, 2),
+            code_pss=round(float(code or 0) / 1024, 2),
+            stack_pss=round(float(stack or 0) / 1024, 2),
+            graphics_pss=round(float(graphics or 0) / 1024, 2),
+            private_pss=round(float(private or 0) / 1024, 2),
+            system_pss=round(float(system) / 1024, 2),
         )
 
     def _read_parsed_android_meminfo(

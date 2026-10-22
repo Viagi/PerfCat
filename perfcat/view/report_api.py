@@ -17,6 +17,7 @@ from perfcat.collector.memory import Memory
 from perfcat.collector.gpu import GPU
 from perfcat.collector.base import Target
 from perfcat.collector.ios_perf import IOSPerformance
+from perfcat.service.unity_capture import unity_capture
 from perfcat.tools.recording import Scrcpy
 
 report_api = Blueprint("report_api", __name__)
@@ -70,6 +71,7 @@ def _log_data_handlers(platform, scene):
         "file_io": lambda: f.getFileIOLog(platform, scene),
         "fps": lambda: f.getFpsLog(platform, scene),
         "gpu": lambda: f.getGpuLog(platform, scene),
+        "gpu_stats": lambda: f.getGpuStatsLog(platform, scene),
         "disk": lambda: f.getDiskLog(platform, scene),
         "cpu_core": lambda: f.getCpuCoreLog(platform, scene),
     }
@@ -214,6 +216,11 @@ def makeReport():
             if record:
                 video = 1 if Scrcpy.stop_record() else 0
             _clear_collector_sessions()
+        try:
+            unity_capture.stop()
+            unity_capture.finalize()
+        except Exception as e:
+            logger.warning("unity capture finalize failed: %s", e)
         f.make_report(
             app=app,
             devices=devices,
@@ -292,6 +299,7 @@ def exportAndroidHtml():
     gpu = method._request(request, "gpu")
     try:
         fps_log = f.getFpsLog(Platform.Android, scene)
+        gpu_stats = f.getGpuStatsLog(Platform.Android, scene)
         summary_dict = {
             **_report_metadata(scene),
             "cpu_app": cpu_app,
@@ -321,6 +329,8 @@ def exportAndroidHtml():
             "fps_charts": fps_log["fps"],
             "jank_charts": fps_log["jank"],
             "gpu_charts": f.getGpuLog(Platform.Android, scene),
+            "gpu_stats": gpu_stats["avg"],
+            "gpu_stats_charts": gpu_stats["charts"],
         }
         path = f.make_android_html(scene, summary_dict)
         result = {"status": 1, "msg": "success", "path": path}

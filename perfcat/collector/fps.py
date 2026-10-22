@@ -109,13 +109,39 @@ class SurfaceStatsCollector(object):
         except ValueError:
             logger.debug("fps queue task_done called without unfinished tasks")
 
+    @staticmethod
+    def _normalize_surface_name(line):
+        """把 Android 12+ 的 RequestedLayerState 包装还原成 --latency 可用的层名。
+
+        新系统返回：
+            RequestedLayerState{833cb9a SurfaceView[...](BLAST)#1041458 parentId=... z=...}
+        而 --latency 只认花括号里的
+            "833cb9a SurfaceView[...](BLAST)#1041458"
+        """
+        line = (line or "").strip()
+        if line.startswith("RequestedLayerState{") and line.endswith("}"):
+            inner = line[len("RequestedLayerState{"):-1]
+            for marker in (" parentId=", " relativeParentId=", " z="):
+                index = inner.find(marker)
+                if index > 0:
+                    inner = inner[:index]
+            return inner.strip()
+        return line
+
     def _get_surfaceflinger_surfaces(self):
         result = adb.shell(
             cmd="dumpsys SurfaceFlinger --list",
             deviceId=self.device,
             timeout=self.ADB_TIMEOUT,
         )
-        return [line.strip() for line in result.splitlines() if line.strip()]
+        surfaces = []
+        seen = set()
+        for line in result.splitlines():
+            name = self._normalize_surface_name(line)
+            if name and name not in seen:
+                surfaces.append(name)
+                seen.add(name)
+        return surfaces
 
     def _surface_tokens(self):
         tokens = [self.package_name]

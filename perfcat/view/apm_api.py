@@ -1,4 +1,6 @@
+import datetime
 import json
+import os
 import requests
 from flask import Blueprint, request, g
 from logzero import logger
@@ -15,6 +17,7 @@ from perfcat.collector.network import Network
 from perfcat.collector.fps import FPS
 from perfcat.collector.battery import Battery
 from perfcat.collector.gpu import GPU
+from perfcat.collector.gpu_stats import create_gpu_stats, clear_gpu_stats
 from perfcat.collector.energy import Energy
 from perfcat.collector.disk import Disk
 from perfcat.collector.file_io import FileIO
@@ -65,6 +68,7 @@ def _clear_collector_sessions():
     Disk.clear()
     FileIO.clear()
     ThermalSensor.clear()
+    clear_gpu_stats()
 
 
 def _parse_process(process):
@@ -586,6 +590,33 @@ def getGpu():
     return result
 
 
+@apm_api.route("/apm/gpu/stats", methods=["post", "get"])
+def getGpuStats():
+    """get extended gpu data: clock, bus, temperature, memory, bandwidth"""
+    pkgname = method._request(request, "pkgname")
+    device = method._request(request, "device")
+    platform = method._request(request, "platform")
+    try:
+        if platform != Platform.Android:
+            result = {"status": 1, "data": {}, "msg": "not support ios"}
+        else:
+            deviceId = d.getIdbyDevice(device, platform)
+            gpu = create_gpu_stats(
+                deviceId=deviceId, pkgName=pkgname, pid=None, platform=platform
+            )
+            data = gpu.sample()
+            if data:
+                apm_time = datetime.datetime.now().strftime("%H:%M:%S.%f")
+                f.add_json_log(
+                    os.path.join(f.report_dir, "gpu_stats.log"), apm_time, data
+                )
+            result = {"status": 1, "data": data}
+    except Exception as e:
+        logger.exception(e)
+        result = {"status": 0, "msg": str(e), "data": {}}
+    return result
+
+
 @apm_api.route("/apm/energy", methods=["post", "get"])
 def getEnergy():
     """get energy data"""
@@ -760,6 +791,11 @@ def apmCollect():
                 )
                 final = gpu.getGPU()
                 result = {"status": 1, "gpu": final}
+            case Target.GPU_STATS:
+                stats = create_gpu_stats(
+                    deviceId=deviceid, pkgName=pkgname, pid=None, platform=platform
+                )
+                result = {"status": 1, "data": stats.sample()}
             case _:
                 result = {"status": 0, "msg": "no this target"}
     except Exception as e:

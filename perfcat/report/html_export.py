@@ -227,6 +227,8 @@ class HtmlExporter:
                 mem_detail_charts=summary["mem_detail_charts"],
                 gpu=summary["gpu"],
                 gpu_charts=summary["gpu_charts"],
+                gpu_stats=summary.get("gpu_stats", {}),
+                gpu_stats_charts=summary.get("gpu_stats_charts", {}),
                 summary_flags=summary_flags,
             )
 

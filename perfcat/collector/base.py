@@ -50,6 +50,7 @@ class Target:
     Network = "network"
     FPS = "fps"
     GPU = "gpu"
+    GPU_STATS = "gpu_stats"
     DISK = "disk"
     FileIO = "file_io"
 

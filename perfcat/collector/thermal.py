@@ -14,11 +14,11 @@ from perfcat.collector.base import ReusableCollector
 
 
 class ThermalSensor(ReusableCollector):
-    ADB_TIMEOUT = 5
+    ADB_TIMEOUT = 10
     MIN_TEMP_CELSIUS = 5
     MAX_TEMP_CELSIUS = 150
     SAMPLER_INTERVAL_SECONDS = 1.0
-    SAMPLER_STALE_TTL_SECONDS = 5.0
+    SAMPLER_STALE_TTL_SECONDS = 10.0
     _thermal_cache = {}
     # Legacy msm-tsens.c TSENS_TYPE3 exposes decidegrees, not millidegrees.
     # https://github.com/LineageOS/android_kernel_xiaomi_sdm660/blob/lineage-18.1/drivers/thermal/msm-tsens.c
@@ -92,11 +92,13 @@ class ThermalSensor(ReusableCollector):
         return self._make_cache_key(self.platform, self.deviceId)
 
     def _read_thermal_zones(self):
+        # read is a shell builtin: avoids two `cat` forks per thermal zone,
+        # which makes Samsung devices with ~50 zones time out at 5s.
         cmd = (
             "printf '__RECORDS__\\n'; "
             'for z in /sys/class/thermal/thermal_zone*; do '
-            't=$(cat "$z/type" 2>/dev/null) || continue; '
-            'v=$(cat "$z/temp" 2>/dev/null) || continue; '
+            'read -r t < "$z/type" 2>/dev/null || continue; '
+            'read -r v < "$z/temp" 2>/dev/null || continue; '
             'printf "%s|%s|%s\\n" "$z" "$t" "$v"; done'
         )
         return adb.shell(cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)

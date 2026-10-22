@@ -40,6 +40,7 @@ class ApmSettingsCache:
         "collectFpsSurfaceView": "1",
         "collectRecordScreen": "0",
         "collectGpu": "1",
+        "collectGpuStats": "0",
         "collectBattery": "0",
         "collectMemoryDetail": "0",
         "collectThermal": "0",

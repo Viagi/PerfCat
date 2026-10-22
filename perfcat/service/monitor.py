@@ -4,6 +4,8 @@
 AppPerformanceMonitor 继承自 ServiceConfig，提供 Python API 层面的
 性能数据采集与报告生成功能。
 """
+import datetime
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor, wait
 from logzero import logger
@@ -18,6 +20,7 @@ from perfcat.collector.battery import Battery
 from perfcat.collector.network import Network
 from perfcat.collector.fps import FPS
 from perfcat.collector.gpu import GPU
+from perfcat.collector.gpu_stats import create_gpu_stats, clear_gpu_stats
 from perfcat.collector.thermal import ThermalSensor
 from perfcat.collector.disk import Disk
 from perfcat.collector.file_io import FileIO
@@ -89,6 +92,7 @@ class AppPerformanceMonitor(ServiceConfig):
         Disk.clear()
         FileIO.clear()
         ThermalSensor.clear()
+        clear_gpu_stats()
 
     def collectCpu(self):
         """采集 CPU 使用率"""
@@ -260,6 +264,33 @@ class AppPerformanceMonitor(ServiceConfig):
                 break
         return result
 
+    def collectGpuStats(self):
+        """采集 GPU 扩展指标（频率/总线/显存/读写带宽）"""
+        if self.platform != Platform.Android:
+            return {}
+        _gpu = create_gpu_stats(
+            deviceId=self.deviceId,
+            pkgName=self.pkgName,
+            pid=self.pid,
+            platform=self.platform,
+        )
+        result = {}
+        while self.get_status() == "on":
+            started = time.time()
+            data = _gpu.sample()
+            if not data:
+                break
+            result = data
+            logger.info(f"gpu stats: {result}")
+            if self.noLog is False:
+                apm_time = datetime.datetime.now().strftime("%H:%M:%S.%f")
+                f.add_json_log(
+                    os.path.join(f.report_dir, "gpu_stats.log"), apm_time, data
+                )
+            if not self._continue_sampling(started):
+                break
+        return result
+
     def collectThermal(self):
         """采集温度传感器数据"""
         _thermal = ThermalSensor.getObject(self.deviceId, self.platform)
@@ -281,6 +312,7 @@ class AppPerformanceMonitor(ServiceConfig):
 
     def _android_report_summary(self, scene, summary):
         fps_log = f.getFpsLog(Platform.Android, scene)
+        gpu_stats = f.getGpuStatsLog(Platform.Android, scene)
         return {
             "app": summary["app"],
             "platform": summary["platform"],
@@ -312,6 +344,8 @@ class AppPerformanceMonitor(ServiceConfig):
             "fps_charts": fps_log["fps"],
             "jank_charts": fps_log["jank"],
             "gpu_charts": f.getGpuLog(Platform.Android, scene),
+            "gpu_stats": gpu_stats["avg"],
+            "gpu_stats_charts": gpu_stats["charts"],
             "summary_flags": summary.get("summary_flags", {}),
         }
 
@@ -365,6 +399,12 @@ class AppPerformanceMonitor(ServiceConfig):
                 )
                 data = _flow.setAndroidNet()
                 f.record_net("end", data[0], data[1])
+                try:
+                    from perfcat.service.unity_capture import unity_capture
+                    unity_capture.stop()
+                    unity_capture.finalize()
+                except Exception as e:
+                    logger.warning("unity capture finalize failed: %s", e)
                 scene = f.make_report(
                     app=self.pkgName,
                     devices=self.deviceId,
@@ -379,6 +419,12 @@ class AppPerformanceMonitor(ServiceConfig):
                     report_path=report_path,
                 )
             case Platform.iOS:
+                try:
+                    from perfcat.service.unity_capture import unity_capture
+                    unity_capture.stop()
+                    unity_capture.finalize()
+                except Exception as e:
+                    logger.warning("unity capture finalize failed: %s", e)
                 scene = f.make_report(
                     app=self.pkgName,
                     devices=self.deviceId,
@@ -443,6 +489,7 @@ class AppPerformanceMonitor(ServiceConfig):
                 self.collectNetwork,
                 self.collectFileIO,
                 self.collectGpu,
+                self.collectGpuStats,
                 self.collectThermal,
             )
             executor = ThreadPoolExecutor(

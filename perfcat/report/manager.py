@@ -65,6 +65,16 @@ class ReportManager:
         failed_files = []
         for filename in os.listdir(self.report_dir):
             path = os.path.join(self.report_dir, filename)
+            if filename == "unity_capture" and os.path.isdir(path):
+                unity_target = os.path.join(target_dir, "unity")
+                if os.path.exists(unity_target):
+                    shutil.rmtree(unity_target, ignore_errors=True)
+                try:
+                    shutil.move(path, unity_target)
+                except (PermissionError, OSError) as e:
+                    logger.warning("Failed to move unity_capture: %s", e)
+                    failed_files.append(filename)
+                continue
             if not self._is_report_artifact(path):
                 continue
 
@@ -138,6 +148,9 @@ class ReportManager:
                 path = os.path.join(self.report_dir, filename)
                 if self._is_report_artifact(path):
                     os.remove(path)
+        stale_unity = os.path.join(self.report_dir, "unity_capture")
+        if os.path.isdir(stale_unity):
+            shutil.rmtree(stale_unity, ignore_errors=True)
 
     def list_other_scenes(self, scene):
         """过滤并按时间排序场景目录列表（排除指定场景）
@@ -238,6 +251,10 @@ class ReportStore(ReportManager):
         """添加一条日志记录"""
         return self._log_io.add_log(path, log_time, value)
 
+    def add_json_log(self, path, log_time, value):
+        """追加一条 JSON 行日志（GPU 扩展指标）"""
+        return self._log_io.add_json_log(path, log_time, value)
+
     def create_file(self, filename, content=""):
         """在报告目录下创建文件"""
         return self._log_io.create_file(filename, content)
@@ -265,6 +282,10 @@ class ReportStore(ReportManager):
     def getGpuLog(self, platform, scene):
         """获取 GPU 日志数据"""
         return self._log_io.getGpuLog(platform, scene)
+
+    def getGpuStatsLog(self, platform, scene):
+        """获取 GPU 扩展指标（含 MB/帧带宽）"""
+        return self._log_io.getGpuStatsLog(platform, scene)
 
     def getGpuLogCompare(self, platform, scene1, scene2):
         """获取 GPU 对比日志数据"""

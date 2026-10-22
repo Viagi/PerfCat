@@ -17,6 +17,7 @@ from perfcat.view.apm_api import apm_api
 from perfcat.view.report_api import report_api
 from perfcat.view.tools_api import tools_api
 from perfcat.view.ios_dependencies_api import ios_dependencies_api
+from perfcat.view.unity_api import unity_api
 from perfcat.view.pages import page
 from perfcat import __version__
 from perfcat.core.logging_config import STARTUP_LOG_ATTR, setup_runtime_logging
@@ -63,6 +64,7 @@ app.register_blueprint(apm_api)
 app.register_blueprint(report_api)
 app.register_blueprint(tools_api)
 app.register_blueprint(ios_dependencies_api)
+app.register_blueprint(unity_api)
 app.register_blueprint(page)
 
 

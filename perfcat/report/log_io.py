@@ -58,6 +58,130 @@ class LogIO:
             with open(path, "a+", encoding="utf-8") as file:
                 file.write(f"{log_time}={str(value)}" + "\n")
 
+    def add_json_log(self, path, log_time, value):
+        """追加一条多字段指标（JSON 行），用于 GPU 扩展指标等。"""
+        if not value:
+            return
+        with open(path, "a+", encoding="utf-8") as file:
+            file.write(f"{log_time}={json.dumps(value)}" + "\n")
+
+    @staticmethod
+    def _clock_seconds(text):
+        """把 HH:MM:SS[.ffffff] 转为秒数。"""
+        text = (text or "").strip()
+        if "." in text:
+            hms, micro = text.split(".", 1)
+            microsec = int(micro[:6].ljust(6, "0"))
+        else:
+            hms, microsec = text, 0
+        hour, minute, second = hms.split(":")
+        return int(hour) * 3600 + int(minute) * 60 + int(second) + microsec / 1000000.0
+
+    def _json_points(self, scene, filename):
+        """读取 JSON 行日志，返回 [(绝对秒数, dict), ...]。"""
+        points = []
+        filepath = os.path.join(self.report_dir, scene, filename)
+        if not os.path.exists(filepath):
+            return points
+        for line in self.open_file(filepath, "r"):
+            time_str, sep, payload = line.partition("=")
+            if not sep:
+                continue
+            try:
+                data = json.loads(payload.strip())
+                seconds = self._clock_seconds(time_str)
+            except (ValueError, TypeError):
+                continue
+            if isinstance(data, dict):
+                points.append((seconds, data))
+        return points
+
+    def read_json_lines(self, scene, filename):
+        """读取 JSON 行日志，返回 (charts, values)。
+
+        charts 的 x 与普通日志一致，是相对第一条样本的秒数；额外的 t 字段
+        保存绝对秒数，仅用于与其他日志对齐（前端会忽略）。
+        """
+        points = self._json_points(scene, filename)
+        charts = {}
+        values = {}
+        if not points:
+            return charts, values
+        origin = points[0][0]
+        for seconds, data in points:
+            x = round(seconds - origin, 1)
+            for key, value in data.items():
+                if value is None:
+                    continue
+                charts.setdefault(key, []).append(
+                    {"x": x, "y": value, "t": seconds}
+                )
+                values.setdefault(key, []).append(value)
+        return charts, values
+
+    def _absolute_points(self, scene, filename):
+        """读取普通日志，返回 [(绝对秒数, 数值), ...]。"""
+        points = []
+        filepath = os.path.join(self.report_dir, scene, filename)
+        if not os.path.exists(filepath):
+            return points
+        for line in self.open_file(filepath, "r"):
+            parts = line.split("=")
+            if len(parts) < 2:
+                continue
+            try:
+                seconds = self._clock_seconds(parts[0])
+            except (ValueError, IndexError):
+                continue
+            try:
+                value = int(parts[1].strip())
+            except ValueError:
+                try:
+                    value = float(parts[1].strip())
+                except ValueError:
+                    continue
+            points.append((seconds, value))
+        return points
+
+    @staticmethod
+    def _nearest_absolute(points, target):
+        if not points:
+            return None
+        return min(points, key=lambda item: abs(item[0] - target))[1]
+
+    def getGpuStatsLog(self, platform, scene):
+        """GPU 扩展指标；带宽按同一时刻的 FPS 换算成 MB/帧。"""
+        charts, values = self.read_json_lines(scene, "gpu_stats.log")
+        avg = {
+            key: round(sum(items) / len(items), 2)
+            for key, items in values.items()
+            if items
+        }
+        fps_points = self._absolute_points(scene, "fps.log")
+        if fps_points:
+            for source, target in (
+                ("gpu_bw_read", "gpu_bw_read_frame"),
+                ("gpu_bw_write", "gpu_bw_write_frame"),
+            ):
+                if source not in charts:
+                    continue
+                per_frame = []
+                for point in charts[source]:
+                    fps = self._nearest_absolute(fps_points, point["t"])
+                    if fps and fps > 0:
+                        per_frame.append(
+                            {"x": point["x"], "y": round(point["y"] / fps, 3)}
+                        )
+                    else:
+                        per_frame.append({"x": point["x"], "y": None})
+                charts[target] = per_frame
+                numbers = [p["y"] for p in per_frame if p["y"] is not None]
+                if numbers:
+                    avg[target] = round(sum(numbers) / len(numbers), 3)
+        for key in list(charts):
+            charts[key] = [{"x": p["x"], "y": p["y"]} for p in charts[key]]
+        return {"status": 1, "avg": avg, "charts": charts}
+
     def create_file(self, filename, content=""):
         """在报告目录下创建文件
 

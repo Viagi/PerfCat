@@ -155,12 +155,15 @@ class Aggregator:
         size_list = []
         used_list = []
         free_list = []
+        seen_sizes = set()
         lines = self.log_io.open_file(self._scene_file_path(scene, filename), "r")
         for line in lines:
             if "Filesystem" in line or line.strip() == "":
                 continue
 
             disk_value_list = line.split()
+            if len(disk_value_list) < 6:
+                continue
             disk_list.append(
                 dict(
                     filesystem=disk_value_list[0],
@@ -171,6 +174,15 @@ class Aggregator:
                     mounted=disk_value_list[5],
                 )
             )
+            # /data/user/0 和 /storage/emulated 指向同一块存储，避免重复求和
+            size_key = (
+                disk_value_list[1],
+                disk_value_list[2],
+                disk_value_list[3],
+            )
+            if size_key in seen_sizes:
+                continue
+            seen_sizes.add(size_key)
             size_list.append(int(disk_value_list[1]))
             used_list.append(int(disk_value_list[2]))
             free_list.append(int(disk_value_list[3]))

@@ -251,6 +251,40 @@ PerfCat - Application Performance Monitoring
             </a>
 
             <a class="dropdown-item" style="margin-top: 10px;">
+                <svg class="icon me-2" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2.6l8 4.6v9.6l-8 4.6-8-4.6V7.2z"></path><path d="M12 2.6v18.8M4 7.2l8 4.6 8-4.6"></path></svg>
+                Unity Profiler
+                <span class="ms-auto">
+                    <label class="form-check form-check-single form-switch">
+                        <input id="unity-switch" class="form-check-input cursor-pointer" type="checkbox" name="unity-switch" style="margin-right: 5px">
+                    </label>
+                </span>
+            </a>
+
+            <div class="px-3" style="margin-top:-6px;margin-bottom:4px;">
+                <small class="text-muted" id="unity-supported-versions"></small>
+            </div>
+
+            <a class="dropdown-item" style="margin-top: 6px;" onclick="openUnityOptions(); return false;">
+                <svg class="icon me-2" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="8" cy="6" r="1.6" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="1.6" fill="currentColor" stroke="none"></circle><circle cx="10" cy="18" r="1.6" fill="currentColor" stroke="none"></circle></svg>
+                {% if lan == 'cn' %} Profiler 模块 {% else %} Profiler Modules {% endif %}
+                <span class="ms-auto badge bg-secondary" id="unity-options-summary">--</span>
+            </a>
+
+            <a class="dropdown-item" style="margin-top: 10px;" onclick="unitySnapshot()">
+                <svg class="icon me-2" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="6" rx="8" ry="3"></ellipse><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"></path><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"></path></svg>
+                MemoryProfiler
+                <span class="ms-auto badge bg-secondary cursor-pointer" id="unity-snapshot" role="button">
+                    {% if lan == 'cn' %} 抓取 {% else %} CAPTURE {% endif %}
+                </span>
+            </a>
+
+            <a class="dropdown-item" style="margin-top: 10px;" href="/apm/unity/helper">
+                <svg class="icon me-2" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v11"></path><path d="M7.5 9.5L12 14l4.5-4.5"></path><path d="M4 17.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5"></path></svg>
+                {% if lan == 'cn' %} 采集脚本（可选） {% else %} Capture Script (optional) {% endif %}
+                <span class="ms-auto badge">ZIP</span>
+            </a>
+
+            <a class="dropdown-item" style="margin-top: 10px;">
                 <svg t="1657093102367" class="icon me-2" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="27860" width="2000" height="2000"><path d="M938.362 256.2V149.626c0-23.576-19.11-42.654-42.652-42.654H43.046C19.502 106.972 0.392 126.05 0.392 149.626V256.2h937.97z" fill="#E6E9ED" p-id="27861"></path><path d="M792.164 831.75H0.392V192.25h937.97v446.306z" fill="#656D78" p-id="27862"></path><path d="M85.67 149.626c0 11.772-9.526 21.296-21.328 21.296-11.74 0-21.294-9.524-21.294-21.296S52.602 128.3 64.342 128.3c11.802 0 21.328 9.556 21.328 21.326z" fill="#ED5564" p-id="27863"></path><path d="M149.62 149.626c0 11.772-9.524 21.296-21.326 21.296-11.742 0-21.296-9.524-21.296-21.296S116.55 128.3 128.292 128.3c11.804 0 21.328 9.556 21.328 21.326z" fill="#FFCE54" p-id="27864"></path><path d="M213.568 149.626c0 11.772-9.524 21.296-21.326 21.296-11.74 0-21.294-9.524-21.294-21.296S180.502 128.3 192.242 128.3c11.802 0 21.326 9.556 21.326 21.326z" fill="#A0D468" p-id="27865"></path><path d="M746.512 277.496H106.996c-11.772 0-21.326 9.554-21.326 21.326s9.554 21.328 21.326 21.328h639.516c11.74 0 21.294-9.556 21.294-21.328s-9.554-21.326-21.294-21.326z" fill="#FC6E51" p-id="27866"></path><path d="M106.996 405.426h341.046c11.802 0 21.326-9.554 21.326-21.328 0-11.772-9.524-21.326-21.326-21.326H106.996c-11.772 0-21.326 9.554-21.326 21.326 0 11.774 9.554 21.328 21.326 21.328z" fill="#AC92EB" p-id="27867"></path><path d="M575.958 448.05H106.996c-11.772 0-21.326 9.556-21.326 21.328s9.554 21.296 21.326 21.296h468.962c11.8 0 21.294-9.524 21.294-21.296s-9.492-21.328-21.294-21.328z" fill="#48CFAD" p-id="27868"></path><path d="M106.996 575.952H405.42c11.772 0 21.326-9.556 21.326-21.328s-9.554-21.296-21.326-21.296H106.996c-11.772 0-21.326 9.526-21.326 21.296s9.554 21.328 21.326 21.328z" fill="#5D9CEC" p-id="27869"></path><path d="M615.678 669.22c8.618 0 16.734-5.278 19.984-13.832 4.122-11.024-1.5-23.326-12.492-27.45-41.03-15.392-47.336-54.708-47.336-55.112a21.332 21.332 0 0 0-24.232-17.956c-11.662 1.716-19.688 12.552-17.97 24.2 0.376 2.624 10.242 64.668 74.55 88.776 2.5 0.938 4.996 1.374 7.496 1.374zM959.534 917.028c1 0 2.06-0.094 3.122-0.25 11.68-1.716 19.674-12.552 17.988-24.2-0.376-2.624-10.242-64.668-74.566-88.776-11.054-4.152-23.296 1.438-27.48 12.458-4.122 11.024 1.5 23.326 12.492 27.448 41.03 15.394 47.336 54.708 47.398 55.114a21.28 21.28 0 0 0 21.046 18.206zM448.042 618.572H106.996c-11.772 0-21.326 9.554-21.326 21.328 0 11.772 9.554 21.326 21.326 21.326h341.046c11.802 0 21.326-9.554 21.326-21.326a21.312 21.312 0 0 0-21.326-21.328z" fill="#FFCE54" p-id="27870"></path><path d="M277.52 703.85H106.996c-11.772 0-21.326 9.554-21.326 21.328 0 11.772 9.554 21.294 21.326 21.294h170.524c11.772 0 21.326-9.524 21.326-21.294 0-11.774-9.554-21.328-21.326-21.328z" fill="#ED5564" p-id="27871"></path><path d="M1002.312 746.472H533.318a21.28 21.28 0 0 1-21.294-21.294c0-11.774 9.524-21.328 21.294-21.328h468.994c11.74 0 21.294 9.554 21.294 21.328 0.002 11.772-9.554 21.294-21.294 21.294zM725.592 555.53a21.332 21.332 0 0 1-18.298-10.368l-64.388-107.478c-5.994-10.086-2.746-23.202 7.372-29.228a21.276 21.276 0 0 1 29.226 7.338l64.324 107.478c6.058 10.086 2.81 23.17-7.306 29.228a21.286 21.286 0 0 1-10.93 3.03zM810.212 555.53c-3.686 0-7.496-0.968-10.93-3.03-10.054-6.058-13.364-19.142-7.306-29.26l64.324-107.446a21.278 21.278 0 0 1 29.228-7.338c10.118 6.026 13.364 19.11 7.368 29.228l-64.324 107.478c-3.996 6.65-11.116 10.368-18.36 10.368zM920.002 669.22c-8.62 0-16.738-5.278-19.922-13.832-4.184-11.024 1.436-23.326 12.426-27.45 41.094-15.392 47.34-54.708 47.402-55.112 1.686-11.648 12.55-19.674 24.168-17.956 11.68 1.716 19.734 12.552 17.986 24.2-0.376 2.624-10.242 64.668-74.568 88.776a20.884 20.884 0 0 1-7.492 1.374zM575.958 917.028c-1 0-2.062-0.094-3.124-0.25-11.616-1.716-19.672-12.552-17.984-24.2 0.438-2.624 10.242-64.668 74.566-88.776 11.054-4.152 23.356 1.438 27.478 12.458 4.124 11.024-1.436 23.326-12.49 27.448-41.032 15.394-47.276 54.708-47.338 55.114-1.56 10.586-10.68 18.206-21.108 18.206z" fill="#FFCE54" p-id="27872"></path><path d="M938.236 682.524c0 129.524-48.71 234.504-170.43 234.504-121.716 0-170.43-104.98-170.43-234.504 0-129.494 63.39-191.85 170.43-191.85 107.044-0.002 170.43 62.356 170.43 191.85z" fill="#ED5564" p-id="27873"></path><path d="M746.512 915.872c6.806 0.75 13.928 1.156 21.294 1.156 7.372 0 14.49-0.406 21.296-1.156v-297.3h-42.592v297.3z" fill="#DA4453" p-id="27874"></path><path d="M603.56 618.572h328.494c-18.298-86.12-76.626-127.9-164.248-127.9-87.616 0-145.946 41.782-164.246 127.9z" fill="#DA4453" p-id="27875"></path></svg>
                 {% if lan == 'cn' %} 错误日志 {% else %} Error Log {% endif %}
                 <span class="ms-auto badge" data-bs-toggle="offcanvas" href="#offcanvasBottom" role="button" aria-controls="offcanvasBottom">
@@ -300,6 +334,7 @@ PerfCat - Application Performance Monitoring
         <div id="file_io_total" class="file_io mb-3" style="min-width:400px;height:300px"></div>
         {% endif %}
         <div id="gpu" class="mb-3 gpu" style="min-width:400px;height:300px"></div>
+        <div id="gpu_stats" class="gpu_stats mb-3" style="min-width:400px;height:300px"></div>
         <div id="disk" class="disk mb-3" style="min-width:400px;height:300px;display: none;"></div>
     </div>
 </div>
@@ -396,6 +431,11 @@ PerfCat - Application Performance Monitoring
                 <svg t="1702629555656" class="icon me-2" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="8114" width="320" height="320"><path d="M809.2 525.5h120.5c13.1 0 23.6-10.6 23.6-23.6 0-13-10.6-23.6-23.6-23.6H809.2c-4.8 0-9.1 1.8-12.8 4.3v-71.5c0-4.9-0.7-9.6-1.4-14.4 4 3.1 8.8 5.3 14.3 5.3h120.5c13.1 0 23.6-10.6 23.6-23.6 0-13-10.6-23.6-23.6-23.6H809.2c-10.4 0-18.9 6.8-22.1 16.1-15.1-32-47.5-54.3-85.2-54.3H409c-52.2 0-94.5 42.3-94.5 94.5v305.3c0 33.1 17 62.1 42.7 78.9-3.7 4.2-6.1 9.5-6.1 15.5v123.6c0 13 10.6 23.6 23.6 23.6 13.1 0 23.6-10.6 23.6-23.6V810.8c0-0.4-0.2-0.7-0.2-1.1 3.6 0.4 7.1 1.1 10.9 1.1h62.6v123.6c0 13 10.6 23.6 23.6 23.6s23.6-10.6 23.6-23.6V810.8H592v123.6c0 13 10.6 23.6 23.6 23.6 13.1 0 23.6-10.6 23.6-23.6V810.8h62.6c3.7 0 7.3-0.7 10.9-1.1 0 0.4-0.2 0.7-0.2 1.1v123.6c0 13 10.6 23.6 23.6 23.6 13.1 0 23.6-10.6 23.6-23.6V810.8c0-6-2.4-11.4-6.1-15.5 14.5-9.5 26-22.9 33.4-38.7 3.2 9.3 11.7 16.1 22.1 16.1h120.5c13.1 0 23.6-10.6 23.6-23.6 0-13-10.6-23.6-23.6-23.6H809.2c-5.5 0-10.3 2.2-14.3 5.3 0.7-4.7 1.4-9.4 1.4-14.4v-71.5c3.7 2.5 8 4.3 12.8 4.3h120.5c13.1 0 23.6-10.6 23.6-23.6 0-13-10.6-23.6-23.6-23.6H809.2c-4.8 0-9.1 1.8-12.8 4.3v-84.9c3.7 2.3 8 4.1 12.8 4.1z" fill="#4DBBF7" p-id="8115"></path><path d="M585 384.4c13 0 23.6 10.6 23.6 23.6v187.8c0 13-10.6 23.6-23.6 23.6H405.4c-13 0-23.6-10.6-23.6-23.6V408c0-13 10.6-23.6 23.6-23.6H585m0-47.2H405.4c-39.1 0-70.9 31.7-70.9 70.9v187.8c0 39.1 31.7 70.9 70.9 70.9H585c39.1 0 70.9-31.7 70.9-70.9V408c-0.1-39.1-31.8-70.8-70.9-70.8z" fill="" p-id="8116"></path><path d="M893 463.8c13.1 0 23.6-10.6 23.6-23.6S906 416.6 893 416.6H776.3v-76.3H893c13.1 0 23.6-10.6 23.6-23.6S906.1 293 893 293H774.8c-6.3-39.1-36.5-70.2-75.3-77.6V107.6c0-13-10.6-23.6-23.6-23.6s-23.6 10.6-23.6 23.6v106h-73.2v-106c0-13-10.6-23.6-23.6-23.6-13.1 0-23.6 10.6-23.6 23.6v106h-73.2v-106c0-13-10.6-23.6-23.6-23.6s-23.6 10.6-23.6 23.6v106h-73.2v-106c0-13-10.6-23.6-23.6-23.6s-23.6 10.6-23.6 23.6v107.8c-38.8 7.4-68.9 38.4-75.2 77.6h-113c-13.1 0-23.6 10.6-23.6 23.6s10.6 23.6 23.6 23.6h111.2v76.3H102.9c-13.1 0-23.6 10.6-23.6 23.6s10.6 23.6 23.6 23.6h111.2V540H102.9c-13.1 0-23.6 10.6-23.6 23.6s10.6 23.6 23.6 23.6h111.2v76.3H102.9c-13.1 0-23.6 10.6-23.6 23.6 0 13 10.6 23.6 23.6 23.6h112.7c6.3 39.1 36.5 70.2 75.2 77.6v107.8c0 13 10.6 23.6 23.6 23.6s23.6-10.6 23.6-23.6v-106h73.2v106c0 13 10.6 23.6 23.6 23.6s23.6-10.6 23.6-23.6v-106h73.2v106c0 13 10.6 23.6 23.6 23.6 13.1 0 23.6-10.6 23.6-23.6v-106H652v106c0 13 10.6 23.6 23.6 23.6s23.6-10.6 23.6-23.6V788.4c38.8-7.4 68.9-38.4 75.3-77.6H893c13.1 0 23.6-10.6 23.6-23.6 0-13-10.6-23.6-23.6-23.6H776.3v-76.3H893c13.1 0 23.6-10.6 23.6-23.6S906 540.1 893 540.1H776.3v-76.3H893zM729.1 695.7c0 26.1-21.2 47.2-47.2 47.2H308.6c-26 0-47.2-21.2-47.2-47.2V308.1c0-26.1 21.2-47.2 47.2-47.2h373.2c26 0 47.2 21.2 47.2 47.2v387.6z" fill="" p-id="8117"></path><path d="M518.1 437.3h33.1v14.5h-33.1z" fill="#FFD939" p-id="8118"></path><path d="M574.8 413.6h-80.3v61.8h80.3v-61.8z" fill="" p-id="8119"></path></svg>
                 <strong>GPU</strong>
             </label>
+            {% if platform == 'Android' %}
+            <label class="dropdown-item cursor-pointer"><input class="form-check-input m-0 me-2 cursor-pointer" id="gpu_stats_checkbox" type="checkbox" name="gpu_stats">
+                <strong>{% if lan == 'cn' %}GPU 扩展指标（频率/显存/带宽）{% else %}GPU Stats (Clock/Memory/Bandwidth){% endif %}</strong>
+            </label>
+            {% endif %}
             <label class="dropdown-item cursor-pointer"><input class="form-check-input m-0 me-2 cursor-pointer" id="battery_checkbox" type="checkbox" name="battery">
                 <svg t="1702629971672" class="icon me-2" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="29513" width="320" height="320"><path d="M385 228V124c0-19.3 15.7-35 35-35h184c19.3 0 35 15.7 35 35v104H385z" fill="#8F8D94" p-id="29514"></path><path d="M604 114c5.5 0 10 4.5 10 10v79H410v-79c0-5.5 4.5-10 10-10h184m0-50H420c-33.1 0-60 26.9-60 60v129h304V124c0-33.1-26.9-60-60-60z" fill="#504D59" p-id="29515"></path><path d="M410 139h203.5v21H410z" fill="#6F6D75" p-id="29516"></path><path d="M262 935c-35.8 0-65-29.2-65-65V250c0-35.8 29.2-65 65-65h500c35.8 0 65 29.2 65 65v620c0 35.8-29.2 65-65 65H262z" fill="#8BEF99" p-id="29517"></path><path d="M762 210c10.6 0 20.6 4.2 28.2 11.8 7.6 7.6 11.8 17.6 11.8 28.2v620c0 10.6-4.2 20.6-11.8 28.2-7.6 7.6-17.6 11.8-28.2 11.8H262c-10.6 0-20.6-4.2-28.2-11.8-7.6-7.6-11.8-17.6-11.8-28.2V250c0-10.6 4.2-20.6 11.8-28.2S251.4 210 262 210h500m0-50H262c-49.5 0-90 40.5-90 90v620c0 49.5 40.5 90 90 90h500c49.5 0 90-40.5 90-90V250c0-49.5-40.5-90-90-90z" fill="#504D59" p-id="29518"></path><path d="M762 210h-26.4v460.6c0 77.2-62.8 140-140 140H541l151.4-239.5-166-43L470 351.7l-140.9 272 137 65.5 21.2 121.5H222V870c0 22.1 17.9 40 40 40h500c22.1 0 40-17.9 40-40V250c0-22.1-17.9-40-40-40z" fill="#6DC674" p-id="29519"></path><path d="M517.3 656.4l-156-54.1 108.8-227.6 35.7 165.4 154 41.1-144.1 226.1z" fill="#FFCE00" p-id="29520"></path><path d="M464.7 420.8l24.5 113.5 3.9 17.9 17.7 4.7 125.4 33.4-105 164.7 0.9-87.6 0.2-21.6-20.4-7.1-130-45.1 82.8-172.8m10.8-92.2L340.5 611l161.7 56.1-2.1 192.5L683.5 572l-165-44-43-199.4z" fill="#504D59" p-id="29521"></path><path d="M197 269v-19c0-35.8 29.2-65 65-65h500c35.8 0 65 29.2 65 65v19H197z" fill="#A9B7AA" p-id="29522"></path><path d="M762 210c10.6 0 20.6 4.2 28.2 11.8 6.1 6.1 10.1 13.9 11.3 22.2h-579c1.3-8.3 5.2-16.1 11.3-22.2 7.6-7.6 17.6-11.8 28.2-11.8h500m0-50H262c-49.5 0-90 40.5-90 90v44h680v-44c0-49.5-40.5-90-90-90z" fill="#504D59" p-id="29523"></path></svg>
                 {% if lan == 'cn' %} <strong>电量</strong> {% else %} <strong>Battery</strong> {% endif %}
@@ -428,6 +468,43 @@ PerfCat - Application Performance Monitoring
       </div>
     </div>
   </div>
+
+<div class="modal modal-blur fade" id="unity-options" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">{% if lan == 'cn' %}Unity Profiler 模块{% else %}Unity Profiler Modules{% endif %}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <label class="form-check form-switch mb-1">
+                <input id="unity-deep-profiling" class="form-check-input cursor-pointer" type="checkbox">
+                <span class="form-check-label"><strong>Deep Profiler</strong></span>
+            </label>
+            <div class="text-muted small mb-3">
+                {% if lan == 'cn' %}
+                需要构建时开启 Deep Profiling Support；切换只影响后续帧，建议在开始采集前设置。
+                {% else %}
+                The player build must enable Deep Profiling Support. Changes affect later frames only; set it before starting a capture.
+                {% endif %}
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong>{% if lan == 'cn' %}Profiler 模块{% else %}Profiler Modules{% endif %}</strong>
+                <div>
+                    <button type="button" class="btn btn-sm btn-link p-0 me-2" onclick="setAllUnityAreas(true)">{% if lan == 'cn' %}全选{% else %}All{% endif %}</button>
+                    <button type="button" class="btn btn-sm btn-link p-0" onclick="setAllUnityAreas(false)">{% if lan == 'cn' %}全不选{% else %}None{% endif %}</button>
+                </div>
+            </div>
+            <div id="unity-area-list" class="row g-2"></div>
+            <div class="text-muted small mt-3" id="unity-options-hint"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link" data-bs-dismiss="modal">{% if lan == 'cn' %}取消{% else %}Cancel{% endif %}</button>
+          <button type="button" class="btn btn-primary" onclick="applyUnityOptions()">{% if lan == 'cn' %}应用{% else %}Apply{% endif %}</button>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock %}
 
 {% block js %}
@@ -445,6 +522,8 @@ PerfCat - Application Performance Monitoring
 <script>
 
     var stop = false; // 任务状态
+    var apmRunning = false;
+    var latestFps = null;
 
     var cores_num = cpucoreNum();
 
@@ -483,6 +562,7 @@ PerfCat - Application Performance Monitoring
         collectFpsSurfaceView: {{ settings.collectFpsSurfaceView|tojson }},
         collectRecordScreen: {{ settings.collectRecordScreen|tojson }},
         collectGpu: {{ settings.collectGpu|tojson }},
+        collectGpuStats: {{ settings.collectGpuStats|tojson }},
         collectBattery: {{ settings.collectBattery|tojson }},
         collectMemoryDetail: {{ settings.collectMemoryDetail|tojson }},
         collectThermal: {{ settings.collectThermal|tojson }},
@@ -502,6 +582,7 @@ PerfCat - Application Performance Monitoring
             {key: 'collectFpsSurfaceView', selector: '#fps-switch', defaultEnabled: true},
             {key: 'collectRecordScreen', selector: '#record-switch', defaultEnabled: false},
             {key: 'collectGpu', selector: '#gpu_checkbox', defaultEnabled: true},
+            {key: 'collectGpuStats', selector: '#gpu_stats_checkbox', defaultEnabled: false},
             {key: 'collectBattery', selector: '#battery_checkbox', defaultEnabled: false},
             {key: 'collectMemoryDetail', selector: '#mem_detail_checkbox', defaultEnabled: false},
             {key: 'collectThermal', selector: '#thermal_checkbox', defaultEnabled: false},
@@ -568,7 +649,44 @@ PerfCat - Application Performance Monitoring
         applyApmMetricSettings();
         $(selector).off('change.apmMetrics').on('change.apmMetrics', function(){
             saveApmMetricSettings();
+            toggleLiveMetric(this.id, this.checked);
         });
+    }
+
+    function toggleLiveMetric(checkboxId, checked){
+        if(!apmRunning || stop){
+            return
+        }
+        var device = $('.select-device').val();
+        var pkgname = $('.select-app').val();
+        if(!device){
+            return
+        }
+        var actions = {
+            cpu_checkbox: ['cpu', function(){ collectCpu(device, pkgname); }],
+            mem_checkbox: ['mem', function(){ collectMem(device, pkgname); }],
+            flow_checkbox: ['network', function(){ collectNetwork(device, pkgname); }],
+            file_io_checkbox: ['file_io', function(){ collectFileIO(device, pkgname); }],
+            fps_checkbox: ['fps', function(){ collectFps(device, pkgname); }],
+            gpu_checkbox: ['gpu', function(){ collectGpu(device, pkgname); }],
+            gpu_stats_checkbox: ['gpu_stats', function(){ collectGpuStats(device, pkgname); }],
+            battery_checkbox: ['battery', function(){ collectBattery(device); }],
+            mem_detail_checkbox: ['mem_detail', function(){ collectMemDetail(device, pkgname); }],
+            thermal_checkbox: ['thermal', function(){ collectThermal(device); }],
+            cpu_core_checkbox: ['cpu_core', function(){ collectCoreCpu(device, pkgname); }],
+            disk_checkbox: ['disk', function(){ collectDisk(device); }],
+            energy_checkbox: ['energy', function(){ collectEnergy(device, pkgname); }]
+        };
+        var action = actions[checkboxId];
+        if(!action){
+            return
+        }
+        if(checked){
+            action[1]();
+        }else if(metricTimers[action[0]]){
+            clearTimeout(metricTimers[action[0]]);
+            delete metricTimers[action[0]];
+        }
     }
 
     function getProcessNameFromPid(pid){
@@ -885,6 +1003,7 @@ PerfCat - Application Performance Monitoring
             });
         });
         setupApmMetricSettings();
+        loadUnityVersions();
         versionCheck()
   });
 
@@ -924,6 +1043,7 @@ PerfCat - Application Performance Monitoring
     function resetRunState(){
         if(platform == 'iOS') PerfCatIOSProcesses.release();
         stop = true;
+        apmRunning = false;
         clearMetricTimers();
         $('#run-apm').show();
         $('#stop-apm').hide();
@@ -1235,6 +1355,49 @@ PerfCat - Application Performance Monitoring
                             y = data['gpu'];
                             addRealtimePoint(series, x, y, true);
                             scheduleMetric('gpu', function(){ getGpu(pkgname, device); }, 1000);
+                        }catch (e) {}
+                    }else{
+                        SwalOperationError(data['msg'], 2000);
+                    }
+                }
+            },
+            error: function(error){
+                SwalServerError(error);
+                console.log(error);
+            }
+        });
+    }
+
+    function getGpuStats(pkgname,device){
+        $.ajax({
+            url: Host + "/apm/gpu/stats",
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                platform:platform,
+                pkgname:pkgname,
+                device:device
+            },
+            success: function (data) {
+                if(stop == false){
+                    if(data['status'] == 1){
+                        try {
+                            var d = data['data'] || {};
+                            var x = realtimePointTime();
+                            var series = gpu_stats_chart.series;
+                            var mem = (d['gpu_mem_app'] !== undefined) ? d['gpu_mem_app'] : d['gpu_mem_total'];
+                            var readBw = d['gpu_bw_read'];
+                            var writeBw = d['gpu_bw_write'];
+                            var fps = (latestFps && latestFps > 0) ? latestFps : null;
+                            var readPerFrame = (readBw !== undefined && fps !== null) ? Math.round(readBw / fps * 100) / 100 : null;
+                            var writePerFrame = (writeBw !== undefined && fps !== null) ? Math.round(writeBw / fps * 100) / 100 : null;
+                            series[0].addPoint([x, d['gpu_clock'] === undefined ? null : d['gpu_clock']], false, true);
+                            series[1].addPoint([x, d['gpu_bus'] === undefined ? null : d['gpu_bus']], false, true);
+                            series[2].addPoint([x, mem === undefined ? null : mem], false, true);
+                            series[3].addPoint([x, readPerFrame], false, true);
+                            series[4].addPoint([x, writePerFrame], true, true);
+                            scheduleMetric('gpu_stats', function(){ getGpuStats(pkgname, device); }, 2000);
                         }catch (e) {}
                     }else{
                         SwalOperationError(data['msg'], 2000);
@@ -1765,6 +1928,7 @@ PerfCat - Application Performance Monitoring
                             let seriesFps = fps_chart.series[0];
                             let x_fps = realtimePointTime(),
                                 y_fps = data['fps'];
+                            latestFps = (y_fps && y_fps > 0) ? y_fps : null;
                             addRealtimePoint(seriesFps, x_fps, y_fps, platform != 'Android');
                             if(platform == 'Android'){
                                 let seriesJank = fps_chart.series[1];
@@ -1925,6 +2089,55 @@ PerfCat - Application Performance Monitoring
                     Math.round(0)
                 ]);
             }
+            return data;
+        }())
+    }];
+
+    var seriesGpuStats = [{
+        name: 'Clock (MHz)',
+        color: '#4DADF7',
+        pointInterval: 120 * 1000,
+        data: (function () {
+            var data = [], time = (new Date()).getTime(), i;
+            for (i = -999; i <= 0; i += 1) { data.push([time + i * 1000, null]); }
+            return data;
+        }())
+    },{
+        name: 'Bus (MHz)',
+        color: '#FFB020',
+        pointInterval: 120 * 1000,
+        data: (function () {
+            var data = [], time = (new Date()).getTime(), i;
+            for (i = -999; i <= 0; i += 1) { data.push([time + i * 1000, null]); }
+            return data;
+        }())
+    },{
+        name: 'Memory (MB)',
+        color: '#8B5CF6',
+        pointInterval: 120 * 1000,
+        data: (function () {
+            var data = [], time = (new Date()).getTime(), i;
+            for (i = -999; i <= 0; i += 1) { data.push([time + i * 1000, null]); }
+            return data;
+        }())
+    },{
+        name: 'Read (MB/frame)',
+        color: '#2FB344',
+        yAxis: 1,
+        pointInterval: 120 * 1000,
+        data: (function () {
+            var data = [], time = (new Date()).getTime(), i;
+            for (i = -999; i <= 0; i += 1) { data.push([time + i * 1000, null]); }
+            return data;
+        }())
+    },{
+        name: 'Write (MB/frame)',
+        color: '#D63939',
+        yAxis: 1,
+        pointInterval: 120 * 1000,
+        data: (function () {
+            var data = [], time = (new Date()).getTime(), i;
+            for (i = -999; i <= 0; i += 1) { data.push([time + i * 1000, null]); }
             return data;
         }())
     }];
@@ -2526,6 +2739,11 @@ PerfCat - Application Performance Monitoring
                 legend = true;
                 yAxis = yAxis_plot;
                 break;        
+            case 'gpu_stats':
+                seriesFinal = seriesGpuStats;
+                legend = true;
+                yAxis = [yAxis, { opposite: true, min: 0, title: { text: 'MB/frame' } }];
+                break;
             case 'mem_android':
                 seriesFinal = seriesMem;
                 legend = true;
@@ -2654,6 +2872,11 @@ PerfCat - Application Performance Monitoring
         return gpu_chart
     }
 
+    function gpuStatsInitialize(){
+        let gpu_stats_chart = chartsInitialize('gpu_stats', uiText('GPU 频率 / 显存 / 带宽', 'GPU Clock / Memory / Bandwidth'));
+        return gpu_stats_chart
+    }
+
     function fpsInitialize(){
         if(platform === 'Android'){
             let title = uiText('FPS (Hz) / 卡顿次数', 'FPS(HZ) & Jank(Times)');
@@ -2690,6 +2913,7 @@ PerfCat - Application Performance Monitoring
     var fps_chart = fpsInitialize();
     var battery_chart = batteryInitialize();
     var gpu_chart = gpuInitialize()
+    var gpu_stats_chart = gpuStatsInitialize();
     var disk_chart = diskInitialize()
     var thermal_chart = thermalInitialize()
     var energy_chart = energyInitialize()
@@ -2744,6 +2968,11 @@ PerfCat - Application Performance Monitoring
                 yAxis = yAxis_plot;
                 legend = true;
                 break;    
+            case 'gpu_stats':
+                seriesFinal = seriesGpuStats;
+                yAxis = [yAxis, { opposite: true, min: 0, title: { text: 'MB/frame' } }];
+                legend = true;
+                break;
             case 'mem_android':
                 seriesFinal = seriesMem;
                 legend = true;
@@ -2840,6 +3069,20 @@ PerfCat - Application Performance Monitoring
         if(gpu_checkbox){
             gpuInitialize();
             gpu_chart = collectPers(device,pkgname,'gpu',uiText('GPU 使用率 (%)', 'GPU Usage (%)'),function(){ getGpu(pkgname,device); });
+        }
+    }
+
+    function collectGpuStats(device,pkgname){
+        if(platform !== 'Android'){ return }
+        var gpu_stats_checkbox = $('#gpu_stats_checkbox').is(':checked');
+        if(gpu_stats_checkbox){
+            $('#gpu_stats').show();
+            gpuStatsInitialize();
+            gpu_stats_chart = collectPers(
+                device, pkgname, 'gpu_stats',
+                uiText('GPU 频率 / 显存 / 带宽 (MB/帧)', 'GPU Clock / Memory / Bandwidth (MB/frame)'),
+                function(){ getGpuStats(pkgname, device); }
+            );
         }
     }
 
@@ -2999,8 +3242,281 @@ PerfCat - Application Performance Monitoring
         });
     }
 
+    var unityRunning = false;
+    var unityAreaOptions = [];
+    var unityAreas = [];
+    var unityDeepProfiling = false;
+
+    function unityStorageGet(key){
+        try { return localStorage.getItem(key); } catch(e) { return null; }
+    }
+
+    function unityStorageSet(key, value){
+        try { localStorage.setItem(key, value); } catch(e) {}
+    }
+
+    function updateUnityOptionsSummary(){
+        var total = unityAreaOptions.length;
+        var selected = unityAreas.length;
+        var badge = $('#unity-options-summary');
+        if(badge.length === 0){
+            return
+        }
+        badge.text((total ? selected + '/' + total : '--') + ' · Deep ' + (unityDeepProfiling ? 'ON' : 'OFF'));
+        badge.removeClass('bg-secondary bg-blue bg-warning');
+        if(total && selected === 0){
+            badge.addClass('bg-warning');
+        }else if(total && selected < total){
+            badge.addClass('bg-blue');
+        }else{
+            badge.addClass('bg-secondary');
+        }
+    }
+
+    function renderUnityAreas(){
+        var list = $('#unity-area-list');
+        if(list.length === 0){
+            return
+        }
+        list.empty();
+        if(!unityAreaOptions.length){
+            list.append($('<div class="col-12 text-muted small"></div>').text(
+                uiText('当前版本未提供模块列表', 'No modules reported by this Unity version')
+            ));
+            return
+        }
+        unityAreaOptions.forEach(function(area){
+            var label = $('<label class="col-6 col-md-4 form-check mb-0 cursor-pointer"></label>');
+            var input = $('<input type="checkbox" class="form-check-input me-2 unity-area-checkbox">');
+            input.val(area.name).prop('checked', unityAreas.indexOf(area.name) >= 0);
+            input.on('change', function(){ toggleUnityArea(area.name, this.checked); });
+            label.append(input);
+            label.append($('<span class="form-check-label"></span>').text(area.label || area.name));
+            list.append(label);
+        });
+    }
+
+    function toggleUnityArea(name, checked){
+        var index = unityAreas.indexOf(name);
+        if(checked && index < 0){
+            unityAreas.push(name);
+        }else if(!checked && index >= 0){
+            unityAreas.splice(index, 1);
+        }
+        updateUnityOptionsSummary();
+    }
+
+    function setAllUnityAreas(checked){
+        unityAreas = checked ? unityAreaOptions.map(function(area){ return area.name; }) : [];
+        renderUnityAreas();
+        updateUnityOptionsSummary();
+    }
+
+    function openUnityOptions(){
+        $('#unity-deep-profiling').prop('checked', unityDeepProfiling);
+        renderUnityAreas();
+        var el = document.getElementById('unity-options');
+        if(el && window.bootstrap){
+            bootstrap.Modal.getOrCreateInstance(el).show();
+        }
+    }
+
+    function applyUnityOptions(){
+        unityDeepProfiling = $('#unity-deep-profiling').is(':checked');
+        unityStorageSet('perfcat.unity.deep', unityDeepProfiling ? '1' : '0');
+        unityStorageSet('perfcat.unity.areas', JSON.stringify(unityAreas));
+        updateUnityOptionsSummary();
+        var el = document.getElementById('unity-options');
+        if(el && window.bootstrap){
+            var modal = bootstrap.Modal.getInstance(el);
+            if(modal){ modal.hide(); }
+        }
+        if(!unityRunning){
+            SwalFire('success', 'Unity Profiler',
+                uiText('设置已保存，下次开始采集时生效', 'Saved; applies on the next capture'), 2500);
+            return
+        }
+        $.ajax({
+            url: Host + "/apm/unity/options",
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                areas: JSON.stringify(unityAreas),
+                deep_profiling: unityDeepProfiling ? 1 : 0
+            },
+            success: function (data) {
+                if(data['status'] == 1){
+                    var ignored = data['ignored_options'] || [];
+                    if(ignored.length){
+                        SwalFire('warning', 'Unity Profiler',
+                            uiText('Helper 模式不支持以下设置：', 'Helper mode ignored: ') + ignored.join(', '), 5000);
+                    }else{
+                        SwalFire('success', 'Unity Profiler', uiText('已应用', 'Applied'), 1500);
+                    }
+                }else{
+                    SwalOperationError(data['msg'] || 'apply options failed', 5000);
+                }
+            },
+            error: function(error){ SwalServerError(error); }
+        });
+    }
+
+    function loadUnityVersions(){
+        $.ajax({
+            url: Host + "/apm/unity/versions",
+            type: "GET",
+            async: true,
+            cache: false,
+            success: function (data) {
+                if(!data || data['status'] != 1 || !data['versions'] || !data['versions'].length){
+                    return
+                }
+                var hasUnverified = false;
+                var labels = data['versions'].map(function (item) {
+                    if(!item['verified']){
+                        hasUnverified = true;
+                        return item['label'] + '*';
+                    }
+                    return item['label'];
+                });
+                $('#unity-supported-versions').text(
+                    uiText('支持版本：', 'Supported: ') + labels.join(', ')
+                    + (hasUnverified ? uiText('（* 未真机验证）', ' (* not device-verified)') : '')
+                );
+                if(data['areas'] && data['areas'].length){
+                    unityAreaOptions = data['areas'];
+                    var defaults = data['areas'].filter(function (area) {
+                        return area['default_enabled'] !== false;
+                    }).map(function (area) { return area['name']; });
+                    var stored = unityStorageGet('perfcat.unity.areas');
+                    var parsed = null;
+                    if(stored){
+                        try { parsed = JSON.parse(stored); } catch(e) { parsed = null; }
+                    }
+                    if(Array.isArray(parsed)){
+                        var valid = parsed.filter(function (name) {
+                            return unityAreaOptions.some(function (area) { return area.name === name; });
+                        });
+                        unityAreas = (parsed.length && !valid.length) ? defaults : valid;
+                    }else{
+                        unityAreas = defaults;
+                    }
+                    unityDeepProfiling = unityStorageGet('perfcat.unity.deep') === '1';
+                    var categories = [];
+                    data['areas'].forEach(function (area) {
+                        if(categories.indexOf(area.category) < 0){
+                            categories.push(area.category);
+                        }
+                    });
+                    $('#unity-options-hint').text(
+                        uiText('发送给 Player 的 Category：', 'Categories sent to the player: ')
+                        + categories.join(', ')
+                    );
+                    renderUnityAreas();
+                    updateUnityOptionsSummary();
+                }
+            }
+        });
+    }
+
+    function startUnityCapture(device, pkgname){
+        if(platform !== 'Android' || !$('#unity-switch').is(':checked')){
+            return
+        }
+        var payload = {
+            platform: platform,
+            device: device,
+            pkgname: pkgname,
+            process: $('.select-pid').val() || '',
+            deep_profiling: unityDeepProfiling ? 1 : 0
+        };
+        if(unityAreaOptions.length){
+            payload.areas = JSON.stringify(unityAreas);
+        }
+        $.ajax({
+            url: Host + "/apm/unity/start",
+            type: "GET",
+            async: true,
+            cache: false,
+            data: payload,
+            success: function (data) {
+                if(data['available']){
+                    unityRunning = true;
+                    $('#unity-snapshot').removeClass('bg-secondary').addClass('bg-blue');
+                    var mode = data['mode'] === 'protocol' ? 'Protocol' : 'Helper';
+                    var ignored = data['ignored_options'] || [];
+                    if(ignored.length){
+                        SwalFire('warning', 'Unity Capture',
+                            (data['unity_version'] || 'Unity') + ' (' + mode + ') · '
+                            + uiText('Helper 模式不支持：', 'Helper mode ignored: ') + ignored.join(', '), 5000);
+                    }else{
+                        SwalFire('success', 'Unity Capture',
+                            (data['unity_version'] || 'Unity') + ' (' + mode + ')', 2000);
+                    }
+                }else{
+                    unityRunning = false;
+                    $('#unity-snapshot').removeClass('bg-blue').addClass('bg-secondary');
+                    SwalOperationError(data['msg'] || 'unity capture is not available', 6000);
+                }
+            },
+            error: function(error){ SwalServerError(error); }
+        });
+    }
+
+    function unitySnapshot(){
+        if(!unityRunning){
+            SwalOperationError(uiText('请先启动 Unity 采集', 'Start Unity capture first'), 3000);
+            return
+        }
+        $.ajax({
+            url: Host + "/apm/unity/snapshot",
+            type: "GET",
+            async: true,
+            cache: false,
+            timeout: 360000,
+            beforeSend: function(){
+                SwalLoading('MemoryProfiler', uiText('正在抓取快照，请稍候...', 'Taking snapshot, please wait...'));
+            },
+            success: function (data) {
+                swal.close();
+                if(data['status']==1){
+                    SwalFire('success', 'MemoryProfiler',
+                        data['name'] + ' (' + Math.round(data['size']/1024/1024*100)/100 + ' MB)', 4000);
+                }else{
+                    SwalFire('error', 'MemoryProfiler', data['msg'] || 'snapshot failed', 6000);
+                }
+            },
+            error: function(error){
+                swal.close();
+                SwalServerError(error);
+            }
+        });
+    }
+
+    function stopUnityCapture(onDone){
+        if(platform !== 'Android'){
+            if(onDone){ onDone() }
+            return
+        }
+        $.ajax({
+            url: Host + "/apm/unity/stop",
+            type: "GET",
+            async: true,
+            cache: false,
+            success: function (data) {
+                unityRunning = false;
+                $('#unity-snapshot').removeClass('bg-blue').addClass('bg-secondary');
+            },
+            complete: function () {
+                if(onDone){ onDone() }
+            }
+        });
+    }
+
     function stopTask(){
         stop = true;
+        apmRunning = false;
         var wifi_switch = $('#net-switch').is(':checked');
         var record_switch = $('#record-switch').is(':checked');
         var thermal_switch = $('#thermal_checkbox').is(':checked')
@@ -3012,45 +3528,48 @@ PerfCat - Application Performance Monitoring
         if(platform == 'Android'){
             process = $('.select-pid').val()
         }
-        $.ajax({
-            url: "/apm/create/report",
-            type: "GET",
-            async: true,
-            cache: false,
-            data:{
-                platform:platform,
-                model:'normal',
-                app:$('.select-app').val(),
-                devices:$('.select-device').val(),
-                wifi_switch:wifi_switch,
-                process:process,
-                record_switch:record_switch,
-                thermal_switch:thermal_switch,
-                cores: parseInt($('#cpu_cores').text())
-            },
-            beforeSend: function () {
-                
-                if(lan == 'cn'){
-                    SwalLoading('正在生成报告','正在保存采集数据，请不要关闭页面。')
-                }else{
-                    SwalLoading('Saving Data','Saving data to generate report, please do not leave.')
+        var createReport = function(){
+            $.ajax({
+                url: "/apm/create/report",
+                type: "GET",
+                async: true,
+                cache: false,
+                data:{
+                    platform:platform,
+                    model:'normal',
+                    app:$('.select-app').val(),
+                    devices:$('.select-device').val(),
+                    wifi_switch:wifi_switch,
+                    process:process,
+                    record_switch:record_switch,
+                    thermal_switch:thermal_switch,
+                    cores: parseInt($('#cpu_cores').text())
+                },
+                beforeSend: function () {
+                    if(lan == 'cn'){
+                        SwalLoading('正在生成报告','正在保存采集数据，请不要关闭页面。')
+                    }else{
+                        SwalLoading('Saving Data','Saving data to generate report, please do not leave.')
+                    }
+                },
+                success: function (data) {
+                    if(data['status']==1){
+                        window.location.href = '/report?lan='+lan
+                    }else{
+                        SwalFire('error', uiText('生成报告失败', 'Execution Error'), data['msg'], 2000)
+                        if(platform == 'iOS') $('#stop-apm').show();
+                    }
+                },
+                error: function(error){
+                    if(platform == 'iOS') {
+                        $('#stop-apm').show();
+                        SwalServerError(error);
+                    }
                 }
-            },
-            success: function (data) {
-                if(data['status']==1){
-                    window.location.href = '/report?lan='+lan
-                }else{
-                    SwalFire('error', uiText('生成报告失败', 'Execution Error'), data['msg'], 2000)
-                    if(platform == 'iOS') $('#stop-apm').show();
-                }
-            },
-            error: function(error){
-                if(platform == 'iOS') {
-                    $('#stop-apm').show();
-                    SwalServerError(error);
-                }
-            }
-        });
+            });
+        };
+        // pull the Unity capture first, then build the report
+        stopUnityCapture(createReport);
     }
     
     $('#run-apm').click(async function () {
@@ -3081,6 +3600,7 @@ PerfCat - Application Performance Monitoring
         clearMetricTimers();
         saveApmMetricSettings(false);
         stop = false;
+        apmRunning = true;
         $('#stop-apm').show();
         $('#run-apm').hide();
         let device = $('.select-device').val();
@@ -3116,6 +3636,8 @@ PerfCat - Application Performance Monitoring
                     collectBattery(device);
                     collectThermal(device);
                     collectGpu(device,pkgname);
+                    collectGpuStats(device,pkgname);
+                    startUnityCapture(device,pkgname);
                     collectDisk(device)
                     if(parseInt($('#duration').val()) > 0){
                         var times = parseInt($('#duration').val()) * 60 * 1000

@@ -3,3 +3,4 @@ recursive-include perfcat/static *.html *.js *.css *.png *.svg *.ico
 recursive-include perfcat/templates *.html
 recursive-include perfcat/report *.py
 include perfcat/core/config.json
+recursive-include docs *.md

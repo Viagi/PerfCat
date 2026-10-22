@@ -55,8 +55,14 @@ class Disk(ReusableCollector):
             file.write(disk_info)
 
     def getAndroidDisk(self):
-        """获取 Android 磁盘信息"""
-        disk_info = adb.shell(cmd="df", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
+        """获取 Android 内部存储信息（只统计 /data，避免多挂载点重复计数）"""
+        disk_info = adb.shell(
+            cmd="df -k /data", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT
+        )
+        if not disk_info.strip():
+            disk_info = adb.shell(
+                cmd="df -k", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT
+            )
         disk_lines = disk_info.splitlines()
         size_list = list()
         used_list = list()

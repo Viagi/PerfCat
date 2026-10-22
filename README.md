@@ -142,6 +142,10 @@ target in ['cpu','memory','memory_detail','network','fps','battery','gpu']
   - 🌱2-devices: test the same app on two different phones.
   - 🌱2-apps: test two different apps on two phones with the same configuration.
 * **Collect In Python/API:** Support Python and API to collect performance data, helping users easily integrate into automated testing processes.
+* **GPU Extended Stats:** Optional GPU clock, bus vote, temperature, memory and Adreno read/write bandwidth. The report shows bandwidth as **MB/frame**, aligned with the FPS samples.
+* **Unity Capture:** Record Unity Profiler / MemoryProfiler data alongside the normal APM session. It tries a drop-in Unity helper first, then falls back to speaking the Editor's PlayerConnection protocol directly (Unity 2022.3 verified, no game changes). Raw files are archived under `report/<scene>/unity/` and downloadable from the analysis page.
+* **Deep Profiler / Profiler Modules:** Tick the same Profiler Modules as the Unity Profiler and toggle Deep Profiler; in protocol mode both can be changed live during a capture (Deep Profiler requires the build's Deep Profiling Support).
+* **Unity Capture Guide:** [docs/UNITY_CAPTURE.md](docs/UNITY_CAPTURE.md) — supported PlayerConnection versions, wire format, Area→Category mapping, and the checklist for adding a new Unity version or Profiler feature.
 
 ## Develop
 

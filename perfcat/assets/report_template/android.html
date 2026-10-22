@@ -448,6 +448,18 @@
                                 <div id="chart-gpu"></div>
                             </div>
                         </div>
+                        <div class="card gpu-stats-card mb-3" id="gpu-stats-card" style="display: none;">
+                            <div class="card-header">
+                                <div class='card-title'>GPU Clock/Bus (MHz), Memory (MB) &amp; Bandwidth (MB/frame)</div>
+                                <div class="card-actions btn-actions">
+                                    <span class="text-muted">Temp: {{ gpu_stats.get('gpu_temp', '-') }} &nbsp; Read: {{ gpu_stats.get('gpu_bw_read_frame', '-') }} MB/frame &nbsp; Write: {{ gpu_stats.get('gpu_bw_write_frame', '-') }} MB/frame</span>
+                                    <a class="btn-action cursor-pointer" onclick="screenshot('gpu-stats-card','gpu_stats.png')">PNG</a>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="chart-gpu-stats"></div>
+                            </div>
+                        </div>
                         {% if thermal_charts.CPU or thermal_charts.GPU or thermal_charts.Memory or thermal_charts.Battery %}
                         <div class="card thermal-card mb-3">
                             <div class="card-header">
@@ -512,6 +524,7 @@
         initFPSCharts()
         initBatteryCharts()
         initGPUCharts()
+        initGPUStatsCharts()
         if({{ thermal_charts.CPU|default([]) }}.length > 0 || {{ thermal_charts.GPU|default([]) }}.length > 0 || {{ thermal_charts.Memory|default([]) }}.length > 0 || {{ thermal_charts.Battery|default([]) }}.length > 0 ){
             initThermalCharts()
         }
@@ -615,6 +628,34 @@
         updateChartSeries(gpu_chart, '.gpu-card', [{
             name: 'gpu',
             data: {{ gpu_charts.gpu }}
+        }])
+    }
+
+    function initGPUStatsCharts(){
+        var gpuStatsOptions = options('line');
+        gpuStatsOptions.yaxis = [
+            { seriesName: ['Clock (MHz)', 'Bus (MHz)', 'Memory (MB)'], title: { text: 'MHz / MB' } },
+            { seriesName: ['Read (MB/frame)', 'Write (MB/frame)'], opposite: true, title: { text: 'MB/frame' } }
+        ];
+        var gpu_stats_chart = new ApexCharts(
+            document.querySelector("#chart-gpu-stats"), gpuStatsOptions
+        );
+        gpu_stats_chart.render();
+        updateChartSeries(gpu_stats_chart, '.gpu-stats-card', [{
+            name: 'Clock (MHz)',
+            data: {{ gpu_stats_charts.get('gpu_clock', []) }}
+        },{
+            name: 'Bus (MHz)',
+            data: {{ gpu_stats_charts.get('gpu_bus', []) }}
+        },{
+            name: 'Memory (MB)',
+            data: {{ gpu_stats_charts.get('gpu_mem_app', gpu_stats_charts.get('gpu_mem_total', [])) }}
+        },{
+            name: 'Read (MB/frame)',
+            data: {{ gpu_stats_charts.get('gpu_bw_read_frame', []) }}
+        },{
+            name: 'Write (MB/frame)',
+            data: {{ gpu_stats_charts.get('gpu_bw_write_frame', []) }}
         }])
     }
 

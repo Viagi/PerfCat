@@ -801,6 +801,25 @@
             <div id="chart-gpu"></div>
         </div>
     </div>
+    <div class="card gpu-stats-card mt-3" id="gpu-stats-card" style="display: none;">
+        <div class="card-header">
+            <div class='card-title'>{% if lan == 'cn' %} GPU 频率 / 显存 / 带宽 {% else %} GPU Clock / Memory / Bandwidth {% endif %}</div>
+            <div class="card-actions btn-actions">
+                <span class="text-muted" id="gpu-stats-summary"></span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="chart-gpu-stats"></div>
+        </div>
+    </div>
+    <div class="col-12 mt-3" id="unity-captures" style="display: none;">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">{% if lan == 'cn' %} Unity 采集文件（原始数据，未解析） {% else %} Unity Captures (raw, not parsed) {% endif %}</div>
+            </div>
+            <div class="card-body" id="unity-file-list"></div>
+        </div>
+    </div>
     {% if apm_data.thermal_flag == True %}
     <div class="card thermal-card mt-3">
         <div class="card-header">
@@ -1120,6 +1139,8 @@
             initFileIOCharts()
         }
         initGpuCharts()
+        initGpuStatsCharts()
+        initUnityCaptures()
         if('{{ apm_data.thermal_flag }}' == 'True' ){
             initThermalCharts()
         }
@@ -1493,6 +1514,90 @@
             }
         });
     }    
+
+    function initGpuStatsCharts(){
+        var gpuStatsOptions = options('line');
+        gpuStatsOptions.yaxis = [
+            { seriesName: ['Clock (MHz)', 'Bus (MHz)', 'Memory (MB)'], title: { text: 'MHz / MB' } },
+            { seriesName: ['Read (MB/frame)', 'Write (MB/frame)'], opposite: true, title: { text: 'MB/frame' } }
+        ];
+        var gpu_stats_chart = new ApexCharts(
+            document.querySelector("#chart-gpu-stats"), gpuStatsOptions
+        );
+        gpu_stats_chart.render();
+        window.chartInstances.gpu_stats = gpu_stats_chart;
+        $.ajax({
+            url: '/apm/log',
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene:'{{ scene }}',
+                target:'gpu_stats',
+                platform:platform
+            },
+            success: function (data) {
+                if(!data || data['status'] != 1){ return }
+                var charts = data['charts'] || {};
+                var avg = data['avg'] || {};
+                var show = function (key) { return avg[key] !== undefined ? avg[key] : '-' };
+                var series = [{
+                    name: 'Clock (MHz)',
+                    data: charts['gpu_clock'] || []
+                }, {
+                    name: 'Bus (MHz)',
+                    data: charts['gpu_bus'] || []
+                }, {
+                    name: 'Memory (MB)',
+                    data: charts['gpu_mem_app'] || charts['gpu_mem_total'] || []
+                }, {
+                    name: 'Read (MB/frame)',
+                    data: charts['gpu_bw_read_frame'] || []
+                }, {
+                    name: 'Write (MB/frame)',
+                    data: charts['gpu_bw_write_frame'] || []
+                }];
+                if(!updateChartSeries(gpu_stats_chart, '.gpu-stats-card', series)){
+                    return
+                }
+                $('#gpu-stats-summary').text(
+                    'Temp: ' + show('gpu_temp')
+                    + ' | Read: ' + show('gpu_bw_read_frame')
+                    + ' | Write: ' + show('gpu_bw_write_frame') + ' MB/frame'
+                );
+            }
+        });
+    }
+
+    function initUnityCaptures(){
+        $.ajax({
+            url: '/apm/unity/files',
+            type: "GET",
+            cache: false,
+            data: { scene: '{{ scene }}' },
+            success: function (data) {
+                if(!data || !data['files'] || data['files'].length === 0){
+                    return
+                }
+                var html = '';
+                data['files'].forEach(function (item) {
+                    html += '<div class="mb-2"><a href="/apm/unity/download?scene='
+                        + encodeURIComponent('{{ scene }}') + '&file=' + encodeURIComponent(item['name'])
+                        + '">' + item['name'] + '</a>'
+                        + ' <span class="text-muted">(' + unitySize(item['size']) + ')</span></div>';
+                });
+                $('#unity-file-list').html(html);
+                $('#unity-captures').show();
+            }
+        });
+    }
+
+    function unitySize(bytes){
+        if(bytes >= 1024 * 1024){
+            return Math.round(bytes / 1024 / 1024 * 100) / 100 + ' MB';
+        }
+        return Math.round(bytes / 1024 * 100) / 100 + ' KB';
+    }
 
     function initThermalCharts(){
         var chartElement = document.querySelector("#chart-thermal");

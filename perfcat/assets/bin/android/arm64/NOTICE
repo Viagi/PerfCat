@@ -1,0 +1,31 @@
+gpu_counters — Adreno perfcounter helper for SoloX
+
+This directory contains a small, statically linked ARM64 helper that reads
+Adreno hardware performance counters through /dev/kgsl-3d0.  It is pushed to
+the tested device by solox/public/gpu_counters.py and executed through adb
+shell; no root is required on ROMs that allow the shell user to access the
+kgsl device node.
+
+The ioctl numbers and structure layouts follow the Adreno kernel UAPI
+(msm_kgsl.h).  They were cross-checked against google/hardware-perfcounter
+(https://github.com/google/hardware-perfcounter, Apache-2.0), file
+third_party/linux/adreno_driver_ioctl.h, which carries the original notice:
+
+    SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
+    Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
+
+The bandwidth counters match the VBIF/GBIF totals used by Snapdragon
+Profiler's "GPU Memory Stats" (Read Total / Write Total):
+
+    a7xx / a8xx: group 13 selectors 34+35 (read), 46+47 (write)
+    a6xx:        group 13 selector 63 (read), 84 (write)
+
+Selector names for a7xx come from Mesa's public register description
+(src/freedreno/registers/adreno/a7xx_perfcntrs.xml):
+PERF_GBIF_AXI0/1_READ_DATA_BEATS_TOTAL and ..._WRITE_DATA_BEATS_TOTAL.
+One data beat is 32 bytes.
+
+The helper source is in src/gpu_counters.c and can be rebuilt with:
+
+    zig cc -target aarch64-linux-musl -static -O2 -s -o gpu_counters \
+        src/gpu_counters.c
