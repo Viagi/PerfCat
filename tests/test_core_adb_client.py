@@ -1,7 +1,7 @@
 """ADB client tests."""
 from unittest.mock import MagicMock, patch
 
-from perfcat.core.adb_client import ADB
+from perfcattle.core.adb_client import ADB
 
 
 class TestADBClient:
@@ -15,7 +15,7 @@ class TestADBClient:
         mock_result.returncode = 0
 
         with patch(
-            "perfcat.core.adb_client.subprocess.run", return_value=mock_result
+            "perfcattle.core.adb_client.subprocess.run", return_value=mock_result
         ) as run:
             result = client.shell("dumpsys SurfaceFlinger --list", "device-1")
 
@@ -34,7 +34,7 @@ class TestADBClient:
         mock_result.stderr = b""
 
         with patch(
-            "perfcat.core.adb_client.subprocess.run", return_value=mock_result
+            "perfcattle.core.adb_client.subprocess.run", return_value=mock_result
         ) as run:
             result = client.shell_noDevice(["install", "-r", "/tmp/My App.apk"])
 

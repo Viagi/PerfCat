@@ -2,8 +2,8 @@
 """Stability checks for long-running scrcpy recording."""
 import subprocess
 
-from perfcat.tools import recording
-from perfcat.tools.recording import Scrcpy
+from perfcattle.tools import recording
+from perfcattle.tools.recording import Scrcpy
 
 
 class FakeProcess:
@@ -36,7 +36,7 @@ def test_scrcpy_recording_redirects_output_to_file(monkeypatch, tmp_path):
         popen_calls.append((args, kwargs))
         return process
 
-    monkeypatch.setattr("perfcat.report.manager.ReportStore", FakeFile)
+    monkeypatch.setattr("perfcattle.report.manager.ReportStore", FakeFile)
     monkeypatch.setattr(Scrcpy, "scrcpy_path", classmethod(lambda cls: "scrcpy"))
     monkeypatch.setattr(
         Scrcpy, "get_display_id", classmethod(lambda cls, device: "")

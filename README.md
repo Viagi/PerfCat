@@ -4,29 +4,30 @@
 
 <p align="center">
 <a href="#">
-<img src="./perfcat/static/logo/logo.svg" alt="PerfCat" width="100">
+<img src="./perfcattle/static/logo/logo.svg" alt="PerfCattle 性能牛" width="120">
 </a>
 <br>
+<b>PerfCattle · 性能牛</b>
 </p>
 <p align="center">
-<a href="https://pypi.org/project/perfcat/" target="__blank"><img src="https://img.shields.io/pypi/v/perfcat" alt="perfcat preview"></a>
-<a href="https://pepy.tech/project/perfcat" target="__blank"><img src="https://static.pepy.tech/personalized-badge/perfcat?period=total&units=international_system&left_color=grey&right_color=orange&left_text=downloads"></a>
+<a href="https://pypi.org/project/perfcattle/" target="__blank"><img src="https://img.shields.io/pypi/v/perfcattle" alt="perfcattle preview"></a>
+<a href="https://pepy.tech/project/perfcattle" target="__blank"><img src="https://static.pepy.tech/personalized-badge/perfcattle?period=total&units=international_system&left_color=grey&right_color=orange&left_text=downloads"></a>
 
 <br>
 </p>
 
 ## 🔎Preview
 
-PerfCat - Real-time collection tool for Android/iOS performance data.
+PerfCattle (性能牛) - Real-time collection tool for Android/iOS performance data.
 
 Quickly locate and analyze performance issues to improve application performance and quality. No need for ROOT/jailbreak, plug and play.
 
-![PerfCat](perfcat/static/image/readme/home.png)
+![PerfCattle](perfcattle/static/image/readme/home.png)
 
 ## 📦Requirements
 
 - Install Python 3.10 + [**Download**](https://www.python.org/downloads/)
-- Install adb and configure environment variables (PerfCat's  adb may not necessarily fit your computer) [**Download**](https://developer.android.com/studio/releases/platform-tools)
+- Install adb and configure environment variables (PerfCattle's  adb may not necessarily fit your computer) [**Download**](https://developer.android.com/studio/releases/platform-tools)
 
 💡 If Windows users need to test ios, install and start Itunes. [**Documentation**](https://github.com/alibaba/taobao-iphone-device)  (Not support iOS17)
 
@@ -35,45 +36,45 @@ Quickly locate and analyze performance issues to improve application performance
 ### default
 
 ```shell
-pip install -U perfcat    (pip install perfcat==version)
+pip install -U perfcattle    (pip install perfcattle==version)
 ```
 
 ### mirrors
 
 ```shell
-pip install -i  https://mirrors.ustc.edu.cn/pypi/web/simple -U perfcat
+pip install -i  https://mirrors.ustc.edu.cn/pypi/web/simple -U perfcattle
 ```
 
-💡 If your network is unable to download through [pip install -U perfcat], please try using mirrors to download, but the download of PerfCat may not be the latest version.
+💡 If your network is unable to download through [pip install -U perfcattle], please try using mirrors to download, but the download of PerfCattle may not be the latest version.
 
 ## 🚀Quickstart
 
 ### default
 
 ```shell
-python -m perfcat
+python -m perfcattle
 ```
 
 ### customize
 
 ```shell
-python -m perfcat --host=ip --port=port
+python -m perfcattle --host=ip --port=port
 ```
 
 ### Log file
 
-PerfCat writes runtime logs to `logs/perfcat.log` in the current directory by default. The console only shows errors.
+PerfCattle writes runtime logs to `logs/perfcattle.log` in the current directory by default. The console only shows errors.
 
 ```shell
-python -m perfcat --log_file=/path/to/perfcat.log
+python -m perfcattle --log_file=/path/to/perfcattle.log
 ```
 
 ## 🏴󠁣󠁩󠁣󠁭󠁿Python API
 
 ```python
-# perfcat version : >= 2.8.5
-from perfcat.service.monitor import AppPerformanceMonitor
-from perfcat.device.manager import Devices
+# perfcattle version : >= 2.8.5
+from perfcattle.service.monitor import AppPerformanceMonitor
+from perfcattle.device.manager import Devices
 
 d = Devices()
 processList = d.getPid(deviceId='ca6bd5a5', pkgName='com.bilibili.app.in') # for android
@@ -106,9 +107,9 @@ if __name__ == '__main__':
   apm.collectAll(report_path=None) # report_path='/test/report.html'
 
 # in other python file
-from perfcat.service.monitor import AppPerformanceMonitor
+from perfcattle.service.monitor import AppPerformanceMonitor
 
-AppPerformanceMonitor.stop() # stop perfcat
+AppPerformanceMonitor.stop() # stop perfcattle
 ```
 
 ## 🏴󠁣󠁩󠁣󠁭󠁿Service API
@@ -116,10 +117,10 @@ AppPerformanceMonitor.stop() # stop perfcat
 ### Start the service in the background
 
 ```
-# perfcat version >= 2.1.5
+# perfcattle version >= 2.1.5
 
-macOS/Linux: nohup python3 -m perfcat &
-Windows: start /min python3 -m perfcat &
+macOS/Linux: nohup python3 -m perfcattle &
+Windows: start /min python3 -m perfcattle &
 ```
 
 ### Request performance data from api
@@ -135,7 +136,7 @@ target in ['cpu','memory','memory_detail','network','fps','battery','gpu']
 
 * **No ROOT/Jailbreak:** No need of Root for Android devices, Jailbreak for iOS devices. Efficiently solving the test and analysis challenges in Android & iOS performance.
 * **Data Integrality:** We provide the data about CPU, GPU, Memory, Battery, Network,FPS, Jank, etc., which you may easy to get.
-* **Beautiful Report:** A beautiful and detailed report analysis, where to store, visualize, edit, manage, and download all the test cases collected with PerfCat no matter where you are or when is it.
+* **Beautiful Report:** A beautiful and detailed report analysis, where to store, visualize, edit, manage, and download all the test cases collected with PerfCattle no matter where you are or when is it.
 * **Useful Monitoring Settings:** Support setting alarm values, collecting duration, and accessing mobile devices on other PC machines during the monitoring process.
 * **PK Model:** Supports simultaneous comparative testing of two mobile devices.
 
@@ -145,6 +146,8 @@ target in ['cpu','memory','memory_detail','network','fps','battery','gpu']
 * **GPU Extended Stats:** Optional GPU clock, bus vote, temperature, memory and Adreno read/write bandwidth. The report shows bandwidth as **MB/frame**, aligned with the FPS samples.
 * **Unity Capture:** Record Unity Profiler / MemoryProfiler data alongside the normal APM session. It tries a drop-in Unity helper first, then falls back to speaking the Editor's PlayerConnection protocol directly (Unity 2022.3 verified, no game changes). Raw files are archived under `report/<scene>/unity/` and downloadable from the analysis page.
 * **Deep Profiler / Profiler Modules:** Tick the same Profiler Modules as the Unity Profiler and toggle Deep Profiler; in protocol mode both can be changed live during a capture (Deep Profiler requires the build's Deep Profiling Support).
+* **Unity Game Panel:** Protocol mode parses the raw Profiler stream directly (Unity 2022.2+), with the in-game helper as an option. It shows CPU/GPU frame time, Draw Calls, SetPass Calls, Batches, Triangles, Vertices, GC Alloc and used memory, and writes them to the report on the same time axis as system CPU.
+* **Unity Hotspots:** Per-frame Timeline (thread rows of marker blocks), Hierarchy (merged call paths with Total/Self/Calls/GC) and Raw Hierarchy (unmerged calls), with thread selection and sorting in the analysis page.
 * **Unity Capture Guide:** [docs/UNITY_CAPTURE.md](docs/UNITY_CAPTURE.md) — supported PlayerConnection versions, wire format, Area→Category mapping, and the checklist for adding a new Unity version or Profiler feature.
 
 ## Develop

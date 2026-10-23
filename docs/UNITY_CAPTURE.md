@@ -1,11 +1,15 @@
 # Unity Profiler / MemoryProfiler 采集技术文档
 
-本文档说明 PerfCat 的 Unity 采集链路、当前兼容版本、协议格式、Deep Profiler 与
+本文档说明 PerfCattle 的 Unity 采集链路、当前兼容版本、协议格式、Deep Profiler 与
 Profiler Modules 的实现方式、HTTP/UI 用法、真机实测结果，以及如何扩展新的
 Unity 版本或新的 Profiler 功能。
 
-> 结论先说：**PerfCat 只负责采集和归档，不解析 profiler / snapshot 数据。**
+> 结论先说：**原始 profiler / snapshot 文件仍按原样归档；PerfCattle 只额外解析
+> Protocol 流里的计数器（不做完整调用树/Callstack 解析）。**
 > 采集到的原始文件用 Unity Profiler / Memory Profiler 或对应解析工具打开。
+> 另外，两种模式都会额外提供一组实时计数器（CPU/GPU 帧耗时、Draw Calls、
+> 三角面、顶点数等）：Helper 模式来自游戏内 `ProfilerRecorder`，Protocol
+> 模式直接解析原始 profiler 流。
 
 ---
 
@@ -22,6 +26,7 @@ Unity 版本或新的 Profiler 功能。
 | 采集中热切换 | 支持 | 不支持 | 模块弹窗 → 应用 | `/apm/unity/options` |
 | 随 APM 自动开始/停止 | 支持 | 支持 | 随 Unity Profiler 开关 | — |
 | 随报告归档 | 支持 | 支持 | 分析页下载 | `/apm/unity/files` / `download` |
+| 游戏面板实时指标 | 支持（2022.2+ 流解析） | 支持 | 实时页 → Unity 游戏面板 | `/apm/unity/stats` |
 
 ### 1.2 已验证环境
 
@@ -42,8 +47,8 @@ Unity 版本或新的 Profiler 功能。
 - Profiler Modules：**14 个全部勾选**。
 - Deep Profiler：**默认关闭**。
 - 用户的选择会保存在浏览器 `localStorage`：
-  - `perfcat.unity.areas`：JSON 数组，例如 `["CPU","GPU"]`
-  - `perfcat.unity.deep`：`"1"` / `"0"`
+  - `perfcattle.unity.areas`：JSON 数组，例如 `["CPU","GPU"]`
+  - `perfcattle.unity.deep`：`"1"` / `"0"`
 - 选择只对下一次或当前采集生效，不影响已经采集到的原始数据。
 
 ---
@@ -52,10 +57,10 @@ Unity 版本或新的 Profiler 功能。
 
 ### 2.1 UI 使用步骤
 
-1. 启动 PerfCat：
+1. 启动 PerfCattle：
 
    ```bash
-   python -m perfcat
+   python -m perfcattle
    ```
 
    默认端口 `50003`，按启动日志打开：
@@ -112,6 +117,82 @@ curl "http://127.0.0.1:50003/apm/unity/status"
 curl "http://127.0.0.1:50003/apm/unity/stop"
 ```
 
+### 2.4 Unity 游戏面板
+
+Unity Profiler 开关打开并开始监控后，实时页顶部会出现 **Unity 游戏面板**。
+两种模式都能提供数据：
+
+- **Helper 模式**：游戏内脚本用 `ProfilerRecorder` 采样，每 0.5 秒更新。
+- **Protocol 模式**：`perfcattle/unity/raw_reader.py` 直接解析原始 profiler 流
+  （`PD3U` block），支持 Unity 2022.2+，当前在 2022.3.62f2 上验证。
+
+| 面板字段 | Unity 计数器 | 上报线程 | 单位 |
+| --- | --- | --- | --- |
+| CPU 帧耗时 | `CPU Main Thread Frame Time` | Main Thread | ms |
+| GPU 帧耗时 | `GPU Frame Time` | Main Thread | ms |
+| 渲染线程耗时 | `CPU Render Thread Frame Time` | Main Thread | ms |
+| Draw Calls | `Draw Calls Count` | Render Thread | 次 |
+| SetPass Calls | `SetPass Calls Count` | Render Thread | 次 |
+| Batches | `Batches Count` | Render Thread | 次 |
+| 三角面 | `Triangles Count` | Render Thread | 个 |
+| 顶点数 | `Vertices Count` | Render Thread | 个 |
+| GC Alloc/帧 | `GC Allocated In Frame` | Main Thread | KB |
+| Unity 已用内存 | `Total Used Memory` | Main Thread | MB |
+
+同时会用折线图展示 CPU/GPU 帧耗时、Draw Calls、三角面和顶点数的变化。
+`/apm/unity/stats` 还会返回 `cpu_total_ms`、`shadow_casters`、
+`gc_used_memory_mb` 等字段。报告里的图表拆成三张：**帧耗时（CPU/GPU）**、**Draw Calls** 和
+**几何（三角面 / 顶点）**，各自使用独立坐标轴，计数按整数展示。
+
+**时间对齐与报告**
+
+- 采集期间每秒把最新计数器写入 `report/unity_stats.log`，时间戳使用本机
+  `HH:MM:SS.mmm`，与 `cpu_app.log`、`mem_total.log` 等系统指标一致。
+- 报告和分析页新增 Unity 指标卡片，以及「系统 CPU 与 Unity 指标对照」卡片；
+  后者把 CPU 应用/整机占用率与 Draw Calls / 三角面放在同一个时间轴（以最早
+  样本为 x=0），方便定位「CPU 90% 时对应多少 DC/三角面」。
+- 1 秒级对齐；Unity 流本身是逐帧数据，报告按秒采样后不再保留每一帧。
+
+注意事项：
+
+- Helper 模式需要 Unity **2019.3+**；Protocol 模式解析需要 **2022.2+**。
+- 不同 Unity 版本、不同构建配置下可用的计数器不同；缺失字段会在面板提示中列出。
+- Protocol 解析遇到未知消息或跨 block 的半条样本时会跳过当前 block，
+  不影响后续数据；解析统计在 `/apm/unity/stats` 的 `stats` 字段中。
+- 原始 profiler 数据仍按原有方式归档在 `unity/profiler.raw`。
+
+### 2.5 报告中的 Unity 热点函数
+
+分析页的 **Unity 热点函数** 卡片直接读取报告归档的
+`unity/profiler.raw`，不需要游戏内脚本，也不需要 Protocol 连接：
+
+- **Timeline**：横轴是帧内时间，纵轴按线程分行（Main Thread、Render
+  Thread、Job/Worker、Audio、Socket 等）。每个 marker 是一个色块，
+  宽度为耗时；悬停显示名称、耗时和 GC。
+- **Hierarchy**：按完整调用路径合并相同调用，显示
+  Total / Self / Calls / GC Alloc，支持按 Total、Self、Calls、GC 排序和
+  逐层展开。
+- **Raw Hierarchy**：不合并调用路径，每个实际调用单独一行，Calls 通常为 1，
+  用于查看某次具体调用或重复调用的分布。
+- 可以输入帧号、上一帧/下一帧，以及选择具体线程。
+- **点击上方 Unity 引擎指标曲线的任意位置**，会按该时间点找到最近帧号，
+  在曲线上画出 “Frame N” 标注，并让下方热点卡片加载该帧；分析页 URL 也支持
+  `&frame=N` 直接打开指定帧。
+
+帧的划分使用主线程 `kFrame` 标记：**标记 N 表示第 N 帧结束**，因此第 N 帧
+对应 `[标记 N-1, 标记 N]` 区间。Render Thread 的数据通常在这个区间的
+前半段，和主线程数据一起展示。
+
+实现与性能：
+
+- 第一次打开需要扫描整个 raw 文件建立帧索引和 marker/线程表
+  （137 MB 约 4 秒，1.1 GB 约半分钟），之后索引和单帧结果缓存在进程内。
+- 单帧解析按上一帧标记开始，只重建目标帧附近的采样，通常很快。
+- 原始流里跨 block 的 metadata blob 或未知消息会被跳过，可能丢掉少量
+  采样；Timeline 和 Hierarchy 仍能反映主要热点。
+- 热点数据来自 marker 采样，不解析 Deep Profiler 的 Callstack；需要调用栈
+  时仍需在 Unity Profiler 中打开原始文件。
+
 ---
 
 ## 3. 当前兼容版本与采集后端
@@ -125,7 +206,7 @@ curl "http://127.0.0.1:50003/apm/unity/stop"
 | --- | --- | --- | --- |
 | `1048832` | Unity 2022.3 | 协议模式（无需改游戏）+ 可选脚本模式 | 是，2022.3.62f2 / Android IL2CPP |
 
-版本注册表在 [`perfcat/unity/profiles.py`](../perfcat/unity/profiles.py)：
+版本注册表在 [`perfcattle/unity/profiles.py`](../perfcattle/unity/profiles.py)：
 
 ```python
 PROFILES = {
@@ -141,7 +222,7 @@ PROFILES = {
 | 后端 | 前提 | 适用场景 | Deep / Modules |
 | --- | --- | --- | --- |
 | `protocol` | Development Build，Player 监听 55000+ | 不想改游戏；已适配的 Unity 版本 | 支持 |
-| `helper` | 工程内放入 `perfcat/assets/unity/PerfCatCapture.cs` | 其他 Unity 版本；最稳定的落盘方式 | 不支持 |
+| `helper` | 工程内放入 `perfcattle/assets/unity/PerfCattleCapture.cs` | 其他 Unity 版本；最稳定的落盘方式 | 不支持 |
 
 管理器按 **helper → protocol** 顺序尝试，二者都不可用时只提示，不中断 APM 采集。
 
@@ -153,16 +234,16 @@ Helper 模式没有 PlayerConnection 通道，因此无法发送 `set_deep_profi
 ## 4. 代码分层
 
 ```text
-perfcat/unity/
+perfcattle/unity/
     __init__.py       导出注册表
     profiles.py       ★ 版本 / 消息 GUID / 能力位 / ProfilerArea 注册中心
     protocol.py       ★ 线协议：帧编解码、PlayerConnection 会话、控制消息
     backends.py       ★ HelperBackend / ProtocolBackend
     manager.py        ★ 会话管理、选项、暂存目录、meta.json、报告归档
-perfcat/view/unity_api.py       HTTP 接口
-perfcat/templates/index.html    实时页：开关、模块勾选、Deep Profiler、快照按钮
-perfcat/templates/analysis.html 分析页：原始文件下载
-perfcat/assets/unity/           C# helper 与使用说明
+perfcattle/view/unity_api.py       HTTP 接口
+perfcattle/templates/index.html    实时页：开关、模块勾选、Deep Profiler、快照按钮
+perfcattle/templates/analysis.html 分析页：原始文件下载
+perfcattle/assets/unity/           C# helper 与使用说明
 docs/UNITY_CAPTURE.md           本文档
 ```
 
@@ -221,7 +302,7 @@ Unity 内部的 32 位十六进制字符串不是按文本顺序落盘的：
 22 75 64 d6 e0 e0 74 ad 98 28 c6 0f e4 86 31 c5
 ```
 
-实现见 `perfcat/unity/protocol.py::guid_from_hex`。该变换已用 Player 主动发送的
+实现见 `perfcattle/unity/protocol.py::guid_from_hex`。该变换已用 Player 主动发送的
 PlayerInfo 帧验证：
 
 ```text
@@ -296,7 +377,7 @@ Player 的消息处理函数只读取第一个 `uint32`，非 0 即开启。
 
 **发送时机**
 
-- 建议在 `enable_capture` 之前发送；PerfCat 的 `start` 就是这个顺序。
+- 建议在 `enable_capture` 之前发送；PerfCattle 的 `start` 就是这个顺序。
 - 采集中也可以切换（`/apm/unity/options?deep_profiling=1`），但只影响后续帧。
 - 实测切换后数据量会立即大幅上升，说明 Player 接受了该消息。
 
@@ -305,7 +386,7 @@ Player 的消息处理函数只读取第一个 `uint32`，非 0 即开启。
 #### 5.7.1 为什么需要映射
 
 Unity 编辑器里的 Profiler Modules 勾选项对应 `ProfilerArea` 枚举。Player 侧没有
-`ProfilerArea` 这个概念，只有 `ProfilerCategory`，所以 PerfCat 在发送前先做
+`ProfilerArea` 这个概念，只有 `ProfilerCategory`，所以 PerfCattle 在发送前先做
 Area → Category 映射。映射参考 `LegacyProfilerAreaUtility` /
 `ProfilerCategoryActivator`，并以 Player profiler 流里实际注册的 Category
 名称为准（例如 `Virtual Texturing` 带空格）。
@@ -410,7 +491,7 @@ Debug
 #### 5.7.4 发送时机与重发
 
 Player 在 attach 时 Category 注册表可能还是空的；第一帧 profiler 数据到达后，
-内置 Category 才会注册完成。因此 PerfCat：
+内置 Category 才会注册完成。因此 PerfCattle：
 
 1. `enable_capture` 之前先发一次（best effort）；
 2. 收到第一帧 `profiler.data` 后自动重发一次；
@@ -427,7 +508,7 @@ Player 在 attach 时 Category 注册表可能还是空的；第一帧 profiler 
   打开后的 Module 状态为准。
 - 全部取消勾选时发送空 payload，Player 会关闭所有 Category；此时仍可抓快照，
   但 Module / Counter 数据几乎为空。
-- 默认不发送该消息时，Player 使用自己的默认 Category 集合。PerfCat 界面默认
+- 默认不发送该消息时，Player 使用自己的默认 Category 集合。PerfCattle 界面默认
   勾选全部 14 个 Module，因此会显式发送这些 Module 对应的 Category 并集，
   而不是 Player 的全部内置 Category。
 - Helper 模式不支持该功能。
@@ -581,6 +662,52 @@ areas=CPU&areas=GPU     重复参数
 {"status": 1, "available": false, "msg": "helper ...; protocol: ..."}
 ```
 
+### 7.7 `/apm/unity/stats` 返回
+
+计数器可用时（Protocol / Helper 两种模式结构相同）：
+
+```json
+{
+  "status": 1,
+  "available": true,
+  "mode": "helper",
+  "unity_version": "2022.3",
+  "debug_build": true,
+  "frame": 15230,
+  "values": {
+    "cpu_frame_ms": 8.42,
+    "render_frame_ms": 4.17,
+    "gpu_frame_ms": 6.03,
+    "draw_calls": 326,
+    "setpass_calls": 41,
+    "batches": 298,
+    "triangles": 184320,
+    "vertices": 185120,
+    "used_memory_mb": 412.6
+  },
+  "markers": {"cpu_frame_ms": "PlayerLoop", "draw_calls": "Draw Calls Count"},
+  "missing": ["shadow_casters"]
+}
+```
+
+不可用时：
+
+```json
+{"status": 1, "available": false, "mode": "protocol", "reason": "no_markers"}
+```
+
+常见 `reason`：
+
+| reason | 含义 |
+| --- | --- |
+| `no_markers` | 已连接，等待 Unity Profiler 计数器 |
+| `parse_error` | raw profiler 流解析失败 |
+| `unsupported_version` | Profiler 流版本暂不支持（当前支持 2022.2+） |
+| `helper_outdated` | 游戏内脚本没有 `stats` 命令，需要更新脚本 |
+| `not_started` | 刚连接，游戏还没采样到第一帧 |
+| `not_running` | Unity 采集没有运行 |
+| `unsupported_unity_version` | Helper 模式低于 Unity 2019.3 |
+
 ---
 
 ## 8. 采集产物与 meta.json
@@ -607,7 +734,7 @@ report/apm_<时间>/unity/
   "areas": ["CPU", "GPU"],
   "enabled_categories": ["Scripts", "GPU"],
   "ignored_options": [],
-  "profiler_log": "F:\\PerfCat\\report\\unity_20261022_170613\\profiler.raw",
+  "profiler_log": "F:\\PerfCattle\\report\\unity_20261022_170613\\profiler.raw",
   "started_at": "2026-10-22 17:06:13",
   "stopped_at": "2026-10-22 17:06:20",
   "files": [
@@ -681,10 +808,13 @@ meta.json 正确记录 deep_profiling / areas / enabled_categories
 | 仅 Android | 当前协议/helper 只支持 Android |
 | Deep Profiler 需要构建支持 | 未开启 Deep Profiling Support 时消息无效 |
 | Helper 模式不支持 Deep / Modules | 没有 PlayerConnection 通道 |
-| 原始文件不解析 | 需要 Unity Profiler / Memory Profiler 打开 |
+| 原始文件不完整解析 | 调用树、Callstack、GPU 采样等仍需 Unity Profiler / Memory Profiler 打开 |
 | Category 过滤范围 | 不同 Unity 版本对 marker 的过滤行为不同，不能只看 raw 大小 |
 | 快照依赖包 | 需要 `com.unity.memoryprofiler` |
 | 数据量 | Deep Profiler 会产生非常大的文件，注意磁盘 |
+| 游戏面板 Protocol 解析版本 | 目前支持 Unity 2022.2+ 的 raw stream；旧版本需补充解析分支 |
+| 游戏面板精度 | 报告按 1 秒采样；Unity 原始流本身是逐帧数据 |
+| 游戏面板依赖可用计数器 | 不同 Unity 版本/构建配置下部分计数器可能缺失 |
 
 ### 10.2 常见问题
 
@@ -696,7 +826,7 @@ meta.json 正确记录 deep_profiling / areas / enabled_categories
 | Deep 开关无效果 | 构建未开启 Deep Profiling Support | 重新构建 Player |
 | Module 勾选后 raw 大小没变 | marker 流与 Category/Counter 采集是两套语义 | 用 Unity Profiler 打开确认 Module 状态 |
 | 快照失败 | 包里没有 MemoryProfiler / Player 未连接 | 检查包与连接状态 |
-| 页面没有新入口 | 服务还是旧进程 | 重启 `python -m perfcat` |
+| 页面没有新入口 | 服务还是旧进程 | 重启 `python -m perfcattle` |
 
 ### 10.3 大流量后的连接问题
 
@@ -723,7 +853,7 @@ adb shell am force-stop com.QiHuan.FishingGame
 先正常启动游戏，连接 PlayerConnection 抓握手：
 
 ```python
-from perfcat.unity.protocol import read_frame
+from perfcattle.unity.protocol import read_frame
 # 连上 adb forward 后的本地端口，读取前两帧
 # 第二帧是 ASCII，形如：
 # [Port] 55000 [Version] 1048832 [Id] AndroidPlayer(...) ...
@@ -769,7 +899,7 @@ MemorySnapshot 消息表在静态初始化时由 `UnityGUID::Generate(string_ref
    ```
 
 3. 把字符串按 8 字符一组、以 little-endian uint32 打包，即得到线上 GUID
-   （可直接调用 `perfcat.unity.protocol.guid_from_hex` 验证）。
+   （可直接调用 `perfcattle.unity.protocol.guid_from_hex` 验证）。
 4. 用同样的方法处理 `MemorySnapshotManager` 的 `kMessageSnapshotRequest`、
    `kMessageSnapshotDataBegin`、`Chunk`、`End`、`Terminate`。
 
@@ -879,7 +1009,7 @@ snapshot: request, begin, chunk, end, terminate
 2. 在 `UnityProtocolSession` 增加一个方法，用 `self.profile.message(group, name)`
    取 GUID，`build_packet()` 发消息。
 3. 在 `ProtocolBackend` / `UnityCapture` 增加对外的动作。
-4. 在 `perfcat/view/unity_api.py` 增加 HTTP 路由。
+4. 在 `perfcattle/view/unity_api.py` 增加 HTTP 路由。
 5. 在 `index.html` / `analysis.html` 增加入口。
 6. 在 profile 的 `features` 中声明能力，调用方先做能力检查。
 
@@ -912,15 +1042,17 @@ Deep Profiler 和 Category 都是按这个流程验证的。
 
 | 内容 | 文件 |
 | --- | --- |
-| 版本注册表 / Area 映射 | `perfcat/unity/profiles.py` |
-| 帧格式 / GUID 编码 / 控制消息 | `perfcat/unity/protocol.py` |
-| helper / protocol 后端 | `perfcat/unity/backends.py` |
-| 会话、选项、meta、归档 | `perfcat/unity/manager.py` |
-| HTTP 接口 | `perfcat/view/unity_api.py` |
-| Unity 脚本 | `perfcat/assets/unity/PerfCatCapture.cs` |
-| 实时页入口 | `perfcat/templates/index.html` |
-| 分析页下载 | `perfcat/templates/analysis.html` |
-| 兼容层 shim | `perfcat/service/unity_capture.py` / `unity_protocol.py` |
+| 版本注册表 / Area 映射 | `perfcattle/unity/profiles.py` |
+| 帧格式 / GUID 编码 / 控制消息 | `perfcattle/unity/protocol.py` |
+| helper / protocol 后端 | `perfcattle/unity/backends.py` |
+| Protocol raw 流计数器解析 | `perfcattle/unity/raw_reader.py` |
+| 单帧热点 / Timeline / Hierarchy | `perfcattle/unity/hotspots.py` |
+| 会话、选项、meta、归档 | `perfcattle/unity/manager.py`（含 `unity_stats.log` 采样线程） |
+| HTTP 接口 | `perfcattle/view/unity_api.py`（含 `/apm/unity/stats`） |
+| Unity 脚本 | `perfcattle/assets/unity/PerfCattleCapture.cs`（含 `stats` 命令与 `ProfilerRecorder` 采样） |
+| 实时页入口 | `perfcattle/templates/index.html`（Unity 游戏面板） |
+| 分析页下载 | `perfcattle/templates/analysis.html` |
+| 兼容层 shim | `perfcattle/service/unity_capture.py` / `unity_protocol.py` |
 
 ---
 

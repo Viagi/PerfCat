@@ -6,14 +6,14 @@ import time
 from pathlib import Path
 
 from flask import Flask
-from perfcat.collector.base import CollectorSampler
-from perfcat.report import manager as report_manager_module
-from perfcat.report.manager import ReportManager
-from perfcat.service import monitor as monitor_module
-from perfcat.service.monitor import AppPerformanceMonitor
-from perfcat.tools.recording import Scrcpy
+from perfcattle.collector.base import CollectorSampler
+from perfcattle.report import manager as report_manager_module
+from perfcattle.report.manager import ReportManager
+from perfcattle.service import monitor as monitor_module
+from perfcattle.service.monitor import AppPerformanceMonitor
+from perfcattle.tools.recording import Scrcpy
 
-report_api_module = importlib.import_module("perfcat.view.report_api")
+report_api_module = importlib.import_module("perfcattle.view.report_api")
 
 
 def test_background_sampler_staggers_and_serves_cached_value():
@@ -36,9 +36,9 @@ def test_background_sampler_staggers_and_serves_cached_value():
         started = time.perf_counter()
         assert sampler.get_or_sample() == 1
         assert time.perf_counter() - started >= 0.02
-        assert calls[0].startswith("perfcat-sampler-cpu")
+        assert calls[0].startswith("perfcattle-sampler-cpu")
         assert sampler.get_or_sample() == 1
-        assert calls == ["perfcat-sampler-cpu"]
+        assert calls == ["perfcattle-sampler-cpu"]
     finally:
         sampler.stop()
 

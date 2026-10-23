@@ -1,8 +1,8 @@
 """Report aggregation regression tests."""
 from unittest.mock import patch
 
-from perfcat.report.log_io import LogIO
-from perfcat.report.aggregator import Aggregator
+from perfcattle.report.log_io import LogIO
+from perfcattle.report.aggregator import Aggregator
 
 
 class TestAggregator:

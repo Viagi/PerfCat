@@ -1,0 +1,342 @@
+# -*- coding: utf-8 -*-
+"""采集器共享基础类型定义"""
+import copy
+import os
+import threading
+import time
+
+from logzero import logger
+
+
+_SAMPLER_ADB_CONCURRENCY = max(
+    1, int(os.environ.get("PERFCATTLE_SAMPLER_ADB_CONCURRENCY", "2"))
+)
+_SAMPLER_INITIAL_WAIT_SECONDS = max(
+    1.0, float(os.environ.get("PERFCATTLE_SAMPLER_INITIAL_WAIT_SECONDS", "4.0"))
+)
+_SAMPLER_ADB_SEMAPHORE = threading.BoundedSemaphore(_SAMPLER_ADB_CONCURRENCY)
+_SAMPLER_PHASE_OFFSETS = {
+    "fps": 0.0,
+    "cpu": 0.10,
+    "cpu_core": 0.18,
+    "memory": 0.22,
+    "network": 0.34,
+    "gpu": 0.46,
+    "file_io": 0.58,
+    "memory_detail": 0.66,
+    "thermal": 0.74,
+    "battery": 0.86,
+}
+
+
+def create_devices():
+    from perfcattle.device.manager import Devices
+
+    return Devices()
+
+
+def create_report_store():
+    from perfcattle.report.manager import ReportStore
+
+    return ReportStore()
+
+
+class Target:
+    """性能采集目标枚举"""
+    CPU = "cpu"
+    Memory = "memory"
+    MemoryDetail = "memory_detail"
+    Battery = "battery"
+    Network = "network"
+    FPS = "fps"
+    GPU = "gpu"
+    GPU_STATS = "gpu_stats"
+    DISK = "disk"
+    FileIO = "file_io"
+
+
+class ReusableCollector:
+    """按采集目标复用短生命周期 Collector 实例。"""
+
+    _SESSION_IDLE_SECONDS = 60
+    SAMPLER_INTERVAL_SECONDS = 1.0
+    SAMPLER_STALE_TTL_SECONDS = 5.0
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls._object_cache = {}
+        cls._session_lock = threading.RLock()
+
+    @classmethod
+    def _object_cache_key(cls, *args, **kwargs):
+        raise NotImplementedError
+
+    @classmethod
+    def _cleanup_idle_objects_locked(cls, now):
+        for key, entry in list(cls._object_cache.items()):
+            if now - entry["last_access"] > cls._SESSION_IDLE_SECONDS:
+                obj = entry.get("object")
+                if obj is not None:
+                    obj.stop()
+                cls._object_cache.pop(key, None)
+
+    @classmethod
+    def getObject(cls, *args, **kwargs):
+        key = cls._object_cache_key(*args, **kwargs)
+        now = time.time()
+        with cls._session_lock:
+            cls._cleanup_idle_objects_locked(now)
+            entry = cls._object_cache.get(key)
+            if entry is not None:
+                entry["last_access"] = now
+                setattr(entry["object"], "_managed_reusable_collector", True)
+                return entry["object"]
+
+        obj = cls(*args, **kwargs)
+        setattr(obj, "_managed_reusable_collector", True)
+
+        with cls._session_lock:
+            cls._cleanup_idle_objects_locked(time.time())
+            entry = cls._object_cache.get(key)
+            if entry is not None:
+                entry["last_access"] = time.time()
+                setattr(entry["object"], "_managed_reusable_collector", True)
+                return entry["object"]
+            cls._object_cache[key] = {"object": obj, "last_access": time.time()}
+        return obj
+
+    def _get_devices(self):
+        return create_devices()
+
+    def _get_report_store(self):
+        return create_report_store()
+
+    def _get_sampler(
+        self,
+        name,
+        sample_func,
+        interval=None,
+        stale_ttl=None,
+        background=True,
+        phase_offset=None,
+    ):
+        if not hasattr(self, "_samplers"):
+            self._samplers = {}
+        sampler = self._samplers.get(name)
+        if sampler is None:
+            sampler = CollectorSampler(
+                name=name,
+                sample_func=sample_func,
+                interval=(
+                    self.SAMPLER_INTERVAL_SECONDS if interval is None else interval
+                ),
+                stale_ttl=(
+                    self.SAMPLER_STALE_TTL_SECONDS
+                    if stale_ttl is None
+                    else stale_ttl
+                ),
+                background=background,
+                phase_offset=(
+                    self._sampler_phase_offset(name)
+                    if phase_offset is None
+                    else phase_offset
+                ),
+            )
+            self._samplers[name] = sampler
+        return sampler
+
+    def _sampler_phase_offset(self, name):
+        metric = str(name).split(":", 1)[0]
+        return _SAMPLER_PHASE_OFFSETS.get(metric, 0.0)
+
+    def _sampled_value(
+        self,
+        name,
+        sample_func,
+        interval=None,
+        stale_ttl=None,
+        background=True,
+        phase_offset=None,
+    ):
+        sampler = self._get_sampler(
+            name,
+            sample_func,
+            interval=interval,
+            stale_ttl=stale_ttl,
+            background=background and getattr(
+                self, "_managed_reusable_collector", False
+            ),
+            phase_offset=phase_offset,
+        )
+        return sampler.get_or_sample()
+
+    def _cached_sampled_value(self, name, max_age=None):
+        sampler = getattr(self, "_samplers", {}).get(name)
+        if sampler is None:
+            return None
+        return sampler.get_latest(max_age=max_age)
+
+    def stop(self):
+        for sampler in list(getattr(self, "_samplers", {}).values()):
+            sampler.stop()
+
+    @classmethod
+    def clear(cls):
+        with cls._session_lock:
+            for entry in list(cls._object_cache.values()):
+                obj = entry.get("object")
+                if obj is not None:
+                    obj.stop()
+            cls._object_cache.clear()
+
+
+class CollectorSampler:
+    """Cache latest collector result and optionally refresh it in the background."""
+
+    def __init__(
+        self,
+        name,
+        sample_func,
+        interval=1.0,
+        stale_ttl=5.0,
+        background=True,
+        phase_offset=0.0,
+    ):
+        self.name = name
+        self.sample_func = sample_func
+        self.interval = max(float(interval or 1.0), 0.1)
+        self.stale_ttl = max(float(stale_ttl or self.interval), self.interval)
+        self.background = bool(background)
+        self.phase_offset = max(float(phase_offset or 0.0), 0.0)
+        self.last_valid_result = None
+        self.last_sample_time = None
+        self.last_error = None
+        self._lock = threading.RLock()
+        self._sample_lock = threading.Lock()
+        self._stop_event = threading.Event()
+        self._thread = None
+
+    def start(self):
+        if not self.background:
+            return
+        with self._lock:
+            if self._thread is not None and self._thread.is_alive():
+                return
+            self._stop_event.clear()
+            self._thread = threading.Thread(
+                target=self._sample_loop,
+                name="perfcattle-sampler-{}".format(self.name),
+                daemon=True,
+            )
+            self._thread.start()
+
+    def stop(self):
+        thread = None
+        with self._lock:
+            thread = self._thread
+            self._stop_event.set()
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=max(self.interval, 1.0))
+        with self._lock:
+            if thread is self._thread and (thread is None or not thread.is_alive()):
+                self._thread = None
+
+    def get_latest(self, max_age=None):
+        with self._lock:
+            if self.last_valid_result is None or self.last_sample_time is None:
+                return None
+            if max_age is not None and time.time() - self.last_sample_time > max_age:
+                return None
+            return copy.deepcopy(self.last_valid_result)
+
+    def _wait_for_latest(self):
+        timeout = min(
+            max(self.phase_offset + _SAMPLER_INITIAL_WAIT_SECONDS, 1.0),
+            self.stale_ttl,
+        )
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            cached = self.get_latest(max_age=self.stale_ttl)
+            if cached is not None:
+                return cached
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                break
+            time.sleep(min(remaining, 0.05))
+        cached = self.get_latest(max_age=self.stale_ttl)
+        if cached is not None:
+            return cached
+        raise RuntimeError("{} sampler has no cached value".format(self.name))
+
+    def get_or_sample(self):
+        self.start()
+        cached = self.get_latest(max_age=self.stale_ttl)
+        if cached is not None:
+            return cached
+        if self.background:
+            return self._wait_for_latest()
+        try:
+            return self.sample_once()
+        except Exception:
+            cached = self.get_latest(max_age=self.stale_ttl)
+            if cached is not None:
+                return cached
+            raise
+
+    def sample_once(self):
+        if not self._sample_lock.acquire(blocking=False):
+            cached = self.get_latest(max_age=self.stale_ttl)
+            if cached is not None:
+                return cached
+            if not self._sample_lock.acquire(timeout=min(self.interval, 1.0)):
+                raise RuntimeError("{} sampler is busy".format(self.name))
+        try:
+            with self._lock:
+                has_previous_sample = self.last_valid_result is not None
+            acquire_timeout = (
+                max(self.interval, 1.0)
+                if has_previous_sample
+                else max(self.stale_ttl, self.interval, 1.0)
+            )
+            if not _SAMPLER_ADB_SEMAPHORE.acquire(timeout=acquire_timeout):
+                raise RuntimeError("{} sampler adb queue is busy".format(self.name))
+            try:
+                result = self.sample_func()
+            finally:
+                _SAMPLER_ADB_SEMAPHORE.release()
+            now = time.time()
+            with self._lock:
+                self.last_valid_result = copy.deepcopy(result)
+                self.last_sample_time = now
+                self.last_error = None
+            return copy.deepcopy(result)
+        except Exception as exc:
+            with self._lock:
+                self.last_error = exc
+            raise
+        finally:
+            self._sample_lock.release()
+
+    def _initial_delay(self):
+        if self.interval <= 0:
+            return 0.0
+        return min(self.phase_offset, self.interval)
+
+    def _sample_loop(self):
+        next_at = time.monotonic() + self._initial_delay()
+        while not self._stop_event.is_set():
+            sleep_seconds = next_at - time.monotonic()
+            if sleep_seconds > 0 and self._stop_event.wait(sleep_seconds):
+                return
+            try:
+                self.sample_once()
+            except Exception as exc:
+                if "sampler" in str(exc) and "busy" in str(exc):
+                    pass
+                else:
+                    logger.debug("%s sampler sample failed: %s", self.name, exc)
+            next_at += self.interval
+            sleep_seconds = next_at - time.monotonic()
+            if sleep_seconds <= 0:
+                missed_intervals = int(abs(sleep_seconds) // self.interval) + 1
+                next_at += missed_intervals * self.interval

@@ -130,7 +130,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# perfcat runtime output
+# perfcattle runtime output
 /report/
 .log
 .xls
@@ -142,7 +142,7 @@ adblog/
 
 # Vue 3 前端
 web/node_modules/
-perfcat/dist/
+perfcattle/dist/
 
 # 本地临时目录与临时文件
 /tmp/

@@ -3,7 +3,7 @@
 import subprocess
 from unittest.mock import patch
 
-from perfcat.device.android import AndroidDevice
+from perfcattle.device.android import AndroidDevice
 
 
 def test_get_current_activity_parses_wechat_mini_game_focus():
@@ -17,7 +17,7 @@ def test_get_current_activity_parses_wechat_mini_game_focus():
         ]
     )
 
-    with patch("perfcat.device.android.adb") as mock_adb:
+    with patch("perfcattle.device.android.adb") as mock_adb:
         mock_adb.shell.return_value = dumpsys
 
         assert device.getCurrentActivity("device-1") == (
@@ -39,7 +39,7 @@ def test_get_startup_time_returns_timing_output():
         stderr=b"",
     )
 
-    with patch("perfcat.device.android.subprocess.run", return_value=result) as run:
+    with patch("perfcattle.device.android.subprocess.run", return_value=result) as run:
         output = device.getStartupTimeByAndroid(
             "com.example/.MainActivity", "device-1"
         )
@@ -62,7 +62,7 @@ def test_get_startup_time_reports_not_exported_activity():
         ),
     )
 
-    with patch("perfcat.device.android.subprocess.run", return_value=result):
+    with patch("perfcattle.device.android.subprocess.run", return_value=result):
         try:
             device.getStartupTimeByAndroid(
                 "com.tencent.mm/.plugin.appbrand.ui.AppBrandUI1", "device-1"

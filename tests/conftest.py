@@ -6,7 +6,7 @@ import tempfile
 import shutil
 import pytest
 
-# 确保 perfcat 包可以导入
+# 确保 perfcattle 包可以导入
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 

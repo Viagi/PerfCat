@@ -2,7 +2,7 @@
 """FPS collector surface selection regressions."""
 from unittest.mock import MagicMock, patch
 
-from perfcat.collector.fps import SurfaceStatsCollector
+from perfcattle.collector.fps import SurfaceStatsCollector
 
 
 def make_collector(package_name="com.example.cocos"):
@@ -21,7 +21,7 @@ def test_surface_candidates_prefer_wechat_game_blast_surface():
     collector = make_collector("com.tencent.mm")
     collector.focus_window = "com.tencent.mm/.plugin.appbrand.ui.AppBrandUI1"
 
-    with patch("perfcat.collector.fps.adb") as mock_adb:
+    with patch("perfcattle.collector.fps.adb") as mock_adb:
         mock_adb.shell.return_value = "\n".join(
             [
                 "ActivityRecordInputSink com.tencent.mm/.plugin.appbrand.ui.AppBrandUI1#20458",
@@ -55,7 +55,7 @@ def test_select_surface_latency_falls_back_to_global_frame_data():
             return "16666666\n"
         return ""
 
-    with patch("perfcat.collector.fps.adb") as mock_adb:
+    with patch("perfcattle.collector.fps.adb") as mock_adb:
         mock_adb.shell.side_effect = shell_side_effect
         lines = collector._select_surface_latency()
 

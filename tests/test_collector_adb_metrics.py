@@ -3,20 +3,20 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from perfcat.collector import cpu as cpu_module
-from perfcat.collector import fps as fps_module
-from perfcat.collector import gpu as gpu_module
-from perfcat.collector import memory as memory_module
-from perfcat.collector import network as network_module
-from perfcat.collector import thermal as thermal_module
-from perfcat.collector.cpu import CPU
-from perfcat.collector.file_io import FileIO
-from perfcat.collector.fps import FPS
-from perfcat.collector.gpu import GPU
-from perfcat.collector.memory import Memory
-from perfcat.collector.network import Network
-from perfcat.collector.thermal import ThermalSensor
-from perfcat.report.log_io import LogIO
+from perfcattle.collector import cpu as cpu_module
+from perfcattle.collector import fps as fps_module
+from perfcattle.collector import gpu as gpu_module
+from perfcattle.collector import memory as memory_module
+from perfcattle.collector import network as network_module
+from perfcattle.collector import thermal as thermal_module
+from perfcattle.collector.cpu import CPU
+from perfcattle.collector.file_io import FileIO
+from perfcattle.collector.fps import FPS
+from perfcattle.collector.gpu import GPU
+from perfcattle.collector.memory import Memory
+from perfcattle.collector.network import Network
+from perfcattle.collector.thermal import ThermalSensor
+from perfcattle.report.log_io import LogIO
 
 
 @pytest.fixture(autouse=True)

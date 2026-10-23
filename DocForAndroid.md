@@ -75,7 +75,7 @@ kstkeip=2097798 指向将要执行的指令的指针, EIP(32 位指令指针)的
 pendingsig=0 待处理信号的位图，记录发送给进程的普通信号
 block_sig=0 阻塞信号的位图
 ```
-- 由于PerfCat的采集间隔为1s，可以计算进程cpu使用率为 ((utime + stime) - (utime_pre + stime_pre)) / (cpu_total - cpu_total_pre)
+- 由于PerfCattle的采集间隔为1s，可以计算进程cpu使用率为 ((utime + stime) - (utime_pre + stime_pre)) / (cpu_total - cpu_total_pre)
 
 ### Memory
 

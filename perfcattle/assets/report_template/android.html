@@ -1,0 +1,965 @@
+
+<!doctype html>
+<!--
+* PerfCattle - real-time collection tool for Android/iOS performance data.
+* @Author Rafa Chen
+* Copyright PerfCattle
+-->
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+    <title>PerfCattle -  Analysis </title>
+    <!-- CSS files -->
+    <link rel="icon" href="https://cdn.nlark.com/yuque/0/2024/png/153412/1715849982577-44b84a9c-e4d8-46b0-acae-dc46eb2ad2c9.png?x-oss-process=image%2Fformat%2Cwebp">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
+</head>
+<body class="Body layout-boxed">
+    <div class="page">
+        <header class="navbar navbar-expand-md navbar-light d-print-none">
+            <div class="container-xl" style="margin-top: 15px;margin-bottom: 15px;">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <strong>APP</strong>
+                    </span>
+                    <input type="text" class="form-control" disabled  value="{{ app }}"  autocomplete="off">
+                </div>
+                <div class="input-group" style="margin-left: 10px;">
+                    <span class="input-group-text">
+                        <strong>Platform</strong>
+                    </span>
+                    <input type="text" class="form-control" disabled  value="{{ platform }}"  autocomplete="off">
+                </div>
+                <div class="input-group" style="margin-left: 10px;">
+                    <span class="input-group-text">
+                        <strong>Device</strong>
+                    </span>
+                    <input type="text" class="form-control" disabled value="{{ devices }}" autocomplete="off">
+                </div>
+                <div class="input-group" style="margin-left: 10px;">
+                    <span class="input-group-text">
+                        <strong>CTime</strong>
+                    </span>
+                    <input type="text" class="form-control" disabled value="{{ ctime }}"  autocomplete="off">
+                </div>
+            </div>
+        </header>
+        <div class="page-wrapper sceen-body">
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="col-12 mb-3">
+                        {% set summary_flags = summary_flags|default({}) %}
+                        <div class="row row-cards">
+                            {% if summary_flags.get('cpu_app', cpu_app != 0) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-dark text-white avatar">CPU</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">APP</div>
+                                                <div class="text-muted">Avg: {{ cpu_app }}</div>
+                                            </div> 
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('file_io', file_io_charts.read or file_io_charts.write) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-azure text-white avatar">IO</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">File IO Read</div>
+                                                <div class="text-muted">{{ file_read }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-azure text-white avatar">IO</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">File IO Write</div>
+                                                <div class="text-muted">{{ file_write }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('cpu_system', cpu_sys != 0) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-dark text-white avatar">CPU</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Total</div>
+                                                <div class="text-muted">Avg: {{ cpu_sys }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('mem_total', mem_total != 0) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-yellow text-white avatar">MEM</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Total</div>
+                                                <div class="text-muted">Avg: {{ mem_total }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('mem_peak', mem_peak != 0) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-yellow text-white avatar">MEM</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Peak</div>
+                                                <div class="text-muted">Max: {{ mem_peak }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('mem_swap', mem_swap != 0) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-yellow text-white avatar">MEM</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Swap</div>
+                                                <div class="text-muted">Avg: {{ mem_swap }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('fps', fps != 0) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-pink text-white avatar">FPS</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">FPS</div>
+                                                <div class="text-muted">Avg: {{ fps }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('frame_stability', frame_stability != 0) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-pink text-white avatar">FPS</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Smooth</div>
+                                                <div class="text-muted">Smooth: {{ frame_stability }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('jank', jank != 0) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-pink text-white avatar">FPS</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Jank</div>
+                                                <div class="text-muted">Per min: {{ jank }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('battery_level', level != 0) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-green text-white avatar">BAT</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Level</div>
+                                                <div class="text-muted">Final: {{ level }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('battery_temp', tem != 0) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-green text-white avatar">BAT</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Temperature</div>
+                                                <div class="text-muted">Final: {{ tem }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('thermal_cpu_avg', thermal_cpu_avg != 0) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-orange text-white avatar">TMP</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">CPU Temp</div>
+                                                <div class="text-muted">Avg: {{ thermal_cpu_avg }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('thermal_gpu_avg', thermal_gpu_avg != 0) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-orange text-white avatar">TMP</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">GPU Temp</div>
+                                                <div class="text-muted">Avg: {{ thermal_gpu_avg }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('network_send', net_send != 0) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-blue text-white avatar">NET</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Send</div>
+                                                <div class="text-muted">All: <label style="color: red;"><strong>+</strong></label>{{ net_send }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('network_recv', net_recv != 0) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-blue text-white avatar">NET</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Recieve</div>
+                                                <div class="text-muted">All: <label style="color: red;"><strong>+</strong></label>{{ net_recv }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('gpu', gpu != 0) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-purple text-white avatar">GPU</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">GPU</div>
+                                                <div class="text-muted">Avg: {{ gpu }}%</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card cpu-card mb-3">
+                            <div class="card-header">
+                                <div class='card-title'>CPU Usage (%)</div>
+                                <div class="card-actions btn-actions">
+                                    <a class="btn-action cursor-pointer"  onclick="screenshot('cpu-card','cpu.png')">
+                                        <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="chart-cpu"></div>
+                            </div>
+                        </div>
+                        <div class="card memory-card mb-3">
+                            <div class="card-header">
+                                <div class='card-title'>Memory Usage (MB)</div>
+                                <div class="card-actions btn-actions">
+                                    <a class="btn-action cursor-pointer"  onclick="screenshot('memory-card','memery.png')">
+                                        <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="chart-mem"></div>
+                            </div>
+                        </div>
+                        {% if mem_detail_charts.memory_detail.java_heap %}
+                        <div class="card memory-detail-card mb-3">
+                            <div class="card-header">
+                                <div class='card-title'>Memory Detail (MB)</div>
+                                <div class="card-actions btn-actions">
+                                    <a class="btn-action cursor-pointer"  onclick="screenshot('memory-detail-card','memery_detail.png')">
+                                        <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="chart-mem-detail"></div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        <div class="card net-card mb-3">
+                            <div class="card-header">
+                                <div class='card-title'>Network Usage (KB)</div>
+                                <div class="card-actions btn-actions">
+                                    <a class="btn-action cursor-pointer"  onclick="screenshot('net-card','net.png')">
+                                        <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="chart-net"></div>
+                            </div>
+                        </div>
+                        {% if file_io_charts.read or file_io_charts.write %}
+                        <div class="card file-io-card mb-3">
+                            <div class="card-header">
+                                <div class='card-title'>File IO (KB)</div>
+                                <div class="card-actions btn-actions">
+                                    <a class="btn-action cursor-pointer" onclick="screenshot('file-io-card','file_io.png')">PNG</a>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="chart-file-io"></div>
+                                <div id="chart-file-io-total" class="mt-3"></div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        <div class="card fps-card mb-3">
+                            <div class="card-header">
+                                <div class='card-title'>FPS(HZ) & Jank(Times)</div>
+                                <div class="card-actions btn-actions">
+                                    <a class="btn-action cursor-pointer"  onclick="screenshot('fps-card','fps.png')">
+                                        <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="chart-fps"></div>
+                            </div>
+                        </div>
+                        <div class="card battery-card mb-3">
+                            <div class="card-header">
+                                <div class='card-title'>Battery</div>
+                                <div class="card-actions btn-actions">
+                                    <a class="btn-action cursor-pointer"  onclick="screenshot('battery-card','battery.png')">
+                                        <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="chart-battery"></div>
+                            </div>
+                        </div>
+                        <div class="card gpu-card mb-3">
+                            <div class="card-header">
+                                <div class='card-title'>GPU Usage (%)</div>
+                                <div class="card-actions btn-actions">
+                                    <a class="btn-action cursor-pointer"  onclick="screenshot('gpu-card','gpu.png')">
+                                        <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="chart-gpu"></div>
+                            </div>
+                        </div>
+                        <div class="card gpu-stats-card mb-3" id="gpu-stats-card" style="display: none;">
+                            <div class="card-header">
+                                <div class='card-title'>GPU Clock/Bus (MHz), Memory (MB) &amp; Bandwidth (MB/frame)</div>
+                                <div class="card-actions btn-actions">
+                                    <span class="text-muted">Temp: {{ gpu_stats.get('gpu_temp', '-') }} &nbsp; Read: {{ gpu_stats.get('gpu_bw_read_frame', '-') }} MB/frame &nbsp; Write: {{ gpu_stats.get('gpu_bw_write_frame', '-') }} MB/frame</span>
+                                    <a class="btn-action cursor-pointer" onclick="screenshot('gpu-stats-card','gpu_stats.png')">PNG</a>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="chart-gpu-stats"></div>
+                            </div>
+                        </div>
+                        <div class="card unity-stats-card mb-3" id="unity-stats-card" style="display: none;">
+                            <div class="card-header">
+                                <div class='card-title'>Unity Engine: Frame Time (ms), Draw Calls &amp; Triangles</div>
+                                <div class="card-actions btn-actions">
+                                    <span class="text-muted">CPU: {{ unity_stats.get('cpu_frame_ms', '-') }} ms &nbsp; GPU: {{ unity_stats.get('gpu_frame_ms', '-') }} ms &nbsp; DC: {{ unity_stats.get('draw_calls', 0)|round|int }} &nbsp; Tri: {{ unity_stats.get('triangles', 0)|round|int }} &nbsp; Vert: {{ unity_stats.get('vertices', 0)|round|int }}</span>
+                                    <a class="btn-action cursor-pointer" onclick="screenshot('unity-stats-card','unity_stats.png')">PNG</a>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="chart-unity-stats"></div>
+                                <div class="row mt-2">
+                                    <div class="col-md-6">
+                                        <div class="text-muted small">Draw Calls</div>
+                                        <div id="chart-unity-drawcalls"></div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="text-muted small">Geometry: Triangles / Vertices</div>
+                                        <div id="chart-unity-geometry"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card unity-correlation-card mb-3" id="unity-correlation-card" style="display: none;">
+                            <div class="card-header">
+                                <div class='card-title'>System CPU vs Unity Metrics</div>
+                                <div class="card-actions btn-actions">
+                                    <span class="text-muted">Shared time axis for CPU spikes vs Draw Calls / Triangles</span>
+                                    <a class="btn-action cursor-pointer" onclick="screenshot('unity-correlation-card','unity_correlation.png')">PNG</a>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="chart-unity-correlation"></div>
+                            </div>
+                        </div>
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <div class='card-title'>Unity Hotspots</div>
+                                <div class="card-actions btn-actions">
+                                    <span class="text-muted">Timeline / Hierarchy / Raw Hierarchy</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted mb-2">Frame-level marker hotspots are interactive and are opened in the PerfCattle analysis page (the server must be running).</p>
+                                <a class="btn btn-primary" href="/analysis?app={{ app }}&scene={{ scene }}&platform={{ platform }}&lan=en">
+                                    Open Hotspot Analysis
+                                </a>
+                            </div>
+                        </div>
+                        {% if thermal_charts.CPU or thermal_charts.GPU or thermal_charts.Memory or thermal_charts.Battery %}
+                        <div class="card thermal-card mb-3">
+                            <div class="card-header">
+                                <div class='card-title'>Thermal Sensor (°C)</div>
+                                <div class="card-actions btn-actions">
+                                    <a class="btn-action cursor-pointer" onclick="screenshot('thermal-card','thermal.png')">PNG</a>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="chart-thermal"></div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer class="footer footer-transparent d-print-none">
+            <div class="container-xl">
+                <div class="row text-center align-items-center flex-row-reverse">
+                    <div class="col-12  mt-3 mt-lg-0">
+                        <ul class="list-inline list-inline-dots mb-0">
+                            <li class="list-inline-item">Copyright &copy; <label id="curYear"></label>
+                                <a href="https://github.com/Viagi" class="link-secondary">PerfCattle</a>. All rights reserved 
+                            </li>
+                            <li class="list-inline-item">
+                                <a href="https://github.com/Viagi/PerfCattle" target="_blank" class="link-secondary" rel="noopener">
+                                    <svg t="1703151647587" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4765" width="50" height="50"><path d="M512.09998 0.09998l-445.512985 239.953135 445.512985 247.251708 445.512986-247.251708z" fill="#8FB3FF" p-id="4766"></path><path d="M546.693224 546.593244l409.919937-242.752588-0.09998 482.805702-409.919937 237.353642 0.09998-477.406756z" fill="#043EB8" p-id="4767"></path><path d="M66.886936 303.840656L476.906854 542.893966l-0.499902 480.906073L66.786956 790.245655l0.09998-486.404999z" fill="#2868F0" p-id="4768"></path></svg>
+                                    Source Code
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+<!-- JQ JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<!-- tabler -->
+<script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+<!-- Sweetalert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- Apexcharts-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/apexcharts/3.39.0/apexcharts.min.js"></script>
+<!-- html2canvas -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+
+    $(document).ready(function() {
+        $('#curYear').text(getCurDate())
+        initCPUCharts()
+        initMemoryCharts()
+        if({{ mem_detail_charts.memory_detail.java_heap }}.length > 0 ){
+            initMemoryDetailCharts()
+        }
+        initNetworkCharts()
+        if({{ file_io_charts.read }}.length > 0 || {{ file_io_charts.write }}.length > 0 ){
+            initFileIOCharts()
+        }
+        initFPSCharts()
+        initBatteryCharts()
+        initGPUCharts()
+        initGPUStatsCharts()
+        initUnityStatsCharts()
+        initUnityCorrelationCharts()
+        if({{ thermal_charts.CPU|default([]) }}.length > 0 || {{ thermal_charts.GPU|default([]) }}.length > 0 || {{ thermal_charts.Memory|default([]) }}.length > 0 || {{ thermal_charts.Battery|default([]) }}.length > 0 ){
+            initThermalCharts()
+        }
+    });
+
+    function getCurDate(){
+        var date = new Date();
+        var year = date.getFullYear();
+        return year
+    };
+
+
+    function screenshot(classname,downloadname) {
+        let container = document.getElementsByClassName(classname); //page-wrapper
+        html2canvas(container[0]).then(canvas => {
+            let imgData = canvas.toDataURL();
+            let link = document.createElement('a');
+            link.href = imgData;
+            link.download = downloadname;
+            let flag = link.click();
+            console.log(flag);
+        })
+    }
+
+    function options(type,dataLabels=false) {
+        let options = {
+            chart: {
+                type: type,
+                fontFamily: 'inherit',
+                height: 240,
+                parentHeightOffset: 0,
+                toolbar: {
+                    show: false,
+                },
+                animations: {
+                    enabled: false
+                },
+            },
+            dataLabels: {
+                enabled: dataLabels
+            },
+            fill: {
+                opacity: 1
+            },
+            stroke: {
+                width: 2,
+                lineCap: "round",
+                curve: "smooth",
+            },
+            series: [],
+            grid: {
+                padding: {
+                    top: -20,
+                    bottom: -4
+                },
+            strokeDashArray: 4,
+            },
+            xaxis: {
+                name: "time",
+                tickAmount:6,
+                labels: {
+                    rotate: 0,
+                }
+            },
+        };
+        return options
+    }
+
+    function hasChartData(seriesList) {
+        return (seriesList || []).some(function(series) {
+            return Array.isArray(series.data) && series.data.length > 0;
+        });
+    }
+
+    function updateChartSeries(chart, cardSelector, seriesList) {
+        if (!hasChartData(seriesList)) {
+            $(cardSelector).hide();
+            chart.updateSeries([]);
+            return false;
+        }
+        $(cardSelector).show();
+        chart.updateSeries(seriesList);
+        return true;
+    }
+
+    function initCPUCharts(){
+        var cpu_chart = new ApexCharts(document.querySelector("#chart-cpu"), options('line'));
+        cpu_chart.render();
+        updateChartSeries(cpu_chart, '.cpu-card', [{
+            name: 'app',
+            data: {{ cpu_charts.cpuAppData }}
+        },{
+            name: 'total',
+            data: {{ cpu_charts.cpuSysData }}
+        }])
+    }
+
+    function initGPUCharts(){
+        var gpu_chart = new ApexCharts(document.querySelector("#chart-gpu"), options('line'));
+        gpu_chart.render();
+        updateChartSeries(gpu_chart, '.gpu-card', [{
+            name: 'gpu',
+            data: {{ gpu_charts.gpu }}
+        }])
+    }
+
+    function initGPUStatsCharts(){
+        var gpuStatsOptions = options('line');
+        gpuStatsOptions.yaxis = [
+            { seriesName: ['Clock (MHz)', 'Bus (MHz)', 'Memory (MB)'], title: { text: 'MHz / MB' } },
+            { seriesName: ['Read (MB/frame)', 'Write (MB/frame)'], opposite: true, title: { text: 'MB/frame' } }
+        ];
+        var gpu_stats_chart = new ApexCharts(
+            document.querySelector("#chart-gpu-stats"), gpuStatsOptions
+        );
+        gpu_stats_chart.render();
+        updateChartSeries(gpu_stats_chart, '.gpu-stats-card', [{
+            name: 'Clock (MHz)',
+            data: {{ gpu_stats_charts.get('gpu_clock', []) }}
+        },{
+            name: 'Bus (MHz)',
+            data: {{ gpu_stats_charts.get('gpu_bus', []) }}
+        },{
+            name: 'Memory (MB)',
+            data: {{ gpu_stats_charts.get('gpu_mem_app', gpu_stats_charts.get('gpu_mem_total', [])) }}
+        },{
+            name: 'Read (MB/frame)',
+            data: {{ gpu_stats_charts.get('gpu_bw_read_frame', []) }}
+        },{
+            name: 'Write (MB/frame)',
+            data: {{ gpu_stats_charts.get('gpu_bw_write_frame', []) }}
+        }])
+    }
+
+    function initUnityStatsCharts(){
+        var unityStatsOptions = options('line');
+        unityStatsOptions.yaxis = [{
+            min: 0,
+            title: { text: 'ms' }
+        }];
+        unityStatsOptions.stroke = { width: 2, lineCap: 'round', curve: 'straight' };
+        unityStatsOptions.markers = { size: 3, strokeWidth: 0, hover: { size: 6 } };
+        unityStatsOptions.tooltip = {
+            enabled: true, shared: true, intersect: false,
+            y: {
+                formatter: function(value, opts) {
+                    var name = (opts && opts.w && opts.w.globals && opts.w.globals.seriesNames)
+                        ? (opts.w.globals.seriesNames[opts.seriesIndex] || '')
+                        : '';
+                    if (name.indexOf('Frame') >= 0) return value.toFixed(2) + ' ms';
+                    return Math.round(value).toLocaleString();
+                }
+            }
+        };
+        var unity_stats_chart = new ApexCharts(
+            document.querySelector("#chart-unity-stats"), unityStatsOptions
+        );
+        unity_stats_chart.render();
+        updateChartSeries(unity_stats_chart, '.unity-stats-card', [{
+            name: 'CPU Frame (ms)',
+            data: {{ unity_stats_charts.get('cpu_frame_ms', []) }}
+        },{
+            name: 'GPU Frame (ms)',
+            data: {{ unity_stats_charts.get('gpu_frame_ms', []) }}
+        }]);
+
+        var drawCallsOptions = options('line');
+        drawCallsOptions.chart.height = 180;
+        drawCallsOptions.yaxis = [{
+            min: 0,
+            title: { text: 'Draw Calls' },
+            labels: {
+                formatter: function(value) { return Math.round(value).toLocaleString(); }
+            }
+        }];
+        drawCallsOptions.stroke = { width: 2, lineCap: 'round', curve: 'straight' };
+        drawCallsOptions.markers = { size: 3, strokeWidth: 0, hover: { size: 6 } };
+        drawCallsOptions.tooltip = {
+            enabled: true, shared: true, intersect: false,
+            y: {
+                formatter: function(value) {
+                    return Math.round(value).toLocaleString();
+                }
+            }
+        };
+        var unity_drawcalls_chart = new ApexCharts(
+            document.querySelector("#chart-unity-drawcalls"), drawCallsOptions
+        );
+        unity_drawcalls_chart.render();
+        unity_drawcalls_chart.updateSeries([{
+            name: 'Draw Calls',
+            color: '#FFB020',
+            data: {{ unity_stats_charts.get('draw_calls', []) }}
+        }]);
+
+        var geometryOptions = options('line');
+        geometryOptions.chart.height = 180;
+        geometryOptions.yaxis = [{
+            min: 0,
+            title: { text: 'Count' },
+            labels: {
+                formatter: function(value) { return Math.round(value).toLocaleString(); }
+            }
+        }];
+        geometryOptions.stroke = { width: 2, lineCap: 'round', curve: 'straight' };
+        geometryOptions.markers = { size: 3, strokeWidth: 0, hover: { size: 6 } };
+        geometryOptions.tooltip = {
+            enabled: true, shared: true, intersect: false,
+            y: {
+                formatter: function(value) {
+                    return Math.round(value).toLocaleString();
+                }
+            }
+        };
+        var unity_geometry_chart = new ApexCharts(
+            document.querySelector("#chart-unity-geometry"), geometryOptions
+        );
+        unity_geometry_chart.render();
+        unity_geometry_chart.updateSeries([{
+            name: 'Triangles',
+            color: '#F59F00',
+            data: {{ unity_stats_charts.get('triangles', []) }}
+        },{
+            name: 'Vertices',
+            color: '#8B5CF6',
+            data: {{ unity_stats_charts.get('vertices', []) }}
+        }]);
+    }
+
+    function initUnityCorrelationCharts(){
+        var correlationOptions = options('line');
+        correlationOptions.yaxis = [
+            { seriesName: ['CPU App (%)', 'CPU Sys (%)'], title: { text: '%' } },
+            { seriesName: ['Draw Calls', 'Triangles'], opposite: true, title: { text: 'Count' } }
+        ];
+        var correlation_chart = new ApexCharts(
+            document.querySelector("#chart-unity-correlation"), correlationOptions
+        );
+        correlation_chart.render();
+        updateChartSeries(correlation_chart, '.unity-correlation-card', [{
+            name: 'CPU App (%)',
+            data: {{ unity_correlation_charts.get('cpu_app', []) }}
+        },{
+            name: 'CPU Sys (%)',
+            data: {{ unity_correlation_charts.get('cpu_sys', []) }}
+        },{
+            name: 'Draw Calls',
+            data: {{ unity_correlation_charts.get('draw_calls', []) }}
+        },{
+            name: 'Triangles',
+            data: {{ unity_correlation_charts.get('triangles', []) }}
+        }])
+    }
+
+    function initMemoryCharts(){
+        var mem_chart = new ApexCharts(document.querySelector("#chart-mem"), options('line'));
+        mem_chart.render();
+        updateChartSeries(mem_chart, '.memory-card', [{
+            name: 'total',
+            data: {{ mem_charts.memTotalData }}
+        },{
+            name: 'swap',
+            data: {{ mem_charts.memSwapData }}
+        }])
+    }
+    
+    function initMemoryDetailCharts(){
+        var mem_detail_chart = new ApexCharts(document.querySelector("#chart-mem-detail"), options('line'));
+        mem_detail_chart.render();
+        updateChartSeries(mem_detail_chart, '.memory-detail-card', [{
+            name: 'java',
+            data: {{ mem_detail_charts.memory_detail.java_heap }}
+        },{
+            name: 'native',
+            data: {{ mem_detail_charts.memory_detail.native_heap }}
+        },{
+            name: 'code',
+            data: {{ mem_detail_charts.memory_detail.code_pss }}
+        },{
+            name: 'stack',
+            data: {{ mem_detail_charts.memory_detail.stack_pss }}
+        },{
+            name: 'graphics',
+            data: {{ mem_detail_charts.memory_detail.graphics_pss }}
+        },{
+            name: 'private',
+            data: {{ mem_detail_charts.memory_detail.private_pss }}
+        },{
+            name: 'system',
+            data: {{ mem_detail_charts.memory_detail.system_pss }}
+        }]) 
+    }
+    
+    function initNetworkCharts(){
+        var network_chart = new ApexCharts(document.querySelector("#chart-net"), options('line',false));
+        network_chart.render();
+        updateChartSeries(network_chart, '.net-card', [{
+            name: 'send',
+            data: {{ net_charts.upFlow }}
+        },{
+            name: 'recieve',
+            data: {{ net_charts.downFlow }}
+        }])
+    }
+
+    function cumulativeFileIOSeries(points){
+        var total = 0;
+        return (points || []).map(function(point){
+            var value = Number(point && point.y != null ? point.y : 0);
+            total += isFinite(value) ? value : 0;
+            return {
+                x: point ? point.x : 0,
+                y: Number(total.toFixed(2))
+            };
+        });
+    }
+
+    function initFileIOCharts(){
+        var file_io_chart = new ApexCharts(document.querySelector("#chart-file-io"), options('line',false));
+        var file_io_total_chart = new ApexCharts(document.querySelector("#chart-file-io-total"), options('line',false));
+        file_io_chart.render();
+        file_io_total_chart.render();
+        var fileIOSeries = [{
+            name: 'read',
+            data: {{ file_io_charts.read }}
+        },{
+            name: 'write',
+            data: {{ file_io_charts.write }}
+        }];
+        if (!updateChartSeries(file_io_chart, '.file-io-card', fileIOSeries)) {
+            file_io_total_chart.updateSeries([]);
+            return;
+        }
+        file_io_total_chart.updateSeries([{
+            name: 'total read',
+            data: cumulativeFileIOSeries({{ file_io_charts.read }})
+        },{
+            name: 'total write',
+            data: cumulativeFileIOSeries({{ file_io_charts.write }})
+        }])
+    }
+    
+    function initFPSCharts(){
+        var fps_chart = new ApexCharts(document.querySelector("#chart-fps"), options('line'));
+        fps_chart.render();
+        updateChartSeries(fps_chart, '.fps-card', [{
+            name: 'fps',
+            data: {{ fps_charts }}
+        },{
+            name: 'jank',
+            data: {{ jank_charts }}
+        }])
+    }
+
+    function initBatteryCharts(){
+        var battery_chart = new ApexCharts(document.querySelector("#chart-battery"), options('line'));
+        battery_chart.render();
+        updateChartSeries(battery_chart, '.battery-card', [{
+            name: 'level',
+            data: {{ battery_charts.batteryLevel }}
+        },{
+            name: 'temperature',
+            data: {{ battery_charts.batteryTem }}
+        }])
+    }
+
+    function initThermalCharts(){
+        var thermal_chart = new ApexCharts(document.querySelector("#chart-thermal"), options('line'));
+        thermal_chart.render();
+        updateChartSeries(thermal_chart, '.thermal-card', [{
+            name: 'CPU',
+            data: {{ thermal_charts.CPU|default([]) }}
+        },{
+            name: 'GPU',
+            data: {{ thermal_charts.GPU|default([]) }}
+        },{
+            name: 'Memory',
+            data: {{ thermal_charts.Memory|default([]) }}
+        },{
+            name: 'Battery',
+            data: {{ thermal_charts.Battery|default([]) }}
+        }])
+    }
+
+</script>
+
+</body>
+</html>

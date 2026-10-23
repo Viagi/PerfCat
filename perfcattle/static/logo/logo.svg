@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="512" height="512" role="img" aria-label="PerfCattle 性能牛">
+  <title>PerfCattle 性能牛</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1C2130"/>
+      <stop offset="1" stop-color="#0B0E15"/>
+    </linearGradient>
+    <radialGradient id="headFill" cx="0.42" cy="0.28" r="0.9">
+      <stop offset="0" stop-color="#FFB63F"/>
+      <stop offset="0.55" stop-color="#F7A81B"/>
+      <stop offset="1" stop-color="#E08D0E"/>
+    </radialGradient>
+    <linearGradient id="hornFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F2E1C2"/>
+      <stop offset="0.55" stop-color="#DDAF71"/>
+      <stop offset="1" stop-color="#BE8144"/>
+    </linearGradient>
+    <linearGradient id="muzzleFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FBE7D6"/>
+      <stop offset="1" stop-color="#EBD0B6"/>
+    </linearGradient>
+    <clipPath id="lensLeft">
+      <rect x="31" y="50" width="27" height="21" rx="9"/>
+    </clipPath>
+    <clipPath id="lensRight">
+      <rect x="70" y="50" width="27" height="21" rx="9"/>
+    </clipPath>
+  </defs>
+
+  <!-- badge -->
+  <rect x="2" y="2" width="124" height="124" rx="30" fill="url(#bg)"/>
+
+  <!-- horns -->
+  <path d="M32 40 C20 32 22 18 52 12 C44 20 42 30 44 42 Z" fill="url(#hornFill)"/>
+  <path d="M96 40 C108 32 106 18 76 12 C84 20 86 30 84 42 Z" fill="url(#hornFill)"/>
+
+  <!-- ears -->
+  <ellipse cx="21" cy="66" rx="13" ry="9" transform="rotate(-12 21 66)" fill="#E8940F"/>
+  <ellipse cx="21" cy="66" rx="7" ry="4" transform="rotate(-12 21 66)" fill="#FFC266"/>
+  <ellipse cx="107" cy="66" rx="13" ry="9" transform="rotate(12 107 66)" fill="#E8940F"/>
+  <ellipse cx="107" cy="66" rx="7" ry="4" transform="rotate(12 107 66)" fill="#FFC266"/>
+
+  <!-- head -->
+  <ellipse cx="64" cy="66" rx="40" ry="37" fill="url(#headFill)"/>
+
+  <!-- muzzle -->
+  <path d="M34 79 Q64 72 94 79 C95 88 88 96 78 99 C70 102 58 102 50 99 C40 96 33 88 34 79 Z" fill="url(#muzzleFill)"/>
+  <ellipse cx="52" cy="86" rx="3.6" ry="5.2" transform="rotate(-18 52 86)" fill="#9C5B3C"/>
+  <ellipse cx="76" cy="86" rx="3.6" ry="5.2" transform="rotate(18 76 86)" fill="#9C5B3C"/>
+
+  <!-- shades -->
+  <path d="M25 54 H103" stroke="#0B0E14" stroke-width="6" stroke-linecap="round"/>
+  <rect x="31" y="50" width="27" height="21" rx="9" fill="#0B0E14"/>
+  <rect x="70" y="50" width="27" height="21" rx="9" fill="#0B0E14"/>
+  <rect x="56" y="56" width="16" height="6" rx="3" fill="#0B0E14"/>
+
+  <!-- glare -->
+  <path d="M35 69 L46 52 L51 52 L40 69 Z" fill="#FFFFFF" opacity="0.16" clip-path="url(#lensLeft)"/>
+  <path d="M33 59 C33 54 37 50 42 50" stroke="#4A5266" stroke-width="2" fill="none" stroke-linecap="round" clip-path="url(#lensLeft)"/>
+
+  <!-- performance pulse inside the right lens -->
+  <polyline points="71,66 76,66 79,55 83,69 87,59 90,66 96,66"
+            fill="none" stroke="#FF6B35" stroke-width="2.8"
+            stroke-linecap="round" stroke-linejoin="round" clip-path="url(#lensRight)"/>
+</svg>

@@ -1,0 +1,3021 @@
+{% extends 'base.html' %}
+{% block title %}PerfCattle - {% if lan == 'cn' %} 报告详情 {% else %} Analysis {% endif %}{% endblock %}
+
+{% block css %}
+<style>
+    .analysis-video-frame {
+        width: 100%;
+        display: block;
+        overflow: visible;
+        background: #fff;
+    }
+
+    .analysis-video-frame video {
+        display: block;
+        width: 100%;
+        height: auto;
+        max-height: 400px;
+        object-fit: contain;
+        border-radius: 4px;
+        background: #000;
+    }
+
+    .analysis-video-frame img {
+        display: block;
+        width: auto;
+        height: auto;
+        max-width: 100%;
+        max-height: 400px;
+        object-fit: contain;
+        border-radius: 4px;
+    }
+
+    .card-thermal {
+        display: none;
+    }
+
+    .unity-hotspot-toolbar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .unity-hotspot-toolbar input,
+    .unity-hotspot-toolbar select {
+        height: 30px;
+    }
+
+    .unity-timeline-axis {
+        display: flex;
+        margin-left: 180px;
+        color: #888;
+        font-size: 11px;
+        border-bottom: 1px solid #e6e8eb;
+        padding-bottom: 3px;
+    }
+
+    .unity-timeline-axis span {
+        flex: 1;
+        text-align: left;
+    }
+
+    .unity-timeline-row {
+        display: flex;
+        align-items: stretch;
+        border-bottom: 1px solid #f1f3f5;
+        min-height: 30px;
+    }
+
+    .unity-timeline-row.selected {
+        background: #f0f7ff;
+    }
+
+    .unity-timeline-label {
+        width: 180px;
+        flex: 0 0 180px;
+        padding: 6px 8px;
+        font-size: 11px;
+        color: #495057;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        border-right: 1px solid #f1f3f5;
+    }
+
+    .unity-timeline-track {
+        position: relative;
+        flex: 1;
+        min-width: 600px;
+        height: 28px;
+        background: repeating-linear-gradient(
+            to right,
+            #fbfcfd,
+            #fbfcfd 24.9%,
+            #eef1f4 25%,
+            #fbfcfd 25.1%
+        );
+    }
+
+    .unity-timeline-block {
+        position: absolute;
+        height: 6px;
+        border-radius: 2px;
+        opacity: 0.9;
+        cursor: default;
+    }
+
+    .unity-timeline-block:hover {
+        opacity: 1;
+        outline: 1px solid #111;
+        z-index: 3;
+    }
+
+    .unity-hotspot-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        table-layout: fixed;
+    }
+
+    .unity-hotspot-table th {
+        position: sticky;
+        top: 0;
+        background: #f8f9fa;
+        text-align: left;
+        padding: 5px 6px;
+        border-bottom: 1px solid #e6e8eb;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .unity-hotspot-table td {
+        padding: 3px 6px;
+        border-bottom: 1px solid #f4f5f6;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .unity-hotspot-table tr:hover td {
+        background: #f8fbff;
+    }
+
+    .unity-tree-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .unity-tree-toggle {
+        display: inline-block;
+        width: 14px;
+        color: #868e96;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .unity-tree-toggle.leaf {
+        cursor: default;
+        opacity: 0;
+    }
+
+    .unity-tree-really-hidden {
+        display: none;
+    }
+
+    .unity-hotspot-scroll {
+        max-height: 600px;
+        overflow: auto;
+        border: 1px solid #f1f3f5;
+        border-radius: 4px;
+    }
+
+    #chart-unity-stats {
+        cursor: crosshair;
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}
+<a class="active" style="color: #1e71df" href="/report?lan={{ lan }}">{% if lan == 'cn' %} 测试报告 {% else %} Report {% endif %}</a>
+<svg t="1635085520789" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="165732" width="200" height="200"><path d="M360.704 280.746667l45.226667-45.226667 246.570666 246.528a42.666667 42.666667 0 0 1 0 60.330667l-246.528 246.570666-45.22666601-45.269333 231.42400001-231.466667-231.466667-231.424z" p-id="165733"></path></svg>
+{{ app }}
+<svg t="1635085520789" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="165732" width="200" height="200"><path d="M360.704 280.746667l45.226667-45.226667 246.570666 246.528a42.666667 42.666667 0 0 1 0 60.330667l-246.528 246.570666-45.22666601-45.269333 231.42400001-231.466667-231.466667-231.424z" p-id="165733"></path></svg>
+{{ scene }}
+{% endblock %}
+
+{% block ms_auto %}
+<div class="col-auto ms-auto d-print-none">
+    <div class="btn-list">
+        <a class="btn" data-bs-toggle="modal" data-bs-target="#modal-compare">
+            <svg t="1682562949101" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="20010" width="50" height="50"><path d="M478.976 428.6976h372.8896c36.096 0 65.3312-29.2352 65.3312-65.3312V169.3696c0-36.096-29.2352-65.3312-65.3312-65.3312H478.976c-36.096 0-65.3312 29.2352-65.3312 65.3312v193.9968c0 36.0448 29.2352 65.3312 65.3312 65.3312zM533.6064 609.1776H160.7168c-36.096 0-65.3312 29.2352-65.3312 65.3312v193.9968c0 36.096 29.2352 65.3312 65.3312 65.3312h372.8896c36.096 0 65.3312-29.2352 65.3312-65.3312v-193.9968c0-36.096-29.2352-65.3312-65.3312-65.3312zM952.1152 550.5024l-76.4416-79.0016a43.4176 43.4176 0 0 0-57.856-4.096l-84.5824 65.8432a43.37664 43.37664 0 0 0-7.5776 60.928c14.7456 18.8928 41.984 22.3232 60.928 7.5776l9.3184-7.2704c-0.9728 8.2432-2.4576 16.8448-4.5568 25.6512-15.9744 65.6896-60.8256 112.5376-133.376 139.3664-22.4768 8.2944-33.9968 33.28-25.7024 55.7568 6.4512 17.5104 23.0912 28.3648 40.7552 28.3648 5.0176 0 10.0864-0.8704 15.0528-2.7136 135.5264-50.0736 184.2176-151.1424 194.816-237.1072l6.8608 7.0656a43.25888 43.25888 0 0 0 31.232 13.2096c10.8544 0 21.76-4.0448 30.1568-12.1856 17.152-16.64 17.6128-44.1344 0.9728-61.3888zM189.44 578.5088c10.752 0 21.504-3.9936 29.8496-11.8784l77.824-73.6768c17.408-16.4864 18.176-43.9808 1.6896-61.3888-16.4864-17.408-43.9808-18.176-61.3888-1.6896l-8.6016 8.1408c0.2048-8.2944 0.8192-16.9984 2.0992-25.9584 9.5232-66.9184 49.664-117.9136 119.2448-151.6032 21.6064-10.4448 30.6176-36.4032 20.1728-58.0096-10.4448-21.6064-36.4032-30.6176-58.0096-20.1728-130.048 62.976-168.7552 168.3456-170.9568 254.9248l-7.4752-6.4a43.39712 43.39712 0 1 0-56.2688 66.0992l83.712 71.2192a42.98752 42.98752 0 0 0 28.1088 10.3936z" fill="#2595E8" p-id="20011"></path><path d="M883.2 112.0256a65.28 65.28 0 0 0-31.2832-7.9872H478.976c-36.096 0-65.3312 29.2352-65.3312 65.3312v193.9968c0 36.096 29.2352 65.3312 65.3312 65.3312h372.8896a65.024 65.024 0 0 0 40.704-14.2848c9.216-42.7008 14.1824-86.9376 14.1824-132.4032 0.0512-58.9824-8.2944-115.9168-23.552-169.984zM657.92 759.5008c-17.8176 6.5536-28.672 23.6032-28.3136 41.5744 33.28-22.3232 64.3072-47.7696 92.6208-75.8784-18.2272 13.6704-39.6288 25.1392-64.3072 34.304zM771.7376 669.6448c46.08-58.112 82.0736-124.5696 105.2672-196.8128l-1.28-1.3312a43.4176 43.4176 0 0 0-57.856-4.096l-84.5824 65.8432a43.37664 43.37664 0 0 0-7.5776 60.928c14.7456 18.8928 41.984 22.3232 60.928 7.5776l9.3184-7.2704c-0.9728 8.2432-2.4576 16.8448-4.608 25.6512-4.4032 17.92-10.9568 34.4064-19.6096 49.5104zM533.6064 609.1776H160.7168c-36.096 0-65.3312 29.2352-65.3312 65.3312v193.9968c0 3.3792 0.3584 6.656 0.8192 9.8816 58.7776 18.3296 121.2416 28.16 186.0096 28.16 115.6096 0 223.8464-31.5392 316.7232-86.3232v-145.7152c0-36.096-29.2352-65.3312-65.3312-65.3312z" fill="#3A9CED" p-id="20012"></path><path d="M734.208 104.0384H478.976c-36.096 0-65.3312 29.2352-65.3312 65.3312v193.9968c0 36.096 29.2352 65.3312 65.3312 65.3312h136.5504c67.5328-92.2624 110.2848-203.6736 118.6816-324.6592zM95.3856 684.3392c5.3248 0.1536 10.6496 0.4096 16.0256 0.4096 107.9296 0 209.408-27.392 297.984-75.52H160.7168c-36.096 0-65.3312 29.2352-65.3312 65.3312v9.7792z" fill="#59ADF8" p-id="20013"></path><path d="M312.32 182.3232C183.296 244.736 144.2304 348.928 141.4656 435.1488c31.8976-9.984 62.5664-22.5792 92.0576-37.3248C246.4768 337.92 285.6448 291.7376 350.1568 260.5056c21.6064-10.4448 30.6176-36.4032 20.1728-58.0096-10.4448-21.6064-36.4544-30.6176-58.0096-20.1728zM72.6528 435.712c-4.608 5.4272-7.4752 11.7248-9.0112 18.2272 25.9072-4.5568 51.3024-10.5472 75.9808-18.2272l-5.7856-4.9152c-18.2272-15.5136-45.6192-13.312-61.184 4.9152zM519.8848 104.0384h-40.9088c-36.096 0-65.3312 29.2352-65.3312 65.3312V262.144a624.7936 624.7936 0 0 0 106.24-158.1056z" fill="#6BC2FC" p-id="20014"></path></svg>
+            {% if lan == 'cn' %} 对比分析 {% else %} Compare {% endif %}
+        </a>
+        <a onclick="saveHtml('{{ platform }}','{{ scene }}')" class="btn">
+            <svg t="1682566365235" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="26441" width="50" height="50"><path d="M707.2 79.9H238.6c-11.6 0-21 9.4-21 21V923c0 11.6 9.4 21 21 21h704.9V316.3L707.2 79.9" fill="#FFFFFF" p-id="26442"></path><path d="M943.6 960h-705c-20.4 0-37-16.6-37-37V100.9c0-20.4 16.6-37 37-37h468.6c4.2 0 8.3 1.7 11.3 4.7L954.9 305c3 3 4.7 7.1 4.7 11.3V944c0 8.9-7.2 16-16 16z m-705-864.1c-2.7 0-5 2.2-5 5V923c0 2.7 2.2 5 5 5h689V323l-227-227h-462z" fill="#00365B" p-id="26443"></path><path d="M943.6 316.3H707.2V79.9z" fill="#FFFFFF" p-id="26444"></path><path d="M943.6 332.3H707.2c-8.8 0-16-7.2-16-16V79.9c0-6.5 3.9-12.3 9.9-14.8s12.9-1.1 17.4 3.5L954.9 305c4.6 4.6 5.9 11.5 3.5 17.4-2.5 6-8.3 9.9-14.8 9.9z m-220.4-32H905L723.2 118.6v181.7z" fill="#00365B" p-id="26445"></path><path d="M104.7 414.2h698.8c22.4 0 40.6 19.8 40.6 44.3v301.4c0 24.5-18.2 44.3-40.6 44.3H104.7c-22.4 0-40.6-19.8-40.6-44.3V458.5c-0.1-24.5 18.1-44.3 40.6-44.3z" fill="#C24978" p-id="26446"></path><path d="M241.1 701.6c2.9 3.3 7.7 4.9 14.4 4.7 6.6-0.2 11.4-1.8 14.1-4.7s4.1-6.3 4.1-10.1V516.8c0-3.8-1.5-7.2-4.4-10.3-2.9-3-7.7-4.6-14.4-4.6-7 0-11.8 1.6-14.4 4.8-2.6 3.2-3.8 6.6-3.8 10v68.7H150v-68.7c0-3.8-1.4-7.2-4.1-10.3-2.8-3-7.5-4.6-14.1-4.6s-11.4 1.6-14.4 4.8c-2.9 3.2-4.4 6.6-4.4 10v174.7c0 3.4 1.5 6.8 4.4 10.1 2.9 3.3 7.7 4.9 14.4 4.7 6.6-0.2 11.4-1.8 14.1-4.7s4.1-6.3 4.1-10.1v-74.1h86.6v74.1c0.1 3.6 1.5 7 4.5 10.3z m128.1 4.7c6.6 0 11.4-1.5 14.2-4.6 2.8-3 4.3-6.5 4.3-10.3V537.9h36.5c3.4 0 6.7-1.2 10-3.7 3.2-2.5 4.8-6.7 4.8-12.8 0-5.9-1.5-10.1-4.6-12.7-3-2.6-6.5-3.8-10.3-3.8h-110c-3.8 0-7.2 1.3-10.3 3.8-3 2.6-4.6 6.8-4.6 12.7 0 6.1 1.6 10.4 4.8 12.8 3.2 2.5 6.6 3.7 10 3.7h36.5v153.6c0 3.4 1.4 6.7 4.3 10 3 3.2 7.7 4.8 14.4 4.8z m267.7-4.1c2.2 2.9 6.3 4.3 12.4 4.1 4.4 0 7.8-0.6 10.3-1.9 2.5-1.2 4.3-2.8 5.4-4.8 1.1-2 1.8-4.3 1.9-7 0.1-2.7 0-5.4-0.4-8.3L642 523.6c-1.1-7-3.9-12.4-8.4-16.1-4.5-3.7-9.5-5.6-15-5.6-5.7 0-10.7 1.5-15 4.4-4.3 2.9-7.6 8.9-10.1 17.8l-31.6 119.7-32.5-119.1c-2.7-9.1-6.1-15.2-10.3-18.2-4.2-3-9.3-4.6-15.4-4.6s-11.2 1.8-15.2 5.4c-4.1 3.6-6.6 8.7-7.6 15.4l-24.5 161.6c-1.3 8-0.9 13.6 1.4 17 2.3 3.3 6.4 5 12.3 5 7.2 0 12.2-1.7 15-5 2.8-3.3 4.6-8.4 5.6-15.2L504 585.2c0.8-4.6 1.9-6.8 3.3-6.8s2.8 2.3 4.1 6.8c5.3 18.4 10.7 36.6 16.1 54.6 5.4 18 10.9 36.1 16.4 54.6 0.6 2.1 1.2 3.8 1.9 5.3 0.7 1.4 1.7 2.7 3 3.7s3 1.8 5.1 2.3 4.7 0.7 8 0.7c6.1 0 10.2-1.1 12.4-3.3s3.8-5.1 4.7-8.7L610.9 585c1.3-4.4 2.8-6.6 4.3-6.6s2.7 2.2 3.4 6.6l13.7 102.9c0.8 6.5 2.4 11.3 4.6 14.3z m145.8 1.3c3.4 0 6.7-1.2 10-3.7 3.2-2.5 4.8-6.7 4.8-12.8 0-5.9-1.5-10.1-4.6-12.7-3-2.6-6.5-3.8-10.3-3.8h-55.9v-154c0-4.6-1.7-8.1-5.1-10.7-3.4-2.6-7.9-3.8-13.4-3.8-5.1 0-9.5 1.3-13.1 3.8-3.6 2.6-5.4 6.1-5.4 10.7V683c0 5.7 1.8 10.5 5.4 14.5 3.6 4 8.5 6 14.8 6h72.8z" fill="#FFFFFF" p-id="26447"></path></svg>
+            {% if lan == 'cn' %} 保存 HTML {% else %} Save Html {% endif %}
+        </a>
+        <a download="report.png" onclick="screenshot('sceen-body','report.png')" class="btn">
+            <svg t="1681980127752" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="11730" width="50" height="50"><path d="M957.31 368.25L903.1 732.12c-6 40.19-33.93 71.32-69.35 82.48a96.61 96.61 0 0 1-44.19 3.26L213.21 727c-39.51-6.23-70-35.53-80.55-72.54l90.55-64.06L363.29 702l193.4-234.78L847.8 681.67V394c0-56.57-44.59-102.43-99.6-102.43H177.34l6.73-45.17c8.33-55.92 59.16-94.3 113.53-85.73l576.35 90.83c54.37 8.56 91.69 60.83 83.36 116.75z" fill="#C5E3FF" p-id="11731"></path><path d="M804.86 831.57a110.71 110.71 0 0 1-17.24-1.36l-576.35-90.83c-42.89-6.76-78.46-38.74-90.62-81.47a12.5 12.5 0 0 1 4.8-13.62L216 580.22a12.5 12.5 0 0 1 15 0.43l130.45 103.9L547 459.27a12.5 12.5 0 0 1 17.06-2.12L835.3 656.93V394c0-49.59-39.07-89.93-87.1-89.93H177.34A12.5 12.5 0 0 1 165 289.71l6.73-45.17a114.5 114.5 0 0 1 45.56-76.09 109.35 109.35 0 0 1 82.29-20.14l576.35 90.83c61 9.62 103.11 68.37 93.78 131L915.46 734A115.87 115.87 0 0 1 889 792.38a112.1 112.1 0 0 1-51.45 34.14 108.3 108.3 0 0 1-32.69 5.05zM147.47 659.32c11.42 29.21 37.19 50.55 67.69 55.36l576.35 90.83a83.72 83.72 0 0 0 38.49-2.84c31.84-10 55.68-38.44 60.74-72.4l54.21-363.87c7.31-49.07-25.41-95.08-72.95-102.58L295.65 173a84.54 84.54 0 0 0-63.6 15.6 89.67 89.67 0 0 0-35.62 59.63l-4.59 30.82h556.37c61.81 0 112.1 51.56 112.1 114.93v287.69a12.5 12.5 0 0 1-19.91 10.06L558.81 484.3 372.93 709.93a12.5 12.5 0 0 1-17.44 1.83L222.77 606z" fill="#3D9FF9" p-id="11732"></path><path d="M748.21 877H165.12C103.31 877 53 825.48 53 762.11V394c0-63.37 50.29-114.93 112.1-114.93h583.11c61.81 0 112.1 51.56 112.1 114.93v368.11C860.3 825.48 810 877 748.21 877zM165.13 304c-48 0-87.1 40.34-87.1 89.93v368.18C78 811.7 117.1 852 165.12 852h583.09c48 0 87.1-40.34 87.1-89.93V394c0-49.59-39.07-89.93-87.1-89.93z" fill="#3D9FF9" p-id="11733"></path><path d="M748.21 877H165.12C103.31 877 53 825.48 53 762.11V702a12.5 12.5 0 0 1 5.28-10.2L216 580.22a12.5 12.5 0 0 1 15 0.43l130.45 103.9L547 459.27a12.5 12.5 0 0 1 17.06-2.12L855.22 671.6a12.5 12.5 0 0 1 5.09 10.06v80.44a117 117 0 0 1-15.75 58.77 114.17 114.17 0 0 1-40.07 40.64A109.94 109.94 0 0 1 748.21 877zM78 708.46v53.65C78 811.7 117.1 852 165.12 852h583.09c30.88 0 58.82-16.35 74.74-43.73a92 92 0 0 0 12.36-46.21V688l-276.5-203.7-185.88 225.63a12.5 12.5 0 0 1-17.44 1.83L222.77 606z" fill="#3D9FF9" p-id="11734"></path><path d="M847.8 681.67v80.44a104.16 104.16 0 0 1-14.05 52.49c-17.39 29.91-49.19 49.94-85.54 49.94H165.12c-55 0-99.6-45.86-99.6-102.43V702l67.14-47.5 90.55-64.06L363.29 702l193.4-234.78z" fill="#C5E3FF" p-id="11735"></path><path d="M748.21 877H165.12C103.31 877 53 825.48 53 762.11V702a12.5 12.5 0 0 1 5.28-10.2L216 580.22a12.5 12.5 0 0 1 15 0.43l130.45 103.9L547 459.27a12.5 12.5 0 0 1 17.06-2.12L855.22 671.6a12.5 12.5 0 0 1 5.09 10.06v80.44a117 117 0 0 1-15.75 58.77 114.17 114.17 0 0 1-40.07 40.64A109.94 109.94 0 0 1 748.21 877zM78 708.46v53.65C78 811.7 117.1 852 165.12 852h583.09c30.88 0 58.82-16.35 74.74-43.73a92 92 0 0 0 12.36-46.21V688l-276.5-203.7-185.88 225.63a12.5 12.5 0 0 1-17.44 1.83L222.77 606z" fill="#3D9FF9" p-id="11736"></path><path d="M226.91 418.1m-69.43 0a69.43 69.43 0 1 0 138.86 0 69.43 69.43 0 1 0-138.86 0Z" fill="#C5E3FF" p-id="11737"></path><path d="M226.91 500a81.93 81.93 0 1 1 81.93-81.93A82 82 0 0 1 226.91 500z m0-138.86a56.93 56.93 0 1 0 56.93 56.93 57 57 0 0 0-56.93-56.9z" fill="#3D9FF9" p-id="11738"></path></svg>
+            {% if lan == 'cn' %} 保存图片 {% else %} Save Image {% endif %}
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block navbar_nav %}
+<ul class="navbar-nav">
+  <li class="nav-item" id="apm_tab" style="margin-left: 20px;font-weight: bolder;">
+    <a class="nav-link" href="/?platform=Android&lan={{ lan }}" >
+      <span class="nav-link-icon d-md-none d-lg-inline-block">
+        <svg t="1635060342196" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="82258" width="200" height="200"><path d="M512 512m-512 0a512 512 0 1 0 1024 0 512 512 0 1 0-1024 0Z" fill="#FBD000" p-id="82259"></path><path d="M949.6 848H92.8c-4.8 0-8-3.2-8-8s3.2-8 8-8h856.8c4.8 0 8 3.2 8 8s-4 8-8 8z" fill="#074370" p-id="82260"></path><path d="M903.2 776c0 35.2-28.8 64-64 64H203.2c-35.2 0-64-28.8-64-64V293.6c0-35.2 28.8-64 64-64h636c35.2 0 64 28.8 64 64V776z" fill="#415E6D" p-id="82261"></path><path d="M839.2 797.6H203.2c-35.2 0-64-28.8-64-64V776c0 35.2 28.8 64 64 64h636c35.2 0 64-28.8 64-64v-42.4c0 35.2-28.8 64-64 64z" fill="#324D5B" p-id="82262"></path><path d="M839.2 229.6H203.2c-35.2 0-64 28.8-64 64V728h764V293.6c0-35.2-28.8-64-64-64z" fill="#EAEAEA" p-id="82263"></path><path d="M901.6 736H144c-4.8 0-8-3.2-8-8s3.2-8 8-8h757.6c4.8 0 8 3.2 8 8s-4 8-8 8z" fill="#074370" p-id="82264"></path><path d="M816 784m-24 0a24 24 0 1 0 48 0 24 24 0 1 0-48 0Z" fill="#28A5C6" p-id="82265"></path><path d="M216 784m-16 0a16 16 0 1 0 32 0 16 16 0 1 0-32 0Z" fill="#3AD0F9" p-id="82266"></path><path d="M280 784m-16 0a16 16 0 1 0 32 0 16 16 0 1 0-32 0Z" fill="#FF4848" p-id="82267"></path><path d="M344 784m-16 0a16 16 0 1 0 32 0 16 16 0 1 0-32 0Z" fill="#75B600" p-id="82268"></path><path d="M408 784m-16 0a16 16 0 1 0 32 0 16 16 0 1 0-32 0Z" fill="#FFFFFF" p-id="82269"></path><path d="M904 592h-72c-4.8 0-8-3.2-8-8s4-8 8-8h71.2c4.8 0 8 3.2 8 8s-3.2 8-7.2 8zM639.2 664c-3.2 0-6.4-2.4-8-5.6L592 523.2l-14.4 63.2c-0.8 4-4 6.4-8 6.4H391.2c-4 0-7.2-2.4-8-6.4l-21.6-119.2-17.6 73.6c-0.8 4-5.6 7.2-9.6 5.6-4-0.8-7.2-5.6-5.6-9.6L355.2 424c0.8-4 4-6.4 8-6.4s7.2 3.2 8 6.4l27.2 152h166.4L584 488.8c0.8-3.2 4-8.8 8-8.8s6.4 4.8 8 8.8l38.4 132.8 40.8-224.8c0.8-4 4-6.4 8-6.4s7.2 2.4 8 6.4L732 576h76c4.8 0 8 3.2 8 8s-3.2 8-8 8H725.6c-4 0-7.2-2.4-8-6.4l-30.4-146.4-40 218.4c-0.8 3.2-4 6.4-8 6.4 0.8 0 0.8 0 0 0zM305.6 680c-4 0-7.2-2.4-8-6.4L268 536l-15.2 50.4c-0.8 3.2-4 5.6-8 5.6H146.4c-4.8 0-8-3.2-8-8s3.2-8 8-8h92.8l22.4-74.4c0.8-3.2 4.8-5.6 8-5.6 4 0 6.4 2.4 7.2 6.4l28.8 132.8 11.2-47.2c0.8-4 5.6-7.2 9.6-5.6 4 0.8 7.2 5.6 5.6 9.6l-19.2 82.4c0 3.2-4 5.6-7.2 5.6z" fill="#074370" p-id="82270"></path><path d="M776 304h-56c-4.8 0-8-3.2-8-8s3.2-8 8-8h56c4.8 0 8 3.2 8 8s-3.2 8-8 8zM672 304H488c-4 0-8-3.2-8-8s3.2-8 8-8h184c4 0 8 3.2 8 8s-3.2 8-8 8zM424 304H224c-4.8 0-8-3.2-8-8s4-8 8-8h200c4.8 0 8 3.2 8 8s-4 8-8 8zM711.2 344H584c-4.8 0-8-3.2-8-8s3.2-8 8-8h127.2c4.8 0 8 3.2 8 8s-3.2 8-8 8zM528 344H224c-4.8 0-8-3.2-8-8s4-8 8-8h304c4.8 0 8 3.2 8 8s-4 8-8 8z" fill="#ADADAD" p-id="82271"></path><path d="M840 848H200c-40 0-72-32-72-72V296c0-40 32-72 72-72h640c40 0 72 32 72 72v480c0 40-32 72-72 72zM200 240c-31.2 0-56 24.8-56 56v480c0 31.2 24.8 56 56 56h640c31.2 0 56-24.8 56-56V296c0-31.2-24.8-56-56-56H200z" fill="#074370" p-id="82272"></path><path d="M864 553.6c-4.8 0-8-3.2-8-8v-80c0-4.8 3.2-8 8-8s8 3.2 8 8v80c0 4.8-3.2 8-8 8zM864 425.6c-4.8 0-8-3.2-8-8V312c0-22.4-17.6-40-40-40H408c-4.8 0-8-3.2-8-8s3.2-8 8-8h408c31.2 0 56 24.8 56 56v105.6c0 4.8-3.2 8-8 8zM345.6 272H224c-4.8 0-8-3.2-8-8s3.2-8 8-8h121.6c4.8 0 8 3.2 8 8s-4 8-8 8zM64 464c-17.6 0-32-14.4-32-32s14.4-32 32-32 32 14.4 32 32-14.4 32-32 32z m0-48c-8.8 0-16 7.2-16 16s7.2 16 16 16 16-7.2 16-16-7.2-16-16-16zM656 176c-17.6 0-32-14.4-32-32s14.4-32 32-32 32 14.4 32 32-14.4 32-32 32z m0-48c-8.8 0-16 7.2-16 16s7.2 16 16 16 16-7.2 16-16-7.2-16-16-16zM474.4 124c0-3.2-3.2-6.4-8-7.2l-15.2-2.4c-4-0.8-8.8-4.8-8.8-8.8l-2.4-15.2c-0.8-4-4-8-7.2-8s-6.4 3.2-7.2 8l-2.4 15.2c-0.8 4-4.8 8.8-8.8 8.8l-15.2 2.4c-4 0.8-8 4-8 7.2s3.2 6.4 8 7.2l15.2 2.4c4 0.8 8.8 4.8 8.8 8.8l2.4 15.2c0.8 4 4 8 7.2 8s6.4-3.2 7.2-8l2.4-16.8c0.8-4 4.8-8 8.8-8.8l14.4-0.8c5.6-1.6 8.8-4 8.8-7.2zM502.4 928c0-3.2-3.2-6.4-8-7.2l-15.2-2.4c-4-0.8-8.8-4.8-8.8-8.8l-2.4-15.2c-0.8-4-4-8-7.2-8s-6.4 3.2-7.2 8l-2.4 15.2c-0.8 4-4.8 8.8-8.8 8.8l-15.2 2.4c-4 0.8-8 4-8 7.2s3.2 6.4 8 7.2l15.2 2.4c4 0.8 8.8 4.8 8.8 8.8l2.4 15.2c0.8 4 4 8 7.2 8s6.4-3.2 7.2-8l2.4-16.8c0.8-4 4.8-8 8.8-8.8l14.4-0.8c5.6-1.6 8.8-4 8.8-7.2z" fill="#FFFFFF" p-id="82273"></path></svg>
+      </span>
+      <span class="nav-link-title strong-text">{% if lan == 'cn' %} 实时采集 {% else %} APM {% endif %}</span>
+    </a>
+  </li>
+  <li class="nav-item active" id="report_tab" style="margin-left: 20px;font-weight: bolder;">
+    <a class="nav-link" href="/report?lan={{ lan }}" >
+      <span class="nav-link-icon d-md-none d-lg-inline-block">
+        <svg t="1643364122000" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="29349" width="300" height="300"><path d="M777 806.7c0 38.7-31.1 70.3-69.7 70.3H225.9c-38.7 0-69.9-31.6-69.9-70.3V174.4c0-38.7 31.2-70.4 69.9-70.4h481.4c38.7 0 69.7 31.7 69.7 70.4v632.3z" fill="#FFFFFF" p-id="29350"></path><path d="M707.3 886H225.9c-43.5 0-78.9-35.8-78.9-79.3V174.4c0-43.5 35.4-79.4 78.9-79.4h481.4c43.5 0 79.7 35.9 79.7 79.4v632.3c0 43.5-36.2 79.3-79.7 79.3zM225.9 113c-33.7 0-59.9 27.7-59.9 61.4v632.3c0 33.7 26.2 61.3 59.9 61.3h481.4c33.7 0 60.7-27.6 60.7-61.3V174.4c0-33.7-27-61.4-60.7-61.4H225.9z" fill="#282828" p-id="29351"></path><path d="M732 763.1c0 33.3-26.1 60.9-59.4 60.9H251.7c-33.3 0-59.7-27.6-59.7-60.9V226.9c0-33.3 26.4-60.9 59.7-60.9h420.9c33.3 0 59.4 27.5 59.4 60.9v536.2z" fill="#50BCFF" p-id="29352"></path><path d="M361.8 251.9H208.6c-4.9 0-8.9-4-8.9-8.9s4-8.9 8.9-8.9h153.1c4.9 0 8.9 4 8.9 8.9s-3.9 8.9-8.8 8.9zM549.2 313H208.6c-4.9 0-8.9-4-8.9-8.9s4-8.9 8.9-8.9h340.5c4.9 0 8.9 4 8.9 8.9s-3.9 8.9-8.8 8.9zM652 448.4H208.6c-4.9 0-8.9-4-8.9-8.9s4-8.9 8.9-8.9H652c4.9 0 8.9 4 8.9 8.9s-4 8.9-8.9 8.9zM588.4 515.8H208.6c-4.9 0-8.9-4-8.9-8.9s4-8.9 8.9-8.9h379.7c4.9 0 8.9 4 8.9 8.9 0.1 4.9-3.9 8.9-8.8 8.9z" fill="#282828" p-id="29353"></path><path d="M673.3 113.3c0 19.6-15.9 35.5-35.5 35.5h-346c-19.6 0-35.5-15.9-35.5-35.5v-6.7c0-19.6 15.9-35.5 35.5-35.5h346c19.6 0 35.5 15.9 35.5 35.5v6.7z" fill="#1A6DFF" p-id="29354"></path><path d="M637.8 157.6h-346c-24.5 0-44.4-19.9-44.4-44.4v-6.7c0-24.5 19.9-44.4 44.4-44.4h346c24.5 0 44.4 19.9 44.4 44.4v6.7c0 24.5-19.9 44.4-44.4 44.4zM291.9 80c-14.7 0-26.6 11.9-26.6 26.6v6.7c0 14.7 11.9 26.6 26.6 26.6h346c14.7 0 26.6-11.9 26.6-26.6v-6.7c0-14.7-11.9-26.6-26.6-26.6h-346z" fill="#282828" p-id="29355"></path><path d="M849.7 758.4c0 106.3-86.2 192.4-192.4 192.4-106.3 0-192.4-86.2-192.4-192.4C464.8 652.1 551 566 657.3 566c106.2 0 192.4 86.1 192.4 192.4z" fill="#FFFFFF" p-id="29356"></path><path d="M657.3 959.7c-111 0-201.3-90.3-201.3-201.3s90.3-201.3 201.3-201.3 201.3 90.3 201.3 201.3-90.3 201.3-201.3 201.3z m0-384.8c-101.2 0-183.5 82.3-183.5 183.5S556.1 942 657.3 942s183.6-82.3 183.6-183.6c-0.1-101.2-82.4-183.5-183.6-183.5z" fill="#282828" p-id="29357"></path><path d="M657.3 553.6v204.9h203.6c-0.2-112.7-91.2-204-203.6-204.9z" fill="#1A6DFF" p-id="29358"></path><path d="M860.9 767.3H657.3c-4.9 0-8.9-4-8.9-8.9V553.6c0-2.4 0.9-4.6 2.6-6.3 1.7-1.7 3.6-2.4 6.3-2.6 116.9 0.9 212.2 96.8 212.4 213.7 0 2.4-0.9 4.6-2.6 6.3-1.6 1.7-3.9 2.6-6.2 2.6z m-194.8-17.8h185.6C847 649.3 766.2 568 666.1 562.7v186.8z" fill="#282828" p-id="29359"></path><path d="M794.1 903.7c-2.3 0-4.6-0.9-6.3-2.6L652.1 764.7c-3.5-3.5-3.4-9.1 0-12.6 3.5-3.5 9.1-3.4 12.6 0l135.7 136.5c3.5 3.5 3.4 9.1 0 12.6-1.8 1.7-4 2.5-6.3 2.5z" fill="#282828" p-id="29360"></path></svg>
+      </span>
+      <span class="nav-link-title strong-text">{% if lan == 'cn' %} 测试报告 {% else %} Report {% endif %}</span>
+    </a>
+  </li>
+</ul>
+{% endblock %}
+
+{% block page_body %}
+{% set summary_flags = apm_data.summary_flags|default({}) %}
+<div class="col-12 mb-3">
+    <div class="row row-cards">
+        {% if summary_flags.get('cpu_app', apm_data.cpuAppRate != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-dark text-white avatar">
+                                CPU
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} 应用 CPU {% else %} APP {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ apm_data.cpuAppRate }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if apm_data.file_io_flag == True and summary_flags.get('file_io', True) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-azure text-white avatar">IO</span>
+                        </div>
+                        <div class="col" style="min-width: 0;">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} 文件 IO 读取 {% else %} File IO Read {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                {{ apm_data.file_read }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-azure text-white avatar">IO</span>
+                        </div>
+                        <div class="col" style="min-width: 0;">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} 文件 IO 写入 {% else %} File IO Write {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                {{ apm_data.file_write }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('cpu_system', apm_data.cpuSystemRate != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-dark text-white avatar">
+                                CPU
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} 整机 CPU {% else %} Total {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ apm_data.cpuSystemRate }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('mem_total', apm_data.totalPassAvg != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-yellow text-white avatar">
+                                {% if lan == 'cn' %} 内存 {% else %} MEM {% endif %}
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} 总内存 {% else %} Total {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ apm_data.totalPassAvg }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('mem_peak', apm_data.totalPassPeak != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-yellow text-white avatar">
+                                {% if lan == 'cn' %} 内存 {% else %} MEM {% endif %}
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} 总内存峰值 {% else %} Peak {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Max: {{ apm_data.totalPassPeak }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if platform == 'Android' %}
+        {% if summary_flags.get('mem_swap', apm_data.swapPassAvg != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-yellow text-white avatar">
+                                {% if lan == 'cn' %} 内存 {% else %} MEM {% endif %}
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} 交换内存 {% else %} Swap {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ apm_data.swapPassAvg }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+        {% if summary_flags.get('fps', apm_data.fps != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-pink text-white avatar">
+                                FPS
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} FPS {% else %} FPS {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ apm_data.fps }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('frame_stability', apm_data.frameStability != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-pink text-white avatar">
+                                FPS
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} 流畅度 {% else %} Smooth {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                {% if lan == 'cn' %}得分{% else %}Smooth{% endif %}: {{ apm_data.frameStability }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if platform == 'Android' %}
+        {% if summary_flags.get('jank', apm_data.jank != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-pink text-white avatar">
+                                Jank
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} 卡顿 {% else %} Jank {% endif %}
+                            </div>
+                            <div class="text-muted text-nowrap">
+                                Avg: {{ apm_data.jank }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+        {% if platform == 'Android' %}
+        {% if summary_flags.get('battery_level', apm_data.batteryLevel != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-green text-white avatar">
+                                {% if lan == 'cn' %} 电量 {% else %} BAT {% endif %}
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} 电量 {% else %} Level {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Final: {{ apm_data.batteryLevel }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('battery_temp', apm_data.batteryTeml != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-green text-white avatar">
+                                {% if lan == 'cn' %} 电量 {% else %} BAT {% endif %}
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} 温度 {% else %} Temperature {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Final: {{ apm_data.batteryTeml }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('thermal_cpu_avg', apm_data.thermalCpuAvg|default(0) != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-orange text-white avatar">
+                                {% if lan == 'cn' %} 温度 {% else %} TMP {% endif %}
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} CPU均温 {% else %} CPU Temp {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ apm_data.thermalCpuAvg }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('thermal_gpu_avg', apm_data.thermalGpuAvg|default(0) != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-orange text-white avatar">
+                                {% if lan == 'cn' %} 温度 {% else %} TMP {% endif %}
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} GPU均温 {% else %} GPU Temp {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ apm_data.thermalGpuAvg }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% else %}
+        {% if summary_flags.get('battery_temp', apm_data.batteryTeml != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-green text-white avatar">
+                                {% if lan == 'cn' %} 电量 {% else %} BAT {% endif %}
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} 温度 {% else %} Temperature {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Final: {{ apm_data.batteryTeml }}°C
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('battery_current', apm_data.batteryCurrent != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-green text-white avatar">
+                                {% if lan == 'cn' %} 电量 {% else %} BAT {% endif %}
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                 {% if lan == 'cn' %} 电流 {% else %} Current {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ apm_data.batteryCurrent }}mA
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('battery_voltage', apm_data.batteryVoltage != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-green text-white avatar">
+                                {% if lan == 'cn' %} 电量 {% else %} BAT {% endif %}
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} 电压 {% else %} Voltage {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ apm_data.batteryVoltage }}mW
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('battery_power', apm_data.batteryPower != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-green text-white avatar">
+                                {% if lan == 'cn' %} 电量 {% else %} BAT {% endif %}
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} 功耗 {% else %} Power {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ apm_data.batteryPower }}mV
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+        {% if summary_flags.get('network_send', apm_data.flow_send != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-blue text-white avatar">
+                                {% if lan == 'cn' %} 网络 {% else %} NET {% endif %}
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} 发送 {% else %} Send {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                <label style="color: red;"><strong>+</strong></label>{{ apm_data.flow_send }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('network_recv', apm_data.flow_recv != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-blue text-white avatar">
+                                {% if lan == 'cn' %} 网络 {% else %} NET {% endif %}
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} 接收 {% else %} Recv {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                <label style="color: red;"><strong>+</strong></label>{{ apm_data.flow_recv }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('gpu', apm_data.gpu != 0) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-purple text-white avatar">
+                                GPU
+                            </span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                GPU
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ apm_data.gpu }}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% if platform == 'Android' %}
+<div class="form-selectgroup mb-3">
+    <label class="form-selectgroup-item">
+        <input type="radio" name="icons" value="chart" class="form-selectgroup-input" checked onclick="chartsClick()">
+        <span class="form-selectgroup-label">
+            <svg t="1709092052830" class="icon me-2" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="25403" width="200" height="200"><path d="M512 256a42.666667 42.666667 0 0 0-42.666667 42.666667v426.666666a42.666667 42.666667 0 0 0 85.333334 0V298.666667a42.666667 42.666667 0 0 0-42.666667-42.666667z m-213.333333 256a42.666667 42.666667 0 0 0-42.666667 42.666667v170.666666a42.666667 42.666667 0 0 0 85.333333 0v-170.666666a42.666667 42.666667 0 0 0-42.666666-42.666667z m426.666666-85.333333a42.666667 42.666667 0 0 0-42.666666 42.666666v256a42.666667 42.666667 0 0 0 85.333333 0v-256a42.666667 42.666667 0 0 0-42.666667-42.666666z m85.333334-341.333334H213.333333a128 128 0 0 0-128 128v597.333334a128 128 0 0 0 128 128h597.333334a128 128 0 0 0 128-128V213.333333a128 128 0 0 0-128-128z m42.666666 725.333334a42.666667 42.666667 0 0 1-42.666666 42.666666H213.333333a42.666667 42.666667 0 0 1-42.666666-42.666666V213.333333a42.666667 42.666667 0 0 1 42.666666-42.666666h597.333334a42.666667 42.666667 0 0 1 42.666666 42.666666z" fill="#0070FF" p-id="25404"></path></svg>
+            {% if lan == 'cn' %} 图表 {% else %} Charts {% endif %}
+        </span>
+    </label>
+    <label class="form-selectgroup-item">
+        <input type="radio" name="icons" value="disk" class="form-selectgroup-input" onclick="diskClick()">
+        <span class="form-selectgroup-label">
+            <svg t="1709092139564" class="icon me-2" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="34466" width="200" height="200"><path d="M0 0h1024v1024H0z" fill="#FFFFFF" fill-opacity=".01" p-id="34467"></path><path d="M938.666667 618.666667H85.333333V896h853.333334v-277.333333z" fill="#2F88FF" p-id="34468"></path><path d="M981.333333 938.666667H42.666667v-362.666667h938.666666V938.666667zM128 853.333333h768v-192H128V853.333333z" fill="#333333" p-id="34469"></path><path d="M757.333333 810.666667a53.333333 53.333333 0 1 0 0-106.666667 53.333333 53.333333 0 0 0 0 106.666667z" fill="#FFFFFF" p-id="34470"></path><path d="M127.104 627.413333l-83.541333-17.493333L158.165333 64h708.949334l113.322666 546.005333-83.541333 17.322667L797.696 149.333333H227.456L127.104 627.413333z" fill="#333333" p-id="34471"></path></svg>
+            {% if lan == 'cn' %} 磁盘快照 {% else %} Disk Analysis {% endif %}
+        </span>
+    </label>
+    {% if apm_data.thermal_flag  %}
+    <label class="form-selectgroup-item" style="display: none;">
+        <input type="radio" name="icons" value="thermal" class="form-selectgroup-input" onclick="thermalClick()">
+        <span class="form-selectgroup-label">
+            <svg t="1717146743461" class="icon me-2" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="10995" width="256" height="256"><path d="M512 0c282.7776 0 512 229.2224 512 512s-229.2224 512-512 512S0 794.7776 0 512 229.2224 0 512 0z m-3.9936 204.8c-30.9248 0-60.2624 9.3184-82.5856 26.2144-23.936 18.1248-37.632 43.8272-37.632 70.528v236.16A174.6688 174.6688 0 0 0 332.8 665.1392a174.08 174.08 0 0 0 51.3024 123.904 174.0544 174.0544 0 0 0 123.904 51.3024 174.0544 174.0544 0 0 0 123.904-51.3024 174.08 174.08 0 0 0 51.3024-123.904 174.6688 174.6688 0 0 0-54.9888-127.4368V301.568c0-26.7008-13.7216-52.4032-37.632-70.528C568.2176 214.1184 538.9056 204.8 507.9808 204.8z m0 47.104c39.6288 0 73.1136 22.7328 73.1136 49.6384v257.8432l8.5248 7.0656a127.7952 127.7952 0 0 1 46.464 98.688 128.256 128.256 0 0 1-128.1024 128.1024 128.256 128.256 0 0 1-128.1024-128.1024c0-38.272 16.9216-74.24 46.4384-98.688l8.5248-7.0656V301.5424c0-26.9056 33.4848-49.6384 73.1392-49.6384z m0 87.1168c-19.968 0-36.1472 12.2624-36.1472 27.3664v216.9856a89.3952 89.3952 0 1 0 72.2688 0v-216.9856c0-15.104-16.1792-27.3664-36.1216-27.3664z m171.5968 142.5152h-28.2624a11.5968 11.5968 0 0 0 0 23.2192h28.2624a11.5968 11.5968 0 1 0 0-23.2192z m0-35.6096h-28.2624a11.5968 11.5968 0 0 0 0 23.1936h28.2624a11.5968 11.5968 0 1 0 0-23.1936z m0-35.6352h-28.2624a11.5968 11.5968 0 0 0 0 23.2192h28.2624a11.5968 11.5968 0 1 0 0-23.2192z m0-35.6352h-28.2624a11.5968 11.5968 0 0 0 0 23.2192h28.2624a11.5968 11.5968 0 1 0 0-23.2192z m0-35.6352h-28.2624a11.5968 11.5968 0 0 0 0 23.2192h28.2624a11.5968 11.5968 0 1 0 0-23.2192z m0-35.6352h-28.2624a11.5968 11.5968 0 0 0 0 23.2192h28.2624a11.5968 11.5968 0 1 0 0-23.2192z" fill="#d4237a" p-id="10996" data-spm-anchor-id="a313x.search_index.0.i0.3b713a81JBMZXg" class="selected"></path></svg>
+            {% if lan == 'cn' %} 温度传感器 {% else %} Thermal Sensor {% endif %}
+        </span>
+    </label>
+     {% endif %}
+</div>
+{% endif %}
+{% if apm_data.video == 1 %}
+<div class="col-12 mb-3">
+    <div class="card">
+        <div class="card-body">
+            <div class="analysis-video-frame">
+                <video id="video-player" controls preload="metadata">
+                    <source src="/apm/video/{{ scene }}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+<div class="col-12"  id="card-chart">
+    <div class="card cpu-card">
+        <div class="card-header">
+            <div class='card-title'>{% if lan == 'cn' %} CPU 使用率 (%) {% else %} CPU Usage (%) {% endif %}</div>
+            <div class="card-actions btn-actions">
+                <a class="btn"  onclick="initCpuCharts()">
+                    <span class="spinner-border spinner-border-sm me-2" id="cpu_spinner" role="status" style="display: none;"></span>
+                    <svg id="cpu_refresh_logo" xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+                    {% if lan == 'cn' %} 刷新 {% else %} Refresh {% endif %}
+                </a>
+                
+                <a class="btn" id="cpu_png" style="margin-left: 10px;" onclick="screenshot('cpu-card','cpu.png')">
+                    <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                    {% if lan == 'cn' %} 保存图表 {% else %} ScreenShot {% endif %}
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="chart-cpu"></div>
+        </div>
+    </div>
+    <div class="card mem-card mt-3">
+        <div class="card-header">
+            <div class='card-title'>{% if lan == 'cn' %} 内存 (MB) {% else %} Memory Usage (MB) {% endif %}</div>
+            <div class="card-actions btn-actions">
+                <a class="btn" onclick="initMemoryCharts()">
+                    <span class="spinner-border spinner-border-sm me-2" id="mem_spinner" role="status" style="display: none;"></span>
+                    <svg id="mem_refresh_logo" xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+                    {% if lan == 'cn' %} 刷新 {% else %} Refresh {% endif %}
+                </a>
+                
+                <a class="btn" id="mem_png" style="margin-left: 10px;" onclick="screenshot('mem-card','mem.png')">
+                    <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                    {% if lan == 'cn' %} 保存图表 {% else %} ScreenShot {% endif %}
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="chart-mem"></div>
+        </div>
+    </div>
+    {% if platform == 'Android' and  apm_data.mem_detail_flag == True %}
+    <div class="card mem-detail-card mt-3">
+        <div class="card-header">
+            <div class='card-title'>{% if lan == 'cn' %} 内存详情 (MB) {% else %} Memory Detail (MB) {% endif %}</div>
+            <div class="card-actions btn-actions">
+                <a class="btn" onclick="initMemoryDetailCharts()">
+                    <span class="spinner-border spinner-border-sm me-2" id="mem_detail_spinner" role="status" style="display: none;"></span>
+                    <svg id="mem_detail_refresh_logo" xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+                    {% if lan == 'cn' %} 刷新 {% else %} Refresh {% endif %}
+                </a>
+                <a class="btn" id="mem_detail_png" style="margin-left: 10px;" onclick="screenshot('mem-detail-card','mem_detail.png')">
+                    <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                    {% if lan == 'cn' %} 保存图表 {% else %} ScreenShot {% endif %}
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="chart-mem-detail"></div>
+        </div>
+    </div>
+    {% endif %}
+    {% if platform == 'Android' and  apm_data.cpu_core_flag == True %}
+    <div class="card cpu-core-card mt-3">
+        <div class="card-header">
+            <div class='card-title'>{% if lan == 'cn' %} CPU 核心使用率 (%) {% else %} CPU Core Usage (%) {% endif %}</div>
+            <div class="card-actions btn-actions">
+                <a class="btn" onclick="initMemoryDetailCharts()">
+                    <span class="spinner-border spinner-border-sm me-2" id="cpu_core_spinner" role="status" style="display: none;"></span>
+                    <svg id="cpu_core_refresh_logo" xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+                    {% if lan == 'cn' %} 刷新 {% else %} Refresh {% endif %}
+                </a>
+                <a class="btn" id="cpu_core_png" style="margin-left: 10px;" onclick="screenshot('cpu-core-card','cpu_core.png')">
+                    <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                    {% if lan == 'cn' %} 保存图表 {% else %} ScreenShot {% endif %}
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="chart-cpu-core"></div>
+        </div>
+    </div>
+    {% endif %}
+    <div class="card fps-card mt-3">
+        <div class="card-header">
+            <div class='card-title'>
+                {% if platform == 'Android' %}
+                {% if lan == 'cn' %}FPS (Hz) / 卡顿次数{% else %}FPS(HZ) & Jank(Times){% endif %}
+                {% else %}
+                FPS (HZ)
+                {% endif %}
+            </div>
+            <div class="card-actions btn-actions">
+                <a class="btn"  onclick="initFpsCharts()">
+                    <span class="spinner-border spinner-border-sm me-2" id="fps_spinner" role="status" style="display: none;"></span>
+                    <svg id="fps_refresh_logo" xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+                    {% if lan == 'cn' %} 刷新 {% else %} Refresh {% endif %}
+                </a>       
+                <a class="btn" id="fps_png" style="margin-left: 10px;" onclick="screenshot('fps-card','fps.png')">
+                    <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                    {% if lan == 'cn' %} 保存图表 {% else %} ScreenShot {% endif %}
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="chart-fps"></div>
+        </div>
+    </div>
+    <div class="card battery-card mt-3">
+        <div class="card-header">
+            <div class='card-title'>{% if lan == 'cn' %} 电量 {% else %} Battery {% endif %}</div>
+            <div class="card-actions btn-actions">
+                <a class="btn"  onclick="initBatteryCharts()">
+                    <span class="spinner-border spinner-border-sm me-2" id="battery_spinner" role="status" style="display: none;"></span>
+                    <svg id="battery_refresh_logo" xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+                    {% if lan == 'cn' %} 刷新 {% else %} Refresh {% endif %}
+                </a>       
+                <a class="btn" id="battery_png" style="margin-left: 10px;" onclick="screenshot('battery-card','battery.png')">
+                    <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                    {% if lan == 'cn' %} 保存图表 {% else %} ScreenShot {% endif %}
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="chart-battery"></div>
+        </div>
+    </div>
+    <div class="card networkdata-card mt-3">
+        <div class="card-header">
+            <div class='card-title'>{% if lan == 'cn' %} 网络流量 (KB) {% else %} Network Usage (KB) {% endif %}</div>
+            <div class="card-actions btn-actions">
+                <a class="btn"  onclick="initNetworkCharts()">
+                    <span class="spinner-border spinner-border-sm me-2" id="networkdata_spinner" role="status" style="display: none;"></span>
+                    <svg id="networkdata_refresh_logo" xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+                    {% if lan == 'cn' %} 刷新 {% else %} Refresh {% endif %}
+                </a>       
+                <a class="btn" id="networkdata_png" style="margin-left: 10px;" onclick="screenshot('networkdata-card','networkdata.png')">
+                    <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                    {% if lan == 'cn' %} 保存图表 {% else %} ScreenShot {% endif %}
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="chart-networkdata"></div>
+        </div>
+    </div>
+    {% if apm_data.file_io_flag == True %}
+    <div class="card file-io-card mt-3">
+        <div class="card-header">
+            <div class='card-title'>{% if lan == 'cn' %} 文件 IO (KB) {% else %} File IO (KB) {% endif %}</div>
+            <div class="card-actions btn-actions">
+                <a class="btn" onclick="initFileIOCharts()">
+                    <span class="spinner-border spinner-border-sm me-2" id="file_io_spinner" role="status" style="display: none;"></span>
+                    <svg id="file_io_refresh_logo" xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+                    {% if lan == 'cn' %} 刷新 {% else %} Refresh {% endif %}
+                </a>
+                <a class="btn" id="file_io_png" style="margin-left: 10px;" onclick="screenshot('file-io-card','file_io.png')">
+                    {% if lan == 'cn' %} 保存图表 {% else %} ScreenShot {% endif %}
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="chart-file-io"></div>
+            <div id="chart-file-io-total" class="mt-3"></div>
+        </div>
+    </div>
+    {% endif %}
+    <div class="card gpu-card mt-3">
+        <div class="card-header">
+            <div class='card-title'>{% if lan == 'cn' %} GPU 使用率 (%) {% else %} GPU Usage (%) {% endif %}</div>
+            <div class="card-actions btn-actions">
+                <a class="btn"  onclick="initGpuCharts()">
+                    <span class="spinner-border spinner-border-sm me-2" id="gpu_spinner" role="status" style="display: none;"></span>
+                    <svg id="gpu_refresh_logo" xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+                    {% if lan == 'cn' %} 刷新 {% else %} Refresh {% endif %}
+                </a>       
+                <a class="btn" id="gpu_png" style="margin-left: 10px;" onclick="screenshot('gpu-card','gpu.png')">
+                    <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                    {% if lan == 'cn' %} 保存图表 {% else %} ScreenShot {% endif %}
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="chart-gpu"></div>
+        </div>
+    </div>
+    <div class="card gpu-stats-card mt-3" id="gpu-stats-card" style="display: none;">
+        <div class="card-header">
+            <div class='card-title'>{% if lan == 'cn' %} GPU 频率 / 显存 / 带宽 {% else %} GPU Clock / Memory / Bandwidth {% endif %}</div>
+            <div class="card-actions btn-actions">
+                <span class="text-muted" id="gpu-stats-summary"></span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="chart-gpu-stats"></div>
+        </div>
+    </div>
+    <div class="card unity-stats-card mt-3" id="unity-stats-card" style="display: none;">
+        <div class="card-header">
+            <div class='card-title'>{% if lan == 'cn' %} Unity 引擎指标 {% else %} Unity Engine Metrics {% endif %}</div>
+            <div class="card-actions btn-actions">
+                <span class="text-muted" id="unity-stats-summary"></span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="chart-unity-stats"></div>
+            <div class="row mt-2">
+                <div class="col-md-6">
+                    <div class="text-muted small" id="unity-drawcalls-title">Draw Calls</div>
+                    <div id="chart-unity-drawcalls"></div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small" id="unity-geometry-title">
+                        {% if lan == 'cn' %}几何：三角面 / 顶点{% else %}Geometry: Triangles / Vertices{% endif %}
+                    </div>
+                    <div id="chart-unity-geometry"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card unity-correlation-card mt-3" id="unity-correlation-card" style="display: none;">
+        <div class="card-header">
+            <div class='card-title'>{% if lan == 'cn' %} 系统 CPU 与 Unity 指标对照 {% else %} System CPU vs Unity Metrics {% endif %}</div>
+            <div class="card-actions btn-actions">
+                <span class="text-muted" id="unity-correlation-summary"></span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="chart-unity-correlation"></div>
+        </div>
+    </div>
+    <div class="card unity-hotspots-card mt-3" id="unity-hotspots-card" style="display: none;">
+        <div class="card-header">
+            <div class='card-title'>{% if lan == 'cn' %} Unity 热点函数 {% else %} Unity Hotspots {% endif %}</div>
+            <div class="card-actions btn-actions unity-hotspot-toolbar">
+                <button type="button" class="btn btn-sm" id="unity-hotspot-prev" title="{% if lan == 'cn' %}上一帧{% else %}Previous frame{% endif %}">‹</button>
+                <input type="number" id="unity-hotspot-frame" class="form-control form-control-sm" style="width: 90px;" min="1" step="1">
+                <button type="button" class="btn btn-sm" id="unity-hotspot-next" title="{% if lan == 'cn' %}下一帧{% else %}Next frame{% endif %}">›</button>
+                <select id="unity-hotspot-thread" class="form-select form-select-sm" style="width: 190px;"></select>
+                <select id="unity-hotspot-sort" class="form-select form-select-sm" style="width: 130px;">
+                    <option value="total">Total</option>
+                    <option value="self">Self</option>
+                    <option value="calls">Calls</option>
+                    <option value="gc">GC Alloc</option>
+                </select>
+                <button type="button" class="btn btn-sm btn-primary" id="unity-hotspot-load">{% if lan == 'cn' %}加载{% else %}Load{% endif %}</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <ul class="nav nav-tabs" id="unity-hotspot-tabs">
+                <li class="nav-item"><a class="nav-link active" data-mode="timeline" href="#">Timeline</a></li>
+                <li class="nav-item"><a class="nav-link" data-mode="hierarchy" href="#">Hierarchy</a></li>
+                <li class="nav-item"><a class="nav-link" data-mode="raw" href="#">Raw Hierarchy</a></li>
+            </ul>
+            <div class="mt-2 small text-muted" id="unity-hotspot-status"></div>
+            <div class="unity-hotspot-scroll mt-2" id="unity-hotspot-timeline"></div>
+            <div class="unity-hotspot-scroll mt-2" id="unity-hotspot-hierarchy" style="display: none;"></div>
+            <div class="unity-hotspot-scroll mt-2" id="unity-hotspot-raw" style="display: none;"></div>
+        </div>
+    </div>
+    <div class="col-12 mt-3" id="unity-captures" style="display: none;">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">{% if lan == 'cn' %} Unity 采集文件（原始数据，未解析） {% else %} Unity Captures (raw, not parsed) {% endif %}</div>
+            </div>
+            <div class="card-body" id="unity-file-list"></div>
+        </div>
+    </div>
+    {% if apm_data.thermal_flag == True %}
+    <div class="card thermal-card mt-3">
+        <div class="card-header">
+            <div class='card-title'>{% if lan == 'cn' %} 温度传感器 (°C) {% else %} Thermal Sensor (°C) {% endif %}</div>
+            <div class="card-actions btn-actions">
+                <a class="btn" onclick="initThermalCharts()">
+                    <span class="spinner-border spinner-border-sm me-2" id="thermal_spinner" role="status" style="display: none;"></span>
+                    <svg id="thermal_refresh_logo" xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+                    {% if lan == 'cn' %} 刷新 {% else %} Refresh {% endif %}
+                </a>
+                <a class="btn" id="thermal_png" style="margin-left: 10px;" onclick="screenshot('thermal-card','thermal.png')">
+                    {% if lan == 'cn' %} 保存图表 {% else %} ScreenShot {% endif %}
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="chart-thermal"></div>
+        </div>
+    </div>
+    {% endif %}
+    {% if apm_data.disk_flag == True %}
+    <div class="card disk-card mt-3">
+        <div class="card-header">
+            <div class='card-title'>{% if lan == 'cn' %} 磁盘 (KB) {% else %} Disk Usage (KB) {% endif %}</div>
+            <div class="card-actions btn-actions">
+                <a class="btn" onclick="initDiskCharts()">
+                    <span class="spinner-border spinner-border-sm me-2" id="disk_spinner" role="status" style="display: none;"></span>
+                    <svg id="disk_refresh_logo" xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+                    {% if lan == 'cn' %} 刷新 {% else %} Refresh {% endif %}
+                </a>
+                <a class="btn" id="disk_png" style="margin-left: 10px;" onclick="screenshot('disk-card','disk.png')">
+                    <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                    {% if lan == 'cn' %} 保存图表 {% else %} ScreenShot {% endif %}
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="chart-disk"></div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% if platform == 'Android'%}
+<!-- Disk Usage -->
+<div class="row row-deck row-cards card-disk mb-3">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-body">
+              <p class="mb-3">{% if lan == 'cn' %}采集前磁盘占用{% else %}Using Storage (Initial Value){% endif %}</p>
+              <!-- <div class="progress progress-separated mb-3">
+                <div class="progress-bar bg-red" role="progressbar" style="width: 44%" aria-label="used"></div>
+                <div class="progress-bar bg-success" role="progressbar" style="width: 56%" aria-label="free"></div>
+              </div> -->
+              <div class="row">
+                <div class="col-auto d-flex align-items-center pe-2">
+                  <span class="legend me-2 bg-primary"></span>
+                  <span>{% if lan == 'cn' %}容量{% else %}Size{% endif %}</span>
+                  <span class="d-none d-md-inline d-lg-none d-xxl-inline ms-2 text-secondary">{{ sum_init_disk.sum_size }}G</span>
+                </div>
+                <div class="col-auto d-flex align-items-center px-2">
+                  <span class="legend me-2 bg-red"></span>
+                  <span>{% if lan == 'cn' %}已用{% else %}Used{% endif %}</span>
+                  <span class="d-none d-md-inline d-lg-none d-xxl-inline ms-2 text-secondary">{{ sum_init_disk.sum_used }}MB</span>
+                </div>
+                <div class="col-auto d-flex align-items-center px-2">
+                  <span class="legend me-2 bg-success"></span>
+                  <span>{% if lan == 'cn' %}可用{% else %}Free{% endif %}</span>
+                  <span class="d-none d-md-inline d-lg-none d-xxl-inline ms-2 text-secondary">{{ sum_init_disk.sum_free }}MB</span>
+                </div>
+              </div>
+            </div>
+          </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-body">
+              <p class="mb-3">{% if lan == 'cn' %}采集后磁盘占用{% else %}Using Storage (Current Value){% endif %}</p>
+              <div class="row">
+                <div class="col-auto d-flex align-items-center pe-2">
+                  <span class="legend me-2 bg-primary"></span>
+                  <span>{% if lan == 'cn' %}容量{% else %}Size{% endif %}</span>
+                  <span class="d-none d-md-inline d-lg-none d-xxl-inline ms-2 text-secondary">{{ sum_current_disk.sum_size }}G</span>
+                </div>
+                <div class="col-auto d-flex align-items-center px-2">
+                  <span class="legend me-2 bg-red"></span>
+                  <span>{% if lan == 'cn' %}已用{% else %}Used{% endif %}</span>
+                  <span class="d-none d-md-inline d-lg-none d-xxl-inline ms-2 text-secondary">{{ sum_current_disk.sum_used }}MB</span>
+                </div>
+                <div class="col-auto d-flex align-items-center px-2">
+                  <span class="legend me-2 bg-success"></span>
+                  <span>{% if lan == 'cn' %}可用{% else %}Free{% endif %}</span>
+                  <span class="d-none d-md-inline d-lg-none d-xxl-inline ms-2 text-secondary">{{ sum_current_disk.sum_free }}MB</span>
+                </div>
+              </div>
+            </div>
+          </div>
+    </div>
+</div>
+
+<div class="card card-disk initial-disk" id="disk_inital_value_table">
+    <div class="card-header">
+        <h3 class="card-title">
+            <svg t="1709257126539" style="margin-right: 10px;" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="20406" width="200" height="200"><path d="M885.3 957.3H140.7c-42.2 0-76.5-34.3-76.5-76.5V136.3c0-42.2 34.3-76.5 76.5-76.5h744.6c42.2 0 76.5 34.3 76.5 76.5v744.6c-0.1 42.1-34.3 76.4-76.5 76.4z m-744.6-851c-16.5 0-29.9 13.4-29.9 29.9v744.6c0 16.5 13.4 29.9 29.9 29.9h744.6c16.5 0 29.9-13.4 29.9-29.9V136.3c0-16.5-13.4-29.9-29.9-29.9H140.7z" fill="#2A68C9" p-id="20407"></path><path d="M938.5 315.8h-851V91.1c0-4.4 3.6-8 8-8h835c4.4 0 8 3.6 8 8v224.7z" fill="#2A68C9" p-id="20408"></path><path d="M961.7 339H64.3V136.3c0-42.2 34.3-76.5 76.5-76.5h744.6c42.2 0 76.5 34.3 76.5 76.5V339z m-850.9-46.5h804.4V136.3c0-16.5-13.4-29.9-29.9-29.9H140.7c-16.5 0-29.9 13.4-29.9 29.9v156.2z m827.7 352.3h-851c-12.9 0-23.3-10.4-23.3-23.3 0-12.8 10.4-23.3 23.3-23.3h851c12.9 0 23.3 10.4 23.3 23.3-0.1 12.9-10.5 23.3-23.3 23.3z" fill="#2A68C9" p-id="20409"></path><path d="M363.4 957.3c-12.9 0-23.3-10.4-23.3-23.3V315.8c0-12.8 10.4-23.3 23.3-23.3s23.3 10.4 23.3 23.3V934c0 12.9-10.4 23.3-23.3 23.3z m299.2 0c-12.9 0-23.3-10.4-23.3-23.3V315.8c0-12.8 10.4-23.3 23.3-23.3s23.3 10.4 23.3 23.3V934c0 12.9-10.5 23.3-23.3 23.3z" fill="#2A68C9" p-id="20410"></path></svg>
+            {% if lan == 'cn' %} 采集前 {% else %} Initial Value {% endif %}
+        </h3>
+        <div class="card-actions btn-actions">      
+            <a class="btn" id="initial_disk_png" style="margin-left: 10px;" onclick="screenshot('initial-disk','initial_disk.png')">
+                <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                {% if lan == 'cn' %} 保存图表 {% else %} ScreenShot {% endif %}
+            </a>
+        </div>
+    </div>
+    <div class="table-responsive" style="font-size: 15px;">
+        <table id="file_table" class="table card-table table-vcenter text-nowrap datatable">
+            <thead>
+            <tr>        
+                <th style="font-size: 13px;">{% if lan == 'cn' %}文件系统{% else %}Filesystem{% endif %}</th>
+                <th style="font-size: 13px;">{% if lan == 'cn' %}容量(KB){% else %}Size(KB){% endif %}</th>
+                <th style="font-size: 13px;">{% if lan == 'cn' %}已用(KB){% else %}Used(KB){% endif %}</th>
+                <th style="font-size: 13px;">{% if lan == 'cn' %}可用(KB){% else %}Avail(KB){% endif %}</th>
+                <th style="font-size: 13px;">{% if lan == 'cn' %}使用率(%){% else %}Use(%){% endif %}</th>
+                <th style="font-size: 13px;">{% if lan == 'cn' %}挂载点{% else %}Mounted on{% endif %}</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for disk in initial_disk %}
+            <tr>
+                <td>{{ disk.filesystem }}</td>
+                <td>{{ disk.blocks }}</td>
+                <td>{{ disk.used }}</td>
+                <td>{{ disk.available }}</td>
+                <td>{{ disk.use_percent }}</td>
+                <td>{{ disk.mounted }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="card mt-3 card-disk current-disk" id="disk_current_value_table">
+    <div class="card-header">
+        <h3 class="card-title">
+            <svg t="1709257126539" style="margin-right: 10px;" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="20406" width="200" height="200"><path d="M885.3 957.3H140.7c-42.2 0-76.5-34.3-76.5-76.5V136.3c0-42.2 34.3-76.5 76.5-76.5h744.6c42.2 0 76.5 34.3 76.5 76.5v744.6c-0.1 42.1-34.3 76.4-76.5 76.4z m-744.6-851c-16.5 0-29.9 13.4-29.9 29.9v744.6c0 16.5 13.4 29.9 29.9 29.9h744.6c16.5 0 29.9-13.4 29.9-29.9V136.3c0-16.5-13.4-29.9-29.9-29.9H140.7z" fill="#2A68C9" p-id="20407"></path><path d="M938.5 315.8h-851V91.1c0-4.4 3.6-8 8-8h835c4.4 0 8 3.6 8 8v224.7z" fill="#2A68C9" p-id="20408"></path><path d="M961.7 339H64.3V136.3c0-42.2 34.3-76.5 76.5-76.5h744.6c42.2 0 76.5 34.3 76.5 76.5V339z m-850.9-46.5h804.4V136.3c0-16.5-13.4-29.9-29.9-29.9H140.7c-16.5 0-29.9 13.4-29.9 29.9v156.2z m827.7 352.3h-851c-12.9 0-23.3-10.4-23.3-23.3 0-12.8 10.4-23.3 23.3-23.3h851c12.9 0 23.3 10.4 23.3 23.3-0.1 12.9-10.5 23.3-23.3 23.3z" fill="#2A68C9" p-id="20409"></path><path d="M363.4 957.3c-12.9 0-23.3-10.4-23.3-23.3V315.8c0-12.8 10.4-23.3 23.3-23.3s23.3 10.4 23.3 23.3V934c0 12.9-10.4 23.3-23.3 23.3z m299.2 0c-12.9 0-23.3-10.4-23.3-23.3V315.8c0-12.8 10.4-23.3 23.3-23.3s23.3 10.4 23.3 23.3V934c0 12.9-10.5 23.3-23.3 23.3z" fill="#2A68C9" p-id="20410"></path></svg>
+            {% if lan == 'cn' %} 采集后 {% else %} Current Value {% endif %}
+        </h3>
+        <div class="card-actions btn-actions">      
+            <a class="btn" id="initial_disk_png" style="margin-left: 10px;" onclick="screenshot('current-disk','current_disk.png')">
+                <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                {% if lan == 'cn' %} 保存图表 {% else %} ScreenShot {% endif %}
+            </a>
+        </div>
+    </div>
+    <div class="table-responsive" style="font-size: 15px;">
+        <table id="file_table" class="table card-table table-vcenter text-nowrap datatable">
+            <thead>
+            <tr>        
+                <th style="font-size: 13px;">{% if lan == 'cn' %}文件系统{% else %}Filesystem{% endif %}</th>
+                <th style="font-size: 13px;">{% if lan == 'cn' %}容量(KB){% else %}Size(KB){% endif %}</th>
+                <th style="font-size: 13px;">{% if lan == 'cn' %}已用(KB){% else %}Used(KB){% endif %}</th>
+                <th style="font-size: 13px;">{% if lan == 'cn' %}可用(KB){% else %}Avail(KB){% endif %}</th>
+                <th style="font-size: 13px;">{% if lan == 'cn' %}使用率(%){% else %}Use(%){% endif %}</th>
+                <th style="font-size: 13px;">{% if lan == 'cn' %}挂载点{% else %}Mounted on{% endif %}</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for disk in current_disk %}
+            <tr>
+                <td>{{ disk.filesystem }}</td>
+                <td>{{ disk.blocks }}</td>
+                <td>{{ disk.used }}</td>
+                <td>{{ disk.available }}</td>
+                <td>{{ disk.use_percent }}</td>
+                <td>{{ disk.mounted }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if apm_data.thermal_flag  %}
+<div class="row row-cards">
+<div class="col-lg-6">
+<div class="card card-thermal initial-thermal" id="thermal_inital_value_table">
+    <div class="card-header">
+        <h3 class="card-title">
+            <svg t="1709257126539" style="margin-right: 10px;" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="20406" width="200" height="200"><path d="M885.3 957.3H140.7c-42.2 0-76.5-34.3-76.5-76.5V136.3c0-42.2 34.3-76.5 76.5-76.5h744.6c42.2 0 76.5 34.3 76.5 76.5v744.6c-0.1 42.1-34.3 76.4-76.5 76.4z m-744.6-851c-16.5 0-29.9 13.4-29.9 29.9v744.6c0 16.5 13.4 29.9 29.9 29.9h744.6c16.5 0 29.9-13.4 29.9-29.9V136.3c0-16.5-13.4-29.9-29.9-29.9H140.7z" fill="#2A68C9" p-id="20407"></path><path d="M938.5 315.8h-851V91.1c0-4.4 3.6-8 8-8h835c4.4 0 8 3.6 8 8v224.7z" fill="#2A68C9" p-id="20408"></path><path d="M961.7 339H64.3V136.3c0-42.2 34.3-76.5 76.5-76.5h744.6c42.2 0 76.5 34.3 76.5 76.5V339z m-850.9-46.5h804.4V136.3c0-16.5-13.4-29.9-29.9-29.9H140.7c-16.5 0-29.9 13.4-29.9 29.9v156.2z m827.7 352.3h-851c-12.9 0-23.3-10.4-23.3-23.3 0-12.8 10.4-23.3 23.3-23.3h851c12.9 0 23.3 10.4 23.3 23.3-0.1 12.9-10.5 23.3-23.3 23.3z" fill="#2A68C9" p-id="20409"></path><path d="M363.4 957.3c-12.9 0-23.3-10.4-23.3-23.3V315.8c0-12.8 10.4-23.3 23.3-23.3s23.3 10.4 23.3 23.3V934c0 12.9-10.4 23.3-23.3 23.3z m299.2 0c-12.9 0-23.3-10.4-23.3-23.3V315.8c0-12.8 10.4-23.3 23.3-23.3s23.3 10.4 23.3 23.3V934c0 12.9-10.5 23.3-23.3 23.3z" fill="#2A68C9" p-id="20410"></path></svg>
+            {% if lan == 'cn' %} 采集前 {% else %} Initial Value {% endif %}
+        </h3>
+        <div class="card-actions btn-actions">      
+            <a class="btn" id="initial_thermal_png" style="margin-left: 10px;" onclick="screenshot('initial-thermal','initial_thermal.png')">
+                <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                {% if lan == 'cn' %} 保存图表 {% else %} ScreenShot {% endif %}
+            </a>
+        </div>
+    </div>
+    <div class="table-responsive" style="font-size: 15px;">
+        <table class="table card-table table-vcenter text-nowrap datatable">
+            <thead>
+            <tr>        
+                <th style="font-size: 13px;">{% if lan == 'cn' %}温度传感器{% else %}Thermal Sensor{% endif %}</th>
+                <th style="font-size: 13px;">{% if lan == 'cn' %}温度(/1000 °C){% else %}Themp(/1000 °C){% endif %}</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for thermal in apm_data.init_thermal_temp %}
+            <tr>
+                <td>{{ thermal.type }}</td>
+                <td>{{ thermal.temp }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+<div class="col-lg-6">
+    <div class="card card-thermal current-thermal" id="thermal_current_value_table">
+        <div class="card-header">
+            <h3 class="card-title">
+                <svg t="1709257126539" style="margin-right: 10px;" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="20406" width="200" height="200"><path d="M885.3 957.3H140.7c-42.2 0-76.5-34.3-76.5-76.5V136.3c0-42.2 34.3-76.5 76.5-76.5h744.6c42.2 0 76.5 34.3 76.5 76.5v744.6c-0.1 42.1-34.3 76.4-76.5 76.4z m-744.6-851c-16.5 0-29.9 13.4-29.9 29.9v744.6c0 16.5 13.4 29.9 29.9 29.9h744.6c16.5 0 29.9-13.4 29.9-29.9V136.3c0-16.5-13.4-29.9-29.9-29.9H140.7z" fill="#2A68C9" p-id="20407"></path><path d="M938.5 315.8h-851V91.1c0-4.4 3.6-8 8-8h835c4.4 0 8 3.6 8 8v224.7z" fill="#2A68C9" p-id="20408"></path><path d="M961.7 339H64.3V136.3c0-42.2 34.3-76.5 76.5-76.5h744.6c42.2 0 76.5 34.3 76.5 76.5V339z m-850.9-46.5h804.4V136.3c0-16.5-13.4-29.9-29.9-29.9H140.7c-16.5 0-29.9 13.4-29.9 29.9v156.2z m827.7 352.3h-851c-12.9 0-23.3-10.4-23.3-23.3 0-12.8 10.4-23.3 23.3-23.3h851c12.9 0 23.3 10.4 23.3 23.3-0.1 12.9-10.5 23.3-23.3 23.3z" fill="#2A68C9" p-id="20409"></path><path d="M363.4 957.3c-12.9 0-23.3-10.4-23.3-23.3V315.8c0-12.8 10.4-23.3 23.3-23.3s23.3 10.4 23.3 23.3V934c0 12.9-10.4 23.3-23.3 23.3z m299.2 0c-12.9 0-23.3-10.4-23.3-23.3V315.8c0-12.8 10.4-23.3 23.3-23.3s23.3 10.4 23.3 23.3V934c0 12.9-10.5 23.3-23.3 23.3z" fill="#2A68C9" p-id="20410"></path></svg>
+                {% if lan == 'cn' %} 采集后 {% else %} Current Value {% endif %}
+            </h3>
+            <div class="card-actions btn-actions">      
+                <a class="btn" id="current_thermal_png" style="margin-left: 10px;" onclick="screenshot('current-thermal','current_thermal.png')">
+                    <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
+                    {% if lan == 'cn' %} 保存图表 {% else %} ScreenShot {% endif %}
+                </a>
+            </div>
+        </div>
+        <div class="table-responsive" style="font-size: 15px;">
+            <table class="table card-table table-vcenter text-nowrap datatable">
+                <thead>
+                <tr>        
+                    <th style="font-size: 13px;">{% if lan == 'cn' %}温度传感器{% else %}Thermal Sensor{% endif %}</th>
+                    <th style="font-size: 13px;">{% if lan == 'cn' %}温度(/1000 °C){% else %}Themp(/1000 °C){% endif %}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for thermal in apm_data.current_thermal_temp %}
+                <tr>
+                    <td>{{ thermal.type }}</td>
+                    <td>{{ thermal.temp }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</div>
+{% endif %}
+
+<div class="modal modal-blur fade" id="modal-compare" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% if lan == 'cn' %} 对比分析 {% else %} Compare {% endif %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="api_content">
+                            <div class="col apiform">
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        {% if lan == 'cn' %} 场景 {% else %} Scene {% endif %}
+                                    </span>
+                                    {% if lan == 'cn' %}
+                                    <select  class="select-scene select2-selection--single" data-placeholder="选择场景">
+                                        <option></option>
+                                        {% for scene in filter_dir %}
+                                        <option>{{ scene }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    {% else %}
+                                    <select  class="select-scene select2-selection--single" data-placeholder="Please select a scene">
+                                        <option></option>
+                                        {% for scene in filter_dir %}
+                                        <option>{{ scene }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancel</a>
+                <a onclick="compare()" class="btn ms-auto">
+                    <svg t="1682562949101" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="20010" width="50" height="50"><path d="M478.976 428.6976h372.8896c36.096 0 65.3312-29.2352 65.3312-65.3312V169.3696c0-36.096-29.2352-65.3312-65.3312-65.3312H478.976c-36.096 0-65.3312 29.2352-65.3312 65.3312v193.9968c0 36.0448 29.2352 65.3312 65.3312 65.3312zM533.6064 609.1776H160.7168c-36.096 0-65.3312 29.2352-65.3312 65.3312v193.9968c0 36.096 29.2352 65.3312 65.3312 65.3312h372.8896c36.096 0 65.3312-29.2352 65.3312-65.3312v-193.9968c0-36.096-29.2352-65.3312-65.3312-65.3312zM952.1152 550.5024l-76.4416-79.0016a43.4176 43.4176 0 0 0-57.856-4.096l-84.5824 65.8432a43.37664 43.37664 0 0 0-7.5776 60.928c14.7456 18.8928 41.984 22.3232 60.928 7.5776l9.3184-7.2704c-0.9728 8.2432-2.4576 16.8448-4.5568 25.6512-15.9744 65.6896-60.8256 112.5376-133.376 139.3664-22.4768 8.2944-33.9968 33.28-25.7024 55.7568 6.4512 17.5104 23.0912 28.3648 40.7552 28.3648 5.0176 0 10.0864-0.8704 15.0528-2.7136 135.5264-50.0736 184.2176-151.1424 194.816-237.1072l6.8608 7.0656a43.25888 43.25888 0 0 0 31.232 13.2096c10.8544 0 21.76-4.0448 30.1568-12.1856 17.152-16.64 17.6128-44.1344 0.9728-61.3888zM189.44 578.5088c10.752 0 21.504-3.9936 29.8496-11.8784l77.824-73.6768c17.408-16.4864 18.176-43.9808 1.6896-61.3888-16.4864-17.408-43.9808-18.176-61.3888-1.6896l-8.6016 8.1408c0.2048-8.2944 0.8192-16.9984 2.0992-25.9584 9.5232-66.9184 49.664-117.9136 119.2448-151.6032 21.6064-10.4448 30.6176-36.4032 20.1728-58.0096-10.4448-21.6064-36.4032-30.6176-58.0096-20.1728-130.048 62.976-168.7552 168.3456-170.9568 254.9248l-7.4752-6.4a43.39712 43.39712 0 1 0-56.2688 66.0992l83.712 71.2192a42.98752 42.98752 0 0 0 28.1088 10.3936z" fill="#2595E8" p-id="20011"></path><path d="M883.2 112.0256a65.28 65.28 0 0 0-31.2832-7.9872H478.976c-36.096 0-65.3312 29.2352-65.3312 65.3312v193.9968c0 36.096 29.2352 65.3312 65.3312 65.3312h372.8896a65.024 65.024 0 0 0 40.704-14.2848c9.216-42.7008 14.1824-86.9376 14.1824-132.4032 0.0512-58.9824-8.2944-115.9168-23.552-169.984zM657.92 759.5008c-17.8176 6.5536-28.672 23.6032-28.3136 41.5744 33.28-22.3232 64.3072-47.7696 92.6208-75.8784-18.2272 13.6704-39.6288 25.1392-64.3072 34.304zM771.7376 669.6448c46.08-58.112 82.0736-124.5696 105.2672-196.8128l-1.28-1.3312a43.4176 43.4176 0 0 0-57.856-4.096l-84.5824 65.8432a43.37664 43.37664 0 0 0-7.5776 60.928c14.7456 18.8928 41.984 22.3232 60.928 7.5776l9.3184-7.2704c-0.9728 8.2432-2.4576 16.8448-4.608 25.6512-4.4032 17.92-10.9568 34.4064-19.6096 49.5104zM533.6064 609.1776H160.7168c-36.096 0-65.3312 29.2352-65.3312 65.3312v193.9968c0 3.3792 0.3584 6.656 0.8192 9.8816 58.7776 18.3296 121.2416 28.16 186.0096 28.16 115.6096 0 223.8464-31.5392 316.7232-86.3232v-145.7152c0-36.096-29.2352-65.3312-65.3312-65.3312z" fill="#3A9CED" p-id="20012"></path><path d="M734.208 104.0384H478.976c-36.096 0-65.3312 29.2352-65.3312 65.3312v193.9968c0 36.096 29.2352 65.3312 65.3312 65.3312h136.5504c67.5328-92.2624 110.2848-203.6736 118.6816-324.6592zM95.3856 684.3392c5.3248 0.1536 10.6496 0.4096 16.0256 0.4096 107.9296 0 209.408-27.392 297.984-75.52H160.7168c-36.096 0-65.3312 29.2352-65.3312 65.3312v9.7792z" fill="#59ADF8" p-id="20013"></path><path d="M312.32 182.3232C183.296 244.736 144.2304 348.928 141.4656 435.1488c31.8976-9.984 62.5664-22.5792 92.0576-37.3248C246.4768 337.92 285.6448 291.7376 350.1568 260.5056c21.6064-10.4448 30.6176-36.4032 20.1728-58.0096-10.4448-21.6064-36.4544-30.6176-58.0096-20.1728zM72.6528 435.712c-4.608 5.4272-7.4752 11.7248-9.0112 18.2272 25.9072-4.5568 51.3024-10.5472 75.9808-18.2272l-5.7856-4.9152c-18.2272-15.5136-45.6192-13.312-61.184 4.9152zM519.8848 104.0384h-40.9088c-36.096 0-65.3312 29.2352-65.3312 65.3312V262.144a624.7936 624.7936 0 0 0 106.24-158.1056z" fill="#6BC2FC" p-id="20014"></path></svg>
+                    {% if lan == 'cn' %} 开始对比 {% else %} Compare {% endif %}
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+    // Global chart instances for sync access
+    window.chartInstances = {};
+ 
+    $(document).ready(function() {
+        chartsClick()
+        initCpuCharts()
+        initMemoryCharts()
+        initFpsCharts()
+        initBatteryCharts()
+        initNetworkCharts()
+        if('{{ apm_data.file_io_flag }}' == 'True' ){
+            initFileIOCharts()
+        }
+        initGpuCharts()
+        initGpuStatsCharts()
+        initUnityStatsCharts()
+        initUnityCorrelationCharts()
+        initUnityHotspots()
+        initUnityCaptures()
+        if('{{ apm_data.thermal_flag }}' == 'True' ){
+            initThermalCharts()
+        }
+        if('{{ apm_data.mem_detail_flag }}' == 'True' ){
+            initMemoryDetailCharts()
+        }
+        if('{{ apm_data.cpu_core_flag }}' == 'True' ){
+            console.log('test')
+            initCpuCoreCharts()
+        }
+        if('{{ apm_data.disk_flag }}' == 'True' ){
+            initDiskCharts()
+        }
+    });
+    
+    function chartsClick(){
+        var chart_cards = document.getElementById('card-chart')
+        chart_cards.style.display = 'block'
+        $('.card-disk').hide()
+        $('.card-thermal').hide()
+    }
+
+    function diskClick(){
+        $('#card-chart').hide()
+        $('.card-disk').show()
+        $('.card-thermal').hide()
+    }
+
+    function thermalClick(){
+        $('#card-chart').hide()
+        $('.card-disk').hide()
+        $('.card-thermal').show()
+    }
+
+    function compare(){
+        let lan = '{{ lan }}';
+        let platform = '{{ platform }}';
+        let app = '{{ app }}';
+        let scene1 = '{{ scene }}';
+        let scene2 = $('.select-scene').val();
+        if(scene2){
+            window.location.href = '/compare_analysis?app=' + app + '&scene1=' + scene1 + '&scene2=' + scene2 + 
+            '&platform=' + platform + '&lan=' + lan
+        }else{
+            SwalFire('error', lan == 'cn' ? '请选择场景' : 'Scene is empty', '', 2000);
+        }
+    }
+
+    function saveHtml(platform, scene){
+        if(platform=='Android'){
+            saveAndroidHtml(scene)
+        }else{
+            saveiOSHtml(scene)
+        }
+    }
+
+    function saveAndroidHtml(scene){
+        $.ajax({
+            url: "/apm/export/html/android",
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene: scene,
+                cpu_app:'{{ apm_data.cpuAppRate }}',
+                cpu_sys:'{{ apm_data.cpuSystemRate }}',
+                mem_total:'{{ apm_data.totalPassAvg }}',
+                mem_peak:'{{ apm_data.totalPassPeak }}',
+                mem_swap:'{{ apm_data.swapPassAvg }}',
+                fps:'{{ apm_data.fps }}',
+                frame_stability:'{{ apm_data.frameStability }}',
+                jank:'{{ apm_data.jank }}',
+                level:'{{ apm_data.batteryLevel }}',
+                temperature:'{{ apm_data.batteryTeml }}',
+                net_send:'{{ apm_data.flow_send }}',
+                net_recv:'{{ apm_data.flow_recv }}',
+                file_read:'{{ apm_data.file_read }}',
+                file_write:'{{ apm_data.file_write }}',
+                thermal_cpu_avg:'{{ apm_data.thermalCpuAvg|default(0) }}',
+                thermal_gpu_avg:'{{ apm_data.thermalGpuAvg|default(0) }}',
+                gpu:'{{ apm_data.gpu }}',
+            },
+            beforeSend: function () {
+                SwalLoading(uiText('正在保存 HTML', 'Save Html'), uiText('正在生成 HTML 文件...', 'Saving html.'))
+            },
+            success: function (data) {
+                if(data['status']  == 1 ){
+                    SwalFire('success', uiText('保存成功', 'Save successuly !'), data['path'], 5000);
+                }else{
+                    SwalFire('error', uiText('保存失败', 'Save failed !'), data['msg'], 2000);
+                }
+            }
+        });
+    }
+
+    function saveiOSHtml(scene){
+        $.ajax({
+            url: "/apm/export/html/ios",
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene: scene,
+                cpu_app:'{{ apm_data.cpuAppRate }}',
+                cpu_sys:'{{ apm_data.cpuSystemRate }}',
+                gpu:'{{ apm_data.gpu }}',
+                mem_total:'{{ apm_data.totalPassAvg }}',
+                mem_peak:'{{ apm_data.totalPassPeak }}',
+                fps:'{{ apm_data.fps }}',
+                frame_stability:'{{ apm_data.frameStability }}',
+                temperature:'{{ apm_data.batteryTeml }}',
+                current:'{{ apm_data.batteryCurrent }}',
+                voltage:'{{ apm_data.batteryVoltage }}',
+                power:'{{ apm_data.batteryPower }}',
+                net_send:'{{ apm_data.flow_send }}',
+                net_recv:'{{ apm_data.flow_recv }}'
+            },
+            beforeSend: function () {
+                SwalLoading(uiText('正在保存 HTML', 'Save Html'), uiText('正在生成 HTML 文件...', 'Saving html.'))
+            },
+            success: function (data) {
+                if(data['status']  == 1 ){
+                    SwalFire('success', uiText('保存成功', 'Save successuly !'), data['path'], 5000);
+                }else{
+                    SwalFire('error', uiText('保存失败', 'Save failed !'), data['msg'], 2000);
+                }
+            }
+        });
+    }
+
+    function formatSecondsToTime(seconds) {
+        if (seconds === null || seconds === undefined || isNaN(seconds)) return '0:00';
+        const totalSeconds = Math.round(seconds);
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        return mins + ':' + (secs < 10 ? '0' : '') + secs;
+    }
+
+    window.getChartPlotBounds = (chartInstance) => {
+        if (!chartInstance?.w) return null;
+        const globals = chartInstance.w.globals;
+        const chartEl = chartInstance.el;
+        if (!globals?.gridWidth || !chartEl) return null;
+
+        const svg = chartEl.querySelector('svg');
+        if (!svg) return null;
+
+        const svgRect = svg.getBoundingClientRect();
+        const chartRect = chartEl.getBoundingClientRect();
+
+        return {
+            left: globals.translateX + (svgRect.left - chartRect.left),
+            top: globals.translateY + (svgRect.top - chartRect.top),
+            width: globals.gridWidth,
+            height: globals.gridHeight,
+            minX: globals.minX || 0,
+            maxX: globals.maxX || 0
+        };
+    };
+
+    function options(type, dataLabels = false) {
+        return {
+            chart: {
+                type: type,
+                fontFamily: 'inherit',
+                height: 240,
+                parentHeightOffset: 0,
+                toolbar: { show: false },
+                animations: { enabled: false },
+                zoom: { enabled: false },
+                selection: { enabled: false }
+            },
+            dataLabels: { enabled: dataLabels },
+            fill: { opacity: 1 },
+            stroke: {
+                width: 2,
+                lineCap: "round",
+                curve: "smooth"
+            },
+            series: [],
+            grid: {
+                padding: { top: -20, bottom: -4 },
+                strokeDashArray: 4
+            },
+            xaxis: {
+                type: 'numeric',
+                tickAmount: 6,
+                labels: {
+                    rotate: 0,
+                    formatter: val => formatSecondsToTime(val)
+                },
+                crosshairs: { show: false }
+            },
+            tooltip: { enabled: false }
+        };
+    }
+
+    function hasChartData(seriesList) {
+        return (seriesList || []).some(function(series) {
+            return Array.isArray(series.data) && series.data.length > 0;
+        });
+    }
+
+    function updateChartSeries(chart, cardSelector, seriesList) {
+        if (!hasChartData(seriesList)) {
+            $(cardSelector).hide();
+            chart.updateSeries([]);
+            return false;
+        }
+        $(cardSelector).show();
+        chart.updateSeries(seriesList);
+        return true;
+    }
+
+    function initCpuCharts(){
+        var cpu_chart = new ApexCharts(document.querySelector("#chart-cpu"), options('line'));
+        cpu_chart.render();
+        window.chartInstances.cpu = cpu_chart;
+        $.ajax({
+            url: '/apm/log',
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene:'{{ scene }}',
+                target:'cpu',
+                platform:platform
+            },
+            beforeSend: function () {
+                $('#cpu_spinner').show()
+                $('#cpu_refresh_logo').hide()
+            },
+            complete: function () {
+                $('#cpu_spinner').hide()
+                $('#cpu_refresh_logo').show()
+            },
+            success: function (data) {
+                updateChartSeries(cpu_chart, '.cpu-card', [{
+                    name: lan == 'cn' ? '应用' : 'app',
+                    data: data['cpuAppData']
+                },{
+                    name: lan == 'cn' ? '整机' : 'total',
+                    data: data['cpuSysData']
+                }])
+            }
+        });
+    }
+
+    function initBatteryCharts(){
+        var battery_chart = new ApexCharts(document.querySelector("#chart-battery"), options('line'));
+        battery_chart.render();
+        window.chartInstances.battery = battery_chart;
+        $.ajax({
+            url: '/apm/log',
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene:'{{ scene }}',
+                target:'battery',
+                platform:platform
+            },
+            beforeSend: function () {
+                $('#battery_spinner').show()
+                $('#battery_refresh_logo').hide()
+            },
+            complete: function () {
+                $('#battery_spinner').hide()
+                $('#battery_refresh_logo').show()
+            },
+            success: function (data) {
+                var seriesList = [];
+                if(platform == 'Android'){
+                    seriesList = [{
+                        name: lan == 'cn' ? '电量 (%)' : 'level(%)',
+                        data: data['batteryLevel']
+                    },{
+                        name: lan == 'cn' ? '温度 (°C)' : 'temperature(­°C)',
+                        data: data['batteryTem']
+                    }];
+                }else {
+                    seriesList = [{
+                        name: lan == 'cn' ? '温度' : 'temperature',
+                        data: data['batteryTem']
+                    },{
+                        name: lan == 'cn' ? '电流' : 'Current',
+                        data: data['batteryCurrent']
+                    },{
+                        name: lan == 'cn' ? '电压' : 'Voltage',
+                        data: data['batteryVoltage']
+                    },{
+                        name: lan == 'cn' ? '功耗' : 'Power',
+                        data: data['batteryPower']
+                    }];
+                }
+                updateChartSeries(battery_chart, '.battery-card', seriesList)
+            }
+        });
+    }
+
+    function initFpsCharts(){
+        var fps_chart = new ApexCharts(document.querySelector("#chart-fps"), options('line'));
+        fps_chart.render();
+        window.chartInstances.fps = fps_chart;
+        $.ajax({
+            url: '/apm/log',
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene:'{{ scene }}',
+                target:'fps',
+                platform:platform
+            },
+            beforeSend: function () {
+                $('#fps_spinner').show()
+                $('#fps_refresh_logo').hide()
+            },
+            complete: function () {
+                $('#fps_spinner').hide()
+                $('#fps_refresh_logo').show()
+            },
+            success: function (data) {
+                var seriesList = [];
+                if(platform == 'Android'){
+                    seriesList = [{
+                        name: 'FPS',
+                        data: data['fps']
+                    },{
+                        name: lan == 'cn' ? '卡顿' : 'jank',
+                        data: data['jank']
+                    }];
+                }else{
+                    seriesList = [{
+                        name: 'FPS',
+                        data: data['fps']
+                    }];
+                }
+                updateChartSeries(fps_chart, '.fps-card', seriesList)
+            }
+        });
+    }
+
+    function initGpuCharts(){
+        var gpu_chart = new ApexCharts(document.querySelector("#chart-gpu"), options('line'));
+        gpu_chart.render();
+        window.chartInstances.gpu = gpu_chart;
+        $.ajax({
+            url: '/apm/log',
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene:'{{ scene }}',
+                target:'gpu',
+                platform:platform
+            },
+            beforeSend: function () {
+                $('#gpu_spinner').show()
+                $('#gpu_refresh_logo').hide()
+            },
+            complete: function () {
+                $('#gpu_spinner').hide()
+                $('#gpu_refresh_logo').show()
+            },
+            success: function (data) {
+                updateChartSeries(gpu_chart, '.gpu-card', [{
+                    name: 'GPU',
+                    data: data['gpu']
+                }])
+            }
+        });
+    }    
+
+    function initGpuStatsCharts(){
+        var gpuStatsOptions = options('line');
+        gpuStatsOptions.yaxis = [
+            { seriesName: ['Clock (MHz)', 'Bus (MHz)', 'Memory (MB)'], title: { text: 'MHz / MB' } },
+            { seriesName: ['Read (MB/frame)', 'Write (MB/frame)'], opposite: true, title: { text: 'MB/frame' } }
+        ];
+        var gpu_stats_chart = new ApexCharts(
+            document.querySelector("#chart-gpu-stats"), gpuStatsOptions
+        );
+        gpu_stats_chart.render();
+        window.chartInstances.gpu_stats = gpu_stats_chart;
+        $.ajax({
+            url: '/apm/log',
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene:'{{ scene }}',
+                target:'gpu_stats',
+                platform:platform
+            },
+            success: function (data) {
+                if(!data || data['status'] != 1){ return }
+                var charts = data['charts'] || {};
+                var avg = data['avg'] || {};
+                var show = function (key) { return avg[key] !== undefined ? avg[key] : '-' };
+                var series = [{
+                    name: 'Clock (MHz)',
+                    data: charts['gpu_clock'] || []
+                }, {
+                    name: 'Bus (MHz)',
+                    data: charts['gpu_bus'] || []
+                }, {
+                    name: 'Memory (MB)',
+                    data: charts['gpu_mem_app'] || charts['gpu_mem_total'] || []
+                }, {
+                    name: 'Read (MB/frame)',
+                    data: charts['gpu_bw_read_frame'] || []
+                }, {
+                    name: 'Write (MB/frame)',
+                    data: charts['gpu_bw_write_frame'] || []
+                }];
+                if(!updateChartSeries(gpu_stats_chart, '.gpu-stats-card', series)){
+                    return
+                }
+                $('#gpu-stats-summary').text(
+                    'Temp: ' + show('gpu_temp')
+                    + ' | Read: ' + show('gpu_bw_read_frame')
+                    + ' | Write: ' + show('gpu_bw_write_frame') + ' MB/frame'
+                );
+            }
+        });
+    }
+
+    function initUnityCaptures(){
+        $.ajax({
+            url: '/apm/unity/files',
+            type: "GET",
+            cache: false,
+            data: { scene: '{{ scene }}' },
+            success: function (data) {
+                if(!data || !data['files'] || data['files'].length === 0){
+                    return
+                }
+                var html = '';
+                data['files'].forEach(function (item) {
+                    html += '<div class="mb-2"><a href="/apm/unity/download?scene='
+                        + encodeURIComponent('{{ scene }}') + '&file=' + encodeURIComponent(item['name'])
+                        + '">' + item['name'] + '</a>'
+                        + ' <span class="text-muted">(' + unitySize(item['size']) + ')</span></div>';
+                });
+                $('#unity-file-list').html(html);
+                $('#unity-captures').show();
+            }
+        });
+    }
+
+    function unitySize(bytes){
+        if(bytes >= 1024 * 1024){
+            return Math.round(bytes / 1024 / 1024 * 100) / 100 + ' MB';
+        }
+        return Math.round(bytes / 1024 * 100) / 100 + ' KB';
+    }
+
+    function initUnityStatsCharts(){
+        var unityStatsOptions = options('line');
+        unityStatsOptions.yaxis = [{
+            min: 0,
+            title: { text: 'ms' }
+        }];
+        unityStatsOptions.stroke = { width: 2, lineCap: 'round', curve: 'straight' };
+        unityStatsOptions.markers = {
+            size: 3,
+            strokeWidth: 0,
+            hover: { size: 6 }
+        };
+        unityStatsOptions.tooltip = {
+            enabled: true,
+            shared: true,
+            intersect: false,
+            y: {
+                formatter: function(value, opts) {
+                    var name = (opts && opts.w && opts.w.globals && opts.w.globals.seriesNames)
+                        ? (opts.w.globals.seriesNames[opts.seriesIndex] || '')
+                        : '';
+                    if (name.indexOf('Frame') >= 0) return value.toFixed(2) + ' ms';
+                    return Math.round(value).toLocaleString();
+                }
+            }
+        };
+        var unity_stats_chart = new ApexCharts(
+            document.querySelector("#chart-unity-stats"), unityStatsOptions
+        );
+        unity_stats_chart.render();
+        window.chartInstances.unity_stats = unity_stats_chart;
+        var unityChartElement = document.querySelector('#chart-unity-stats');
+        if (unityChartElement && !unityChartElement.__unityStatsClickBound) {
+            // Capture phase: ApexCharts' SVG/tooltip layer can swallow the
+            // bubbled click, so read the mouse position before it does.
+            unityChartElement.addEventListener('click', unityStatsChartClick, true);
+            unityChartElement.__unityStatsClickBound = true;
+        }
+
+        var drawCallsOptions = options('line');
+        drawCallsOptions.chart.height = 180;
+        drawCallsOptions.yaxis = [{
+            min: 0,
+            title: { text: 'Draw Calls' },
+            labels: {
+                formatter: function(value) { return Math.round(value).toLocaleString(); }
+            }
+        }];
+        drawCallsOptions.stroke = { width: 2, lineCap: 'round', curve: 'straight' };
+        drawCallsOptions.markers = { size: 3, strokeWidth: 0, hover: { size: 6 } };
+        drawCallsOptions.tooltip = {
+            enabled: true, shared: true, intersect: false,
+            y: {
+                formatter: function(value) {
+                    return Math.round(value).toLocaleString();
+                }
+            }
+        };
+        var unity_drawcalls_chart = new ApexCharts(
+            document.querySelector('#chart-unity-drawcalls'), drawCallsOptions
+        );
+        unity_drawcalls_chart.render();
+        window.chartInstances.unity_drawcalls = unity_drawcalls_chart;
+        var drawCallsElement = document.querySelector('#chart-unity-drawcalls');
+        if (drawCallsElement && !drawCallsElement.__unityStatsClickBound) {
+            drawCallsElement.addEventListener('click', unityDrawCallsChartClick, true);
+            drawCallsElement.__unityStatsClickBound = true;
+        }
+
+        var geometryOptions = options('line');
+        geometryOptions.chart.height = 180;
+        geometryOptions.yaxis = [{
+            min: 0,
+            title: { text: 'Count' },
+            labels: {
+                formatter: function(value) { return Math.round(value).toLocaleString(); }
+            }
+        }];
+        geometryOptions.stroke = { width: 2, lineCap: 'round', curve: 'straight' };
+        geometryOptions.markers = {
+            size: 3,
+            strokeWidth: 0,
+            hover: { size: 6 }
+        };
+        geometryOptions.tooltip = {
+            enabled: true,
+            shared: true,
+            intersect: false,
+            y: {
+                formatter: function(value) {
+                    return Math.round(value).toLocaleString();
+                }
+            }
+        };
+        var unity_geometry_chart = new ApexCharts(
+            document.querySelector('#chart-unity-geometry'), geometryOptions
+        );
+        unity_geometry_chart.render();
+        window.chartInstances.unity_geometry = unity_geometry_chart;
+        var geometryChartElement = document.querySelector('#chart-unity-geometry');
+        if (geometryChartElement && !geometryChartElement.__unityStatsClickBound) {
+            geometryChartElement.addEventListener('click', unityGeometryChartClick, true);
+            geometryChartElement.__unityStatsClickBound = true;
+        }
+        $.ajax({
+            url: '/apm/log',
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene:'{{ scene }}',
+                target:'unity_stats',
+                platform:platform
+            },
+            success: function (data) {
+                if(!data || data['status'] != 1){ return }
+                var charts = data['charts'] || {};
+                var avg = data['avg'] || {};
+                unityStatsFramePoints = charts['frame'] || [];
+                var series = [{
+                    name: 'CPU Frame (ms)',
+                    data: charts['cpu_frame_ms'] || []
+                }, {
+                    name: 'GPU Frame (ms)',
+                    data: charts['gpu_frame_ms'] || []
+                }];
+                var hasData = series.some(function(item){ return item.data.length > 0; });
+                $('#unity-stats-card').toggle(hasData);
+                if(!hasData){ return }
+                if(!updateChartSeries(unity_stats_chart, '.unity-stats-card', series)){
+                    return
+                }
+                var drawCallsData = charts['draw_calls'] || [];
+                $('#chart-unity-drawcalls').toggle(drawCallsData.length > 0);
+                $('#unity-drawcalls-title').toggle(drawCallsData.length > 0);
+                if(drawCallsData.length > 0){
+                    unity_drawcalls_chart.updateSeries([{
+                        name: 'Draw Calls',
+                        color: '#FFB020',
+                        data: drawCallsData
+                    }]);
+                }
+                var geometrySeries = [{
+                    name: 'Triangles',
+                    color: '#F59F00',
+                    data: charts['triangles'] || []
+                }, {
+                    name: 'Vertices',
+                    color: '#8B5CF6',
+                    data: charts['vertices'] || []
+                }];
+                var geometryHasData = geometrySeries.some(function(item){
+                    return item.data.length > 0;
+                });
+                $('#chart-unity-geometry').toggle(geometryHasData);
+                $('#unity-geometry-title').toggle(geometryHasData);
+                if(geometryHasData){
+                    unity_geometry_chart.updateSeries(geometrySeries);
+                }
+                var show = function (key) { return avg[key] !== undefined ? avg[key] : '-' };
+                var showInt = function (key) {
+                    var value = avg[key];
+                    return value === undefined ? '-' : Math.round(value).toLocaleString();
+                };
+                $('#unity-stats-summary').text(
+                    'CPU: ' + show('cpu_frame_ms') + ' ms'
+                    + ' | GPU: ' + show('gpu_frame_ms') + ' ms'
+                    + ' | DC: ' + showInt('draw_calls')
+                    + ' | Tri: ' + showInt('triangles')
+                    + ' | Vert: ' + showInt('vertices')
+                    + ' · ' + (lan === 'cn' ? '点击曲线选择帧' : 'click a point to select a frame')
+                );
+            }
+        });
+    }
+
+    function unityChartClickAt(event, chartKey, containerSelector) {
+        var chart = window.chartInstances && window.chartInstances[chartKey];
+        if (!chart || !chart.w || !chart.w.globals) return;
+        var globals = chart.w.globals;
+        if (!globals.gridWidth) return;
+        var container = document.querySelector(containerSelector);
+        if (!container) return;
+        var rect = container.getBoundingClientRect();
+        var ratio = (event.clientX - rect.left - globals.translateX) / globals.gridWidth;
+        if (ratio < 0 || ratio > 1) return;
+        var plotTop = rect.top + globals.translateY;
+        if (event.clientY < plotTop || event.clientY > plotTop + globals.gridHeight) {
+            return;
+        }
+        var x = globals.minX + ratio * (globals.maxX - globals.minX);
+        var frame = unityStatsFrameAt(x);
+        if (frame !== null) {
+            unityStatsSelectFrame(frame, x);
+        }
+    }
+
+    function unityStatsChartClick(event) {
+        unityChartClickAt(event, 'unity_stats', '#chart-unity-stats');
+    }
+
+    function unityDrawCallsChartClick(event) {
+        unityChartClickAt(event, 'unity_drawcalls', '#chart-unity-drawcalls');
+    }
+
+    function unityGeometryChartClick(event) {
+        unityChartClickAt(event, 'unity_geometry', '#chart-unity-geometry');
+    }
+
+    function unityStatsFrameAt(x) {
+        var best = null;
+        var bestDiff = Infinity;
+        (unityStatsFramePoints || []).forEach(function(point) {
+            var diff = Math.abs(point.x - x);
+            if (diff < bestDiff) {
+                bestDiff = diff;
+                best = point;
+            }
+        });
+        if (best && bestDiff <= 2.0 && best.y !== null && best.y !== undefined) {
+            return Math.round(best.y);
+        }
+        return null;
+    }
+
+    function unityStatsSelectFrame(frame, x) {
+        unityStatsSelectedFrame = frame;
+        if (typeof unityHotspotState !== 'undefined') {
+            unityHotspotState.frame = frame;
+        }
+        $('#unity-hotspot-frame').val(frame);
+
+        var chart = window.chartInstances && window.chartInstances.unity_stats;
+        if (chart) {
+            chart.updateOptions({
+                annotations: {
+                    xaxis: [{
+                        x: x,
+                        borderColor: '#206BC4',
+                        strokeDashArray: 3,
+                        label: {
+                            text: 'Frame ' + frame,
+                            borderColor: '#206BC4',
+                            background: '#206BC4',
+                            style: { color: '#fff' }
+                        }
+                    }]
+                }
+            }, false, true);
+        }
+
+        if ($('#unity-hotspots-card').length && typeof loadUnityHotspotFrame === 'function') {
+            var thread = $('#unity-hotspot-thread').val()
+                || (unityHotspotState && unityHotspotState.thread)
+                || 'main';
+            $('#unity-hotspots-card').show();
+            loadUnityHotspotFrame(frame, thread);
+        }
+    }
+
+    function initUnityCorrelationCharts(){
+        var correlationOptions = options('line');
+        correlationOptions.yaxis = [
+            { seriesName: ['CPU App (%)', 'CPU Sys (%)'], title: { text: '%' } },
+            { seriesName: ['Draw Calls', 'Triangles'], opposite: true, title: { text: 'Count' } }
+        ];
+        var correlation_chart = new ApexCharts(
+            document.querySelector("#chart-unity-correlation"), correlationOptions
+        );
+        correlation_chart.render();
+        window.chartInstances.unity_correlation = correlation_chart;
+        $.ajax({
+            url: '/apm/log',
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene:'{{ scene }}',
+                target:'unity_correlation',
+                platform:platform
+            },
+            success: function (data) {
+                if(!data || data['status'] != 1){ return }
+                var charts = data['charts'] || {};
+                var series = [{
+                    name: 'CPU App (%)',
+                    data: charts['cpu_app'] || []
+                }, {
+                    name: 'CPU Sys (%)',
+                    data: charts['cpu_sys'] || []
+                }, {
+                    name: 'Draw Calls',
+                    data: charts['draw_calls'] || []
+                }, {
+                    name: 'Triangles',
+                    data: charts['triangles'] || []
+                }];
+                var hasData = series.some(function(item){ return item.data.length > 0; });
+                $('#unity-correlation-card').toggle(hasData);
+                if(!hasData){ return }
+                if(!updateChartSeries(correlation_chart, '.unity-correlation-card', series)){
+                    return
+                }
+                $('#unity-correlation-summary').text(
+                    '{% if lan == "cn" %}同一时间轴，可直接对照 CPU 峰值与 DC/三角面{% else %}Shared time axis for CPU spikes vs DC/Triangles{% endif %}'
+                );
+            }
+        });
+    }
+
+    var unityStatsFramePoints = [];
+    var unityStatsSelectedFrame = null;
+
+    var unityHotspotState = {
+        frames: [],
+        frame: null,
+        thread: 'main',
+        mode: 'timeline',
+        data: null,
+        loading: false
+    };
+
+    function unityHotspotUrl(path, params) {
+        var url = path + '?scene=' + encodeURIComponent('{{ scene }}')
+            + '&platform=' + encodeURIComponent(platform);
+        Object.keys(params || {}).forEach(function(key) {
+            url += '&' + key + '=' + encodeURIComponent(params[key]);
+        });
+        return url;
+    }
+
+    function unityHotspotSetStatus(text, isError) {
+        var el = $('#unity-hotspot-status');
+        if (!el.length) return;
+        el.text(text || '');
+        el.css('color', isError ? '#d63939' : '');
+    }
+
+    function initUnityHotspots() {
+        if (!$('#unity-hotspots-card').length) return;
+
+        $('#unity-hotspot-load').off('click').on('click', function() {
+            loadUnityHotspotFrame($('#unity-hotspot-frame').val(), $('#unity-hotspot-thread').val());
+        });
+        $('#unity-hotspot-frame').off('keydown').on('keydown', function(event) {
+            if (event.key === 'Enter') {
+                loadUnityHotspotFrame($(this).val(), $('#unity-hotspot-thread').val());
+            }
+        });
+        $('#unity-hotspot-prev').off('click').on('click', function() {
+            var index = unityHotspotCurrentIndex();
+            if (index > 0) {
+                loadUnityHotspotFrame(
+                    unityHotspotState.frames[index - 1].index,
+                    $('#unity-hotspot-thread').val()
+                );
+            }
+        });
+        $('#unity-hotspot-next').off('click').on('click', function() {
+            var index = unityHotspotCurrentIndex();
+            if (index >= 0 && index < unityHotspotState.frames.length - 1) {
+                loadUnityHotspotFrame(
+                    unityHotspotState.frames[index + 1].index,
+                    $('#unity-hotspot-thread').val()
+                );
+            }
+        });
+        $('#unity-hotspot-thread').off('change').on('change', function() {
+            loadUnityHotspotFrame(unityHotspotState.frame, $(this).val());
+        });
+        $('#unity-hotspot-sort').off('change').on('change', function() {
+            renderUnityHotspot();
+        });
+        $('#unity-hotspot-tabs').off('click').on('click', 'a', function(event) {
+            event.preventDefault();
+            $('#unity-hotspot-tabs a').removeClass('active');
+            $(this).addClass('active');
+            unityHotspotState.mode = $(this).data('mode');
+            renderUnityHotspot();
+        });
+
+        unityHotspotSetStatus('正在建立 Unity 帧索引；首次打开大文件可能需要几十秒…');
+        $.ajax({
+            url: unityHotspotUrl('/apm/unity/frames'),
+            type: 'GET',
+            async: true,
+            cache: false,
+            timeout: 180000,
+            success: function(data) {
+                if (!data || data.status != 1 || !data.frames || !data.frames.length) {
+                    unityHotspotSetStatus((data && data.msg) || '没有可用的 Unity profiler 数据', true);
+                    return;
+                }
+                unityHotspotState.frames = data.frames;
+                var first = data.frames[data.frames.length - 1];
+                var requested = null;
+                try {
+                    requested = parseInt(new URLSearchParams(window.location.search).get('frame'), 10);
+                } catch (e) {
+                    requested = null;
+                }
+                var target = first.index;
+                if (!isNaN(requested)) {
+                    for (var i = 0; i < data.frames.length; i++) {
+                        if (data.frames[i].index === requested) {
+                            target = requested;
+                            break;
+                        }
+                    }
+                }
+                $('#unity-hotspots-card').show();
+                $('#unity-hotspot-frame')
+                    .attr('min', data.frames[0].index)
+                    .attr('max', data.frames[data.frames.length - 1].index);
+                loadUnityHotspotFrame(target, 'main');
+            },
+            error: function() {
+                unityHotspotSetStatus('加载 Unity 帧列表失败', true);
+            }
+        });
+    }
+
+    function unityHotspotCurrentIndex() {
+        if (unityHotspotState.frame === null) return -1;
+        for (var i = 0; i < unityHotspotState.frames.length; i++) {
+            if (unityHotspotState.frames[i].index === unityHotspotState.frame) return i;
+        }
+        return -1;
+    }
+
+    function loadUnityHotspotFrame(frame, thread) {
+        frame = parseInt(frame, 10);
+        if (isNaN(frame)) return;
+        thread = thread || unityHotspotState.thread || 'main';
+        if (unityHotspotState.loading) return;
+        unityHotspotState.loading = true;
+        $('#unity-hotspot-load').prop('disabled', true);
+        unityHotspotSetStatus('正在解析第 ' + frame + ' 帧…');
+        $.ajax({
+            url: unityHotspotUrl('/apm/unity/frame', { frame: frame, thread: thread }),
+            type: 'GET',
+            async: true,
+            cache: false,
+            timeout: 180000,
+            success: function(data) {
+                unityHotspotState.loading = false;
+                $('#unity-hotspot-load').prop('disabled', false);
+                if (!data || data.status != 1) {
+                    unityHotspotSetStatus((data && data.msg) || '帧解析失败', true);
+                    return;
+                }
+                unityHotspotState.data = data;
+                unityHotspotState.frame = frame;
+                unityHotspotState.thread = thread;
+                $('#unity-hotspot-frame').val(frame);
+                updateUnityHotspotThreads(data, thread);
+                unityHotspotSetStatus(
+                    '帧 ' + frame + ' · ' + (data.duration_us / 1000).toFixed(2)
+                    + ' ms · ' + (data.threads || []).length + ' 个线程'
+                );
+                renderUnityHotspot();
+            },
+            error: function() {
+                unityHotspotState.loading = false;
+                $('#unity-hotspot-load').prop('disabled', false);
+                unityHotspotSetStatus('帧解析请求失败', true);
+            }
+        });
+    }
+
+    function updateUnityHotspotThreads(data, current) {
+        var select = $('#unity-hotspot-thread');
+        select.empty();
+        var found = false;
+        (data.threads || []).forEach(function(item) {
+            var value = item.id;
+            if (item.name === 'Main Thread') value = 'main';
+            else if (item.name === 'Render Thread') value = 'render';
+            var option = $('<option></option>')
+                .val(value)
+                .text(item.name + ' (' + item.samples + ')');
+            if (value === current) {
+                option.prop('selected', true);
+                found = true;
+            }
+            select.append(option);
+        });
+        if (!found && select.find('option').length) {
+            select.find('option').first().prop('selected', true);
+            unityHotspotState.thread = select.val();
+        }
+    }
+
+    function unityHotspotColor(name) {
+        var hash = 0;
+        for (var i = 0; i < name.length; i++) {
+            hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+        }
+        return 'hsl(' + (hash % 360) + ', 58%, 52%)';
+    }
+
+    function renderUnityHotspot() {
+        var data = unityHotspotState.data;
+        if (!data) return;
+        $('#unity-hotspot-timeline, #unity-hotspot-hierarchy, #unity-hotspot-raw').hide();
+        if (unityHotspotState.mode === 'timeline') {
+            $('#unity-hotspot-timeline').show();
+            renderUnityTimeline(data);
+        } else if (unityHotspotState.mode === 'hierarchy') {
+            $('#unity-hotspot-hierarchy').show();
+            renderUnityHierarchy($('#unity-hotspot-hierarchy'), data.hierarchy, false);
+        } else {
+            $('#unity-hotspot-raw').show();
+            renderUnityHierarchy($('#unity-hotspot-raw'), data.raw_hierarchy, true);
+        }
+    }
+
+    function renderUnityTimeline(data) {
+        var container = $('#unity-hotspot-timeline').empty();
+        var duration = Math.max(data.duration_us || 1, 1);
+        var axis = $('<div class="unity-timeline-axis"></div>');
+        for (var i = 0; i <= 4; i++) {
+            axis.append($('<span></span>').text((duration * i / 4 / 1000).toFixed(1) + ' ms'));
+        }
+        container.append(axis);
+
+        var order = {};
+        (data.threads || []).forEach(function(item, index) { order[item.id] = index; });
+        var entries = Object.keys(data.timeline || {}).map(function(key) {
+            return data.timeline[key];
+        });
+        entries.sort(function(a, b) {
+            var ai = order[a.id] === undefined ? 999 : order[a.id];
+            var bi = order[b.id] === undefined ? 999 : order[b.id];
+            return ai - bi;
+        });
+
+        entries.forEach(function(thread) {
+            var row = $('<div class="unity-timeline-row"></div>');
+            if (String(thread.id) === String(data.selected_thread)) row.addClass('selected');
+            row.append($('<div class="unity-timeline-label"></div>')
+                .text(thread.name + ' (' + thread.samples.length + ')'));
+            var track = $('<div class="unity-timeline-track"></div>');
+            var samples = thread.samples.slice().sort(function(a, b) {
+                return a.start - b.start || b.dur - a.dur;
+            });
+            var stack = [];
+            samples.forEach(function(sample) {
+                while (stack.length) {
+                    var top = stack[stack.length - 1];
+                    if (top.start + top.dur > sample.start + 0.001) break;
+                    stack.pop();
+                }
+                var depth = stack.length;
+                stack.push(sample);
+                var left = Math.max(0, sample.start / duration * 100);
+                var width = Math.max(0.08, sample.dur / duration * 100);
+                if (left > 100) return;
+                if (left + width > 100) width = 100 - left;
+                var block = $('<div class="unity-timeline-block"></div>').css({
+                    left: left + '%',
+                    width: width + '%',
+                    top: (4 + (depth % 5) * 4) + 'px',
+                    background: unityHotspotColor(sample.name)
+                });
+                var title = sample.name + '\n' + (sample.dur / 1000).toFixed(3) + ' ms';
+                if (sample.gc) title += '\nGC: ' + Math.round(sample.gc / 1024) + ' KB';
+                block.attr('title', title);
+                track.append(block);
+            });
+            row.append(track);
+            container.append(row);
+        });
+    }
+
+    function unitySortTree(nodes, sortKey) {
+        var metric = {
+            total: 'total_us',
+            self: 'self_us',
+            calls: 'calls',
+            gc: 'gc'
+        }[sortKey] || 'total_us';
+        function sort(items) {
+            items.sort(function(a, b) {
+                return (b[metric] || 0) - (a[metric] || 0);
+            });
+            items.forEach(function(item) { sort(item.children || []); });
+        }
+        var copy = nodes || [];
+        sort(copy);
+        return copy;
+    }
+
+    function unityMs(us) {
+        return (us / 1000).toFixed(2);
+    }
+
+    function unityKb(bytes) {
+        if (!bytes) return '0';
+        return (bytes / 1024).toFixed(1);
+    }
+
+    function renderUnityHierarchy(container, tree, raw) {
+        container.empty();
+        var nodes = unitySortTree(tree || [], $('#unity-hotspot-sort').val());
+        if (!nodes.length) {
+            container.append($('<div class="p-3 text-muted"></div>')
+                .text('当前线程没有采样数据'));
+            return;
+        }
+        var table = $('<table class="unity-hotspot-table"></table>');
+        var headRow = $('<tr></tr>');
+        ['Name', 'Total (ms)', 'Self (ms)', 'Calls', 'GC (KB)'].forEach(function(label) {
+            headRow.append($('<th></th>').text(label));
+        });
+        table.append($('<thead></thead>').append(headRow));
+        var tbody = $('<tbody></tbody>');
+        table.append(tbody);
+        container.append(table);
+
+        function initCollapsed(items, depth) {
+            items.forEach(function(node) {
+                if (node._collapsed === undefined) {
+                    node._collapsed = depth >= 2 && node.children && node.children.length > 0;
+                }
+                initCollapsed(node.children || [], depth + 1);
+            });
+        }
+        initCollapsed(nodes, 0);
+
+        function renderRows() {
+            var scrollTop = container.scrollTop();
+            tbody.empty();
+            function add(items, depth) {
+                items.forEach(function(node) {
+                    var row = $('<tr></tr>');
+                    row.attr('data-depth', depth);
+                    var hasChildren = node.children && node.children.length > 0;
+                    var nameCell = $('<td></td>');
+                    nameCell.append($('<span></span>').css({
+                        display: 'inline-block',
+                        width: (depth * 14) + 'px'
+                    }));
+                    var toggle = $('<span class="unity-tree-toggle"></span>');
+                    if (hasChildren) {
+                        toggle.text(node._collapsed ? '▸' : '▾');
+                    } else {
+                        toggle.addClass('leaf').text('·');
+                    }
+                    nameCell.append(toggle);
+                    nameCell.append($('<span class="unity-tree-name"></span>')
+                        .attr('title', node.name)
+                        .text(node.name));
+                    row.append(nameCell);
+                    row.append($('<td></td>').text(unityMs(node.total_us)));
+                    row.append($('<td></td>').text(unityMs(node.self_us)));
+                    row.append($('<td></td>').text(raw ? 1 : (node.calls || 1)));
+                    row.append($('<td></td>').text(unityKb(node.gc)));
+                    row.data('node', node);
+                    tbody.append(row);
+                    if (hasChildren && !node._collapsed) add(node.children, depth + 1);
+                });
+            }
+            add(nodes, 0);
+            container.scrollTop(scrollTop);
+        }
+        renderRows();
+
+        tbody.on('click', '.unity-tree-toggle', function() {
+            var toggle = $(this);
+            if (toggle.hasClass('leaf')) return;
+            var node = toggle.closest('tr').data('node');
+            if (!node) return;
+            node._collapsed = !node._collapsed;
+            renderRows();
+        });
+    }
+
+    function initThermalCharts(){
+        var chartElement = document.querySelector("#chart-thermal");
+        if(!chartElement){
+            return;
+        }
+        var thermal_chart = new ApexCharts(chartElement, options('line'));
+        thermal_chart.render();
+        window.chartInstances.thermal = thermal_chart;
+        $.ajax({
+            url: '/apm/log',
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene:'{{ scene }}',
+                target:'thermal',
+                platform:platform
+            },
+            beforeSend: function () {
+                $('#thermal_spinner').show()
+                $('#thermal_refresh_logo').hide()
+            },
+            complete: function () {
+                $('#thermal_spinner').hide()
+                $('#thermal_refresh_logo').show()
+            },
+            success: function (data) {
+                var thermal = data['thermal'] || {};
+                updateChartSeries(thermal_chart, '.thermal-card', [{
+                    name: 'CPU',
+                    data: thermal['CPU'] || []
+                },{
+                    name: 'GPU',
+                    data: thermal['GPU'] || []
+                },{
+                    name: lan == 'cn' ? '内存' : 'Memory',
+                    data: thermal['Memory'] || []
+                },{
+                    name: lan == 'cn' ? '电池' : 'Battery',
+                    data: thermal['Battery'] || []
+                }])
+            }
+        });
+    }
+
+    function initMemoryCharts(){
+        var mem_chart = new ApexCharts(document.querySelector("#chart-mem"), options('line'));
+        mem_chart.render();
+        window.chartInstances.mem = mem_chart;
+        $.ajax({
+            url: '/apm/log',
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene:'{{ scene }}',
+                target:'mem',
+                platform:platform
+            },
+            beforeSend: function () {
+                $('#mem_spinner').show()
+                $('#mem_refresh_logo').hide()
+            },
+            complete: function () {
+                $('#mem_spinner').hide()
+                $('#mem_refresh_logo').show()
+            },
+            success: function (data) {
+                var seriesList = [];
+                if(platform == 'Android'){
+                    seriesList = [{
+                        name: lan == 'cn' ? '总内存' : 'total',
+                        data: data['memTotalData']
+                    },{
+                        name: lan == 'cn' ? '交换内存' : 'swap',
+                        data: data['memSwapData']
+                    }];
+                }else{
+                    seriesList = [{
+                        name: lan == 'cn' ? '总内存' : 'total',
+                        data: data['memTotalData']
+                    }];
+                }
+                updateChartSeries(mem_chart, '.mem-card', seriesList)
+            }
+        });
+    }
+    
+    function initMemoryDetailCharts(){
+        var mem_detail_chart = new ApexCharts(document.querySelector("#chart-mem-detail"), options('line'));
+        mem_detail_chart.render();
+        window.chartInstances.mem_detail = mem_detail_chart;
+        $.ajax({
+                url: '/apm/log',
+                type: "GET",
+                async: true,
+                cache: false,
+                data:{
+                    scene:'{{ scene }}',
+                    target:'mem_detail',
+                    platform:platform
+                },
+                beforeSend: function () {
+                    $('#mem_detail_spinner').show()
+                    $('#mem_detail_refresh_logo').hide()
+                },
+                complete: function () {
+                    $('#mem_detail_spinner').hide()
+                    $('#mem_detail_refresh_logo').show()
+                },
+                success: function (data) {
+                    console.log(data)
+                    updateChartSeries(mem_detail_chart, '.mem-detail-card', [{
+                        name: lan == 'cn' ? 'Java' : 'java',
+                        data: data['memory_detail']['java_heap']
+                    },{
+                        name: lan == 'cn' ? 'Native' : 'native',
+                        data: data['memory_detail']['native_heap']
+                    },{
+                        name: lan == 'cn' ? '代码' : 'code',
+                        data: data['memory_detail']['code_pss']
+                    },{
+                        name: lan == 'cn' ? '栈' : 'stack',
+                        data: data['memory_detail']['stack_pss']
+                    },{
+                        name: lan == 'cn' ? '图形' : 'graphics',
+                        data: data['memory_detail']['graphics_pss']
+                    },{
+                        name: lan == 'cn' ? '私有' : 'private',
+                        data: data['memory_detail']['private_pss']
+                    },{
+                        name: lan == 'cn' ? '系统' : 'system',
+                        data: data['memory_detail']['system_pss']
+                    },])
+                }
+            });
+    }
+
+    function initCpuCoreCharts(){
+        var cpu_core_chart = new ApexCharts(document.querySelector("#chart-cpu-core"), options('line'));
+        cpu_core_chart.render();
+        window.chartInstances.cpu_core = cpu_core_chart;
+        $.ajax({
+                url: '/apm/log',
+                type: "GET",
+                async: true,
+                cache: false,
+                data:{
+                    scene:'{{ scene }}',
+                    target:'cpu_core',
+                    platform:platform
+                },
+                beforeSend: function () {
+                    $('#cpu_core_spinner').show()
+                    $('#cpu_core_refresh_logo').hide()
+                },
+                complete: function () {
+                    $('#cpu_core_spinner').hide()
+                    $('#cpu_core_refresh_logo').show()
+                },
+                success: function (data) {
+                    var array = data['cpu_core']
+                    elementList = new Array()
+
+                    for (let i = 0; i < data['cores']; i++) {
+                        elementList.push(
+                            {
+                                name: 'cpu'+i,
+                                data: array['cpu'+i]
+                            }
+                        )
+                    }
+                    updateChartSeries(cpu_core_chart, '.cpu-core-card', elementList)
+                }
+            });
+    }
+    
+    function initNetworkCharts(){
+        var network_chart = new ApexCharts(document.querySelector("#chart-networkdata"), options('line',false));
+        network_chart.render();
+        window.chartInstances.network = network_chart;
+        $.ajax({
+            url: '/apm/log',
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene:'{{ scene }}',
+                target:'flow',
+                platform:platform
+            },
+            beforeSend: function () {
+                $('#networkdata_spinner').show()
+                $('#networkdata_refresh_logo').hide()
+            },
+            complete: function () {
+                $('#networkdata_spinner').hide()
+                $('#networkdata_refresh_logo').show()
+            },
+            success: function (data) {
+                updateChartSeries(network_chart, '.networkdata-card', [{
+                    name: lan == 'cn' ? '发送' : 'send',
+                    data: data['upFlow']
+                },{
+                    name: lan == 'cn' ? '接收' : 'recv',
+                    data: data['downFlow']
+                }])
+            }
+        });
+    }
+
+    function cumulativeFileIOSeries(points){
+        var total = 0;
+        return (points || []).map(function(point){
+            var value = Number(point && point.y ? point.y : 0);
+            total += value;
+            return {
+                x: point ? point.x : 0,
+                y: Number(total.toFixed(2))
+            };
+        });
+    }
+
+    function initFileIOCharts(){
+        var file_io_chart = new ApexCharts(document.querySelector("#chart-file-io"), options('line',false));
+        var file_io_total_chart = new ApexCharts(document.querySelector("#chart-file-io-total"), options('line',false));
+        file_io_chart.render();
+        file_io_total_chart.render();
+        window.chartInstances.file_io = file_io_chart;
+        window.chartInstances.file_io_total = file_io_total_chart;
+        $.ajax({
+            url: '/apm/log',
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene:'{{ scene }}',
+                target:'file_io',
+                platform:platform
+            },
+            beforeSend: function () {
+                $('#file_io_spinner').show()
+                $('#file_io_refresh_logo').hide()
+            },
+            complete: function () {
+                $('#file_io_spinner').hide()
+                $('#file_io_refresh_logo').show()
+            },
+            success: function (data) {
+                var fileIOSeries = [{
+                    name: lan == 'cn' ? '读取' : 'read',
+                    data: data['read']
+                },{
+                    name: lan == 'cn' ? '写入' : 'write',
+                    data: data['write']
+                }];
+                if (!updateChartSeries(file_io_chart, '.file-io-card', fileIOSeries)) {
+                    file_io_total_chart.updateSeries([]);
+                    return;
+                }
+                file_io_total_chart.updateSeries([{
+                    name: lan == 'cn' ? '累计读取' : 'total read',
+                    data: cumulativeFileIOSeries(data['read'])
+                },{
+                    name: lan == 'cn' ? '累计写入' : 'total write',
+                    data: cumulativeFileIOSeries(data['write'])
+                }])
+            }
+        });
+    }
+
+    function initDiskCharts(){
+        var disk_chart = new ApexCharts(document.querySelector("#chart-disk"), options('line',false));
+        disk_chart.render();
+        window.chartInstances.disk = disk_chart;
+        $.ajax({
+            url: '/apm/log',
+            type: "GET",
+            async: true,
+            cache: false,
+            data:{
+                scene:'{{ scene }}',
+                target:'disk',
+                platform:platform
+            },
+            beforeSend: function () {
+                $('#disk_spinner').show()
+                $('#disk_refresh_logo').hide()
+            },
+            complete: function () {
+                $('#disk_spinner').hide()
+                $('#disk_refresh_logo').show()
+            },
+            success: function (data) {
+                updateChartSeries(disk_chart, '.disk-card', [{
+                    name: lan == 'cn' ? '已用' : 'used',
+                    data: data['used']
+                },{
+                    name: lan == 'cn' ? '可用' : 'free',
+                    data: data['free']
+                }])
+            }
+        });
+    }
+
+    // Bidirectional video-chart sync
+    // Video-Chart bidirectional sync
+    (function initVideoChartSync() {
+        const video = document.getElementById('video-player');
+        if (!video) return;
+
+        const getChartMaxTime = () => {
+            const cpuChart = window.chartInstances.cpu;
+            if (cpuChart?.w?.globals?.maxX) {
+                return cpuChart.w.globals.maxX;
+            }
+            return 0;
+        };
+
+        const updateAllChartAnnotations = (timeInSeconds) => {
+            Object.values(window.chartInstances).forEach(chart => {
+                if (chart?.clearAnnotations) {
+                    try {
+                        chart.clearAnnotations();
+                        chart.addXaxisAnnotation({
+                            x: timeInSeconds,
+                            borderColor: '#ff0000',
+                            strokeDashArray: 0,
+                            label: {
+                                borderColor: '#ff0000',
+                                style: { color: '#fff', background: '#ff0000' },
+                                text: Math.round(timeInSeconds) + 's'
+                            }
+                        });
+                    } catch (e) {}
+                }
+            });
+        };
+
+        video.addEventListener('timeupdate', function() {
+            const duration = video.duration;
+            if (!duration || isNaN(duration)) return;
+
+            const chartMaxTime = getChartMaxTime();
+            if (chartMaxTime === 0) return;
+
+            const chartTime = (video.currentTime / duration) * chartMaxTime;
+            updateAllChartAnnotations(chartTime);
+        });
+
+        const addChartClickHandler = (chartInstance) => {
+            if (!chartInstance) return;
+            const chartElement = chartInstance.el;
+            if (!chartElement || chartElement._videoSyncBound) return;
+
+            chartElement._videoSyncBound = true;
+            chartElement.addEventListener('click', function(event) {
+                const duration = video.duration;
+                if (!duration || isNaN(duration)) return;
+
+                const bounds = window.getChartPlotBounds(chartInstance);
+                if (!bounds || bounds.width <= 0 || bounds.maxX <= bounds.minX) return;
+
+                const chartRect = chartElement.getBoundingClientRect();
+                const mouseX = event.clientX - chartRect.left;
+                const relativeX = (mouseX - bounds.left) / bounds.width;
+
+                if (relativeX < 0 || relativeX > 1) return;
+
+                const chartTime = bounds.minX + relativeX * (bounds.maxX - bounds.minX);
+                const chartMaxTime = getChartMaxTime();
+
+                if (chartMaxTime > 0) {
+                    const videoTime = (chartTime / chartMaxTime) * duration;
+                    video.currentTime = Math.max(0, Math.min(videoTime, duration));
+                }
+
+                updateAllChartAnnotations(chartTime);
+            });
+        };
+
+        setTimeout(() => {
+            Object.values(window.chartInstances).forEach(addChartClickHandler);
+        }, 2000);
+    })();
+
+    // Custom crosshair with interpolated tooltip
+    (function initSmoothCrosshair() {
+        const tooltip = document.createElement('div');
+        tooltip.className = 'custom-interpolated-tooltip';
+        tooltip.style.cssText = `
+            position: fixed;
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            display: none;
+            z-index: 1000;
+            max-width: 200px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        `;
+        document.body.appendChild(tooltip);
+
+        const lerp = (v0, v1, t) => v0 + t * (v1 - v0);
+
+        const interpolateValue = (data, targetX) => {
+            if (!data?.length) return null;
+
+            let leftPoint = null;
+            let rightPoint = null;
+
+            for (let i = 0; i < data.length; i++) {
+                const point = data[i];
+                const x = typeof point === 'object' ? point.x : i;
+                const y = typeof point === 'object' ? point.y : point;
+
+                if (x <= targetX) leftPoint = { x, y };
+                if (x >= targetX && !rightPoint) {
+                    rightPoint = { x, y };
+                    break;
+                }
+            }
+
+            if (!leftPoint && rightPoint) return rightPoint.y;
+            if (leftPoint && !rightPoint) return leftPoint.y;
+            if (!leftPoint && !rightPoint) return null;
+            if (leftPoint.x === rightPoint.x) return leftPoint.y;
+
+            const t = (targetX - leftPoint.x) / (rightPoint.x - leftPoint.x);
+            return lerp(leftPoint.y, rightPoint.y, t);
+        };
+
+        const setupChartCrosshair = (chart) => {
+            if (!chart?.el) return;
+            const chartEl = chart.el;
+
+            const getOrCreateLine = () => {
+                let line = chartEl.querySelector('.smooth-crosshair-line');
+                if (!line) {
+                    line = document.createElement('div');
+                    line.className = 'smooth-crosshair-line';
+                    line.style.cssText = `
+                        position: absolute;
+                        width: 2px;
+                        background-color: #2196F3;
+                        pointer-events: none;
+                        display: none;
+                        z-index: 100;
+                    `;
+                    chartEl.style.position = 'relative';
+                    chartEl.appendChild(line);
+                }
+                return line;
+            };
+
+            const getPlotBounds = () => window.getChartPlotBounds(chart);
+
+            if (chartEl._smoothCrosshairBound) return;
+            chartEl._smoothCrosshairBound = true;
+
+            chartEl.addEventListener('mousemove', (e) => {
+                const bounds = getPlotBounds();
+                if (!bounds || bounds.width <= 0) return;
+
+                const line = getOrCreateLine();
+                const chartRect = chartEl.getBoundingClientRect();
+                const mouseX = e.clientX - chartRect.left;
+                const relativeX = (mouseX - bounds.left) / bounds.width;
+
+                if (relativeX >= 0 && relativeX <= 1) {
+                    const lineX = bounds.left + relativeX * bounds.width;
+                    line.style.left = lineX + 'px';
+                    line.style.top = bounds.top + 'px';
+                    line.style.height = bounds.height + 'px';
+                    line.style.display = 'block';
+
+                    const globals = chart.w?.globals;
+                    if (!globals) return;
+
+                    const minX = globals.minX || 0;
+                    const maxX = globals.maxX || 0;
+                    const targetX = minX + relativeX * (maxX - minX);
+
+                    let tooltipContent = `<div style="margin-bottom:4px;font-weight:bold;border-bottom:1px solid #555;padding-bottom:4px;">${formatSecondsToTime(targetX)}</div>`;
+
+                    const series = globals.initialSeries || [];
+                    const colors = globals.colors || [];
+
+                    series.forEach((s, idx) => {
+                        const interpolatedValue = interpolateValue(s.data, targetX);
+                        if (interpolatedValue !== null) {
+                            const color = colors[idx] || '#999';
+                            const formattedValue = typeof interpolatedValue === 'number'
+                                ? interpolatedValue.toFixed(2)
+                                : interpolatedValue;
+                            tooltipContent += `<div style="display:flex;align-items:center;margin:2px 0;">
+                                <span style="width:8px;height:8px;background:${color};border-radius:50%;margin-right:6px;"></span>
+                                <span>${s.name || 'Series ' + (idx + 1)}: ${formattedValue}</span>
+                            </div>`;
+                        }
+                    });
+
+                    tooltip.innerHTML = tooltipContent;
+                    tooltip.style.left = (e.clientX + 15) + 'px';
+                    tooltip.style.top = (e.clientY - 10) + 'px';
+                    tooltip.style.display = 'block';
+
+                    const tooltipRect = tooltip.getBoundingClientRect();
+                    if (tooltipRect.right > window.innerWidth) {
+                        tooltip.style.left = (e.clientX - tooltipRect.width - 15) + 'px';
+                    }
+                    if (tooltipRect.bottom > window.innerHeight) {
+                        tooltip.style.top = (e.clientY - tooltipRect.height - 10) + 'px';
+                    }
+                } else {
+                    getOrCreateLine().style.display = 'none';
+                    tooltip.style.display = 'none';
+                }
+            });
+
+            chartEl.addEventListener('mouseleave', () => {
+                const line = chartEl.querySelector('.smooth-crosshair-line');
+                if (line) line.style.display = 'none';
+                tooltip.style.display = 'none';
+            });
+        };
+
+        setTimeout(() => {
+            Object.values(window.chartInstances).forEach(setupChartCrosshair);
+        }, 2500);
+    })();
+</script>
+{% endblock %}

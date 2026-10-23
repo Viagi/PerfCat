@@ -4,7 +4,7 @@
 # Licensed under MIT
 #
 import setuptools
-from perfcat import __version__
+from perfcattle import __version__
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -31,9 +31,9 @@ setuptools.setup(
     long_description=long_description,
     python_requires=">=3.10",
     long_description_content_type="text/markdown",
-    description="PerfCat - Real-time collection tool for Android/iOS performance data.",
+    description="PerfCattle - Real-time collection tool for Android/iOS performance data.",
     packages=setuptools.find_namespace_packages(
-        include=["perfcat", "perfcat.*"],
+        include=["perfcattle", "perfcattle.*"],
     ),
     include_package_data=True,
 )

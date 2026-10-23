@@ -1,6 +1,6 @@
-recursive-include perfcat/assets *
-recursive-include perfcat/static *.html *.js *.css *.png *.svg *.ico
-recursive-include perfcat/templates *.html
-recursive-include perfcat/report *.py
-include perfcat/core/config.json
+recursive-include perfcattle/assets *
+recursive-include perfcattle/static *.html *.js *.css *.png *.svg *.ico
+recursive-include perfcattle/templates *.html
+recursive-include perfcattle/report *.py
+include perfcattle/core/config.json
 recursive-include docs *.md

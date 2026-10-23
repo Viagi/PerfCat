@@ -1,8 +1,8 @@
 """Focused Android device parsing tests."""
 from unittest.mock import MagicMock, patch
 
-from perfcat.core.platform import Platform
-from perfcat.device.android import AndroidDevice
+from perfcattle.core.platform import Platform
+from perfcattle.device.android import AndroidDevice
 
 
 def test_get_device_ids_filters_non_ready_devices():
@@ -15,7 +15,7 @@ def test_get_device_ids_filters_non_ready_devices():
         "ghi789\toffline\n"
     )
 
-    with patch("perfcat.device.android.subprocess.run", return_value=mock_result):
+    with patch("perfcattle.device.android.subprocess.run", return_value=mock_result):
         assert device.getDeviceIds() == ["def456"]
 
 
@@ -33,7 +33,7 @@ def test_get_id_by_device_reconnects_wireless_device_once():
             {},
             {serial: "device"},
         ],
-    ), patch("perfcat.device.android.time.sleep"), patch.object(
+    ), patch("perfcattle.device.android.time.sleep"), patch.object(
         device, "_connect_wireless_device"
     ) as connect:
         assert (
@@ -45,7 +45,7 @@ def test_get_id_by_device_reconnects_wireless_device_once():
 
 
 def test_get_pid_parses_main_and_child_processes():
-    with patch("perfcat.device.android.adb") as mock_adb:
+    with patch("perfcattle.device.android.adb") as mock_adb:
         mock_adb.adb_path = "adb"
         device = AndroidDevice()
 
@@ -70,7 +70,7 @@ def test_get_pid_parses_main_and_child_processes():
 
 
 def test_get_pid_falls_back_to_proc_cmdline():
-    with patch("perfcat.device.android.adb") as mock_adb:
+    with patch("perfcattle.device.android.adb") as mock_adb:
         mock_adb.adb_path = "adb"
         device = AndroidDevice()
 

@@ -7,11 +7,11 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 
-from perfcat.core.selection_cache import ApmSelectionCache
-from perfcat.core.settings_cache import ApmSettingsCache
-from perfcat.view.apm_api import apm_api
+from perfcattle.core.selection_cache import ApmSelectionCache
+from perfcattle.core.settings_cache import ApmSettingsCache
+from perfcattle.view.apm_api import apm_api
 
-apm_api_module = importlib.import_module("perfcat.view.apm_api")
+apm_api_module = importlib.import_module("perfcattle.view.apm_api")
 
 
 @pytest.fixture
@@ -132,7 +132,7 @@ def test_apm_settings_endpoint_persists_to_local_file(tmp_path):
             query_string={
                 "cpuWarning": "80",
                 "duration": "15",
-                "perfcat_host": "127.0.0.1:6006",
+                "perfcattle_host": "127.0.0.1:6006",
                 "host_switch": "1",
                 "recordMaxSize": "720",
                 "recordMaxFps": "60",
@@ -151,7 +151,7 @@ def test_apm_settings_endpoint_persists_to_local_file(tmp_path):
         settings = json.loads(cache_path.read_text(encoding="utf-8"))
         assert settings["cpuWarning"] == "80"
         assert settings["duration"] == "15"
-        assert settings["perfcat_host"] == "127.0.0.1:6006"
+        assert settings["perfcattle_host"] == "127.0.0.1:6006"
         assert settings["defaultPackageName"] == "com.tencent.mm"
         assert settings["defaultProcessName"] == "com.tencent.mm:appbrand1"
         assert settings["collectCpu"] == "0"

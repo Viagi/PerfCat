@@ -1,7 +1,7 @@
 """Focused report log IO tests."""
 from unittest.mock import patch
 
-from perfcat.report.log_io import LogIO
+from perfcattle.report.log_io import LogIO
 
 
 def test_file_io_helpers_include_read_write_dimensions(tmp_report_dir):

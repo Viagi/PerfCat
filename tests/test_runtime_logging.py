@@ -3,7 +3,7 @@
 import io
 import logging
 
-from perfcat.core.logging_config import (
+from perfcattle.core.logging_config import (
     STARTUP_LOG_ATTR,
     ConsoleLogFilter,
     _set_console_level,
