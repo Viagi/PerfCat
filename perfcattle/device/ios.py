@@ -47,6 +47,36 @@ class iOSDevice:
             raise RuntimeError(data.get("error") or "iOS process list unavailable")
         return data["processes"]
 
+    def launchApp(self, udid, package):
+        """按 bundle id 启动 iOS 应用"""
+        import json
+        from pathlib import Path
+        import subprocess
+        from perfcattle.service.ios_dependencies import IOSDependencies, ios_dependencies
+
+        version = IOSDependencies.device_version(udid, timeout=10)
+        if int(version.split(".")[0]) < 17:
+            return Device(udid).app_start(package)
+
+        runtime = ios_dependencies["modern"]
+        if not runtime.python.is_file():
+            raise RuntimeError("Start collection to check and install missing iOS dependencies first.")
+        worker = Path(__file__).resolve().parents[1] / "collector" / "ios_modern_worker.py"
+        result = subprocess.run(
+            [str(runtime.python), "-u", str(worker), "--launch-app", udid, package],
+            capture_output=True, text=True, encoding="utf-8", timeout=150,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        if result.returncode:
+            raise RuntimeError("iOS app launch failed. Check the local runtime and device connection.")
+        try:
+            data = json.loads(result.stdout)
+        except ValueError:
+            raise RuntimeError("iOS app launch returned no result")
+        if data.get("status") != 1:
+            raise RuntimeError(data.get("error") or "iOS app launch failed")
+        return data.get("pid")
+
     def getPhysicalSizeOfiOS(self, deviceId):
         """获取 iOS 设备的物理屏幕尺寸"""
         ios_device = Device(udid=deviceId)

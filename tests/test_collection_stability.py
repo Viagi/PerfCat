@@ -50,6 +50,9 @@ def test_collect_all_keeps_recording_in_parent_process(monkeypatch):
         def clear_file(self):
             events.append(("clear_file",))
 
+        def begin_session(self):
+            events.append(("begin_session",))
+
     class FakeScrcpy:
         @staticmethod
         def start_record(device):
@@ -114,6 +117,8 @@ def test_collect_all_keeps_recording_in_parent_process(monkeypatch):
         func.__name__ for func in FakeExecutor.instances[0].tasks
     ]
     assert ("wait", 9) in events
+    # The recording start must be recorded before collectors begin writing logs.
+    assert events.index(("clear_file",)) < events.index(("begin_session",))
     assert events.index(("stop_record",)) < events.index(
         ("set_perfs", "report.html")
     )

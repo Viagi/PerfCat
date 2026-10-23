@@ -4,16 +4,18 @@
 {% block css %}
 <style>
     .compare-summary-table {
-        table-layout: fixed;
+        width: 100%;
+        min-width: 760px;
     }
 
     .compare-summary-section-cell {
+        width: 100%;
         padding: 0 !important;
     }
 
     .compare-summary-grid {
         display: grid;
-        grid-template-columns: minmax(180px, 28%) repeat(var(--metric-count), minmax(120px, 1fr));
+        grid-template-columns: minmax(150px, 22%) repeat(var(--metric-count), minmax(110px, 1fr));
         width: 100%;
     }
 
@@ -49,6 +51,12 @@
 {% block ms_auto %}
 <div class="col-auto ms-auto d-print-none">
     <div class="btn-list">
+        {% if scenes|length >= 2 %}
+        <a onclick="exportCompareReport()" class="btn">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" /><path d="M12 4l0 12" /></svg>
+            {% if lan == 'cn' %} 导出对比报告 {% else %} Export Comparison {% endif %}
+        </a>
+        {% endif %}
         <a download="compare.png" onclick="screenshot('sceen-body','compare.png')" class="btn">
             <svg t="1681980127752" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="11730" width="50" height="50"><path d="M957.31 368.25L903.1 732.12c-6 40.19-33.93 71.32-69.35 82.48a96.61 96.61 0 0 1-44.19 3.26L213.21 727c-39.51-6.23-70-35.53-80.55-72.54l90.55-64.06L363.29 702l193.4-234.78L847.8 681.67V394c0-56.57-44.59-102.43-99.6-102.43H177.34l6.73-45.17c8.33-55.92 59.16-94.3 113.53-85.73l576.35 90.83c54.37 8.56 91.69 60.83 83.36 116.75z" fill="#C5E3FF" p-id="11731"></path><path d="M804.86 831.57a110.71 110.71 0 0 1-17.24-1.36l-576.35-90.83c-42.89-6.76-78.46-38.74-90.62-81.47a12.5 12.5 0 0 1 4.8-13.62L216 580.22a12.5 12.5 0 0 1 15 0.43l130.45 103.9L547 459.27a12.5 12.5 0 0 1 17.06-2.12L835.3 656.93V394c0-49.59-39.07-89.93-87.1-89.93H177.34A12.5 12.5 0 0 1 165 289.71l6.73-45.17a114.5 114.5 0 0 1 45.56-76.09 109.35 109.35 0 0 1 82.29-20.14l576.35 90.83c61 9.62 103.11 68.37 93.78 131L915.46 734A115.87 115.87 0 0 1 889 792.38a112.1 112.1 0 0 1-51.45 34.14 108.3 108.3 0 0 1-32.69 5.05zM147.47 659.32c11.42 29.21 37.19 50.55 67.69 55.36l576.35 90.83a83.72 83.72 0 0 0 38.49-2.84c31.84-10 55.68-38.44 60.74-72.4l54.21-363.87c7.31-49.07-25.41-95.08-72.95-102.58L295.65 173a84.54 84.54 0 0 0-63.6 15.6 89.67 89.67 0 0 0-35.62 59.63l-4.59 30.82h556.37c61.81 0 112.1 51.56 112.1 114.93v287.69a12.5 12.5 0 0 1-19.91 10.06L558.81 484.3 372.93 709.93a12.5 12.5 0 0 1-17.44 1.83L222.77 606z" fill="#3D9FF9" p-id="11732"></path><path d="M748.21 877H165.12C103.31 877 53 825.48 53 762.11V394c0-63.37 50.29-114.93 112.1-114.93h583.11c61.81 0 112.1 51.56 112.1 114.93v368.11C860.3 825.48 810 877 748.21 877zM165.13 304c-48 0-87.1 40.34-87.1 89.93v368.18C78 811.7 117.1 852 165.12 852h583.09c48 0 87.1-40.34 87.1-89.93V394c0-49.59-39.07-89.93-87.1-89.93z" fill="#3D9FF9" p-id="11733"></path><path d="M748.21 877H165.12C103.31 877 53 825.48 53 762.11V702a12.5 12.5 0 0 1 5.28-10.2L216 580.22a12.5 12.5 0 0 1 15 0.43l130.45 103.9L547 459.27a12.5 12.5 0 0 1 17.06-2.12L855.22 671.6a12.5 12.5 0 0 1 5.09 10.06v80.44a117 117 0 0 1-15.75 58.77 114.17 114.17 0 0 1-40.07 40.64A109.94 109.94 0 0 1 748.21 877zM78 708.46v53.65C78 811.7 117.1 852 165.12 852h583.09c30.88 0 58.82-16.35 74.74-43.73a92 92 0 0 0 12.36-46.21V688l-276.5-203.7-185.88 225.63a12.5 12.5 0 0 1-17.44 1.83L222.77 606z" fill="#3D9FF9" p-id="11734"></path><path d="M847.8 681.67v80.44a104.16 104.16 0 0 1-14.05 52.49c-17.39 29.91-49.19 49.94-85.54 49.94H165.12c-55 0-99.6-45.86-99.6-102.43V702l67.14-47.5 90.55-64.06L363.29 702l193.4-234.78z" fill="#C5E3FF" p-id="11735"></path><path d="M748.21 877H165.12C103.31 877 53 825.48 53 762.11V702a12.5 12.5 0 0 1 5.28-10.2L216 580.22a12.5 12.5 0 0 1 15 0.43l130.45 103.9L547 459.27a12.5 12.5 0 0 1 17.06-2.12L855.22 671.6a12.5 12.5 0 0 1 5.09 10.06v80.44a117 117 0 0 1-15.75 58.77 114.17 114.17 0 0 1-40.07 40.64A109.94 109.94 0 0 1 748.21 877zM78 708.46v53.65C78 811.7 117.1 852 165.12 852h583.09c30.88 0 58.82-16.35 74.74-43.73a92 92 0 0 0 12.36-46.21V688l-276.5-203.7-185.88 225.63a12.5 12.5 0 0 1-17.44 1.83L222.77 606z" fill="#3D9FF9" p-id="11736"></path><path d="M226.91 418.1m-69.43 0a69.43 69.43 0 1 0 138.86 0 69.43 69.43 0 1 0-138.86 0Z" fill="#C5E3FF" p-id="11737"></path><path d="M226.91 500a81.93 81.93 0 1 1 81.93-81.93A82 82 0 0 1 226.91 500z m0-138.86a56.93 56.93 0 1 0 56.93 56.93 57 57 0 0 0-56.93-56.9z" fill="#3D9FF9" p-id="11738"></path></svg>
             {% if lan == 'cn' %} 保存图片 {% else %} Save Image {% endif %}
@@ -97,7 +105,7 @@
 </div>
 {% endmacro %}
 
-{% macro compare_summary_section(title, metrics, scene1, scene2) %}
+{% macro compare_summary_section(title, metrics, scenes) %}
 {% set visible = namespace(count=0) %}
 {% for metric in metrics %}
 {% if metric.show %}
@@ -105,9 +113,9 @@
 {% endif %}
 {% endfor %}
 {% if visible.count > 0 %}
-                    <tr class="bg-light"><th colspan="6" class="subheader">{{ title }}</th></tr>
+                    <tr class="bg-light"><th colspan="{{ visible.count + 1 }}" class="subheader">{{ title }}</th></tr>
                     <tr>
-                        <td colspan="6" class="compare-summary-section-cell">
+                        <td colspan="{{ visible.count + 1 }}" class="compare-summary-section-cell">
                             <div class="compare-summary-grid" style="--metric-count: {{ visible.count }};">
                                 <div class="compare-summary-cell subheader">{% if lan == 'cn' %}场景{% else %}Scene{% endif %}</div>
                                 {% set header = namespace(index=0) %}
@@ -117,21 +125,17 @@
                                 <div class="compare-summary-cell subheader{% if header.index == visible.count %} compare-summary-row-end{% endif %}">{{ metric.label }}</div>
                                 {% endif %}
                                 {% endfor %}
-                                <div class="compare-summary-cell">{{ scene1 }}</div>
-                                {% set row1 = namespace(index=0) %}
+                                {% for scene in scenes %}
+                                {% set row_index = loop.index0 %}
+                                {% set scene_last = loop.last %}
+                                <div class="compare-summary-cell{% if scene_last %} compare-summary-last-row{% endif %}">{{ scene }}</div>
+                                {% set row = namespace(index=0) %}
                                 {% for metric in metrics %}
                                 {% if metric.show %}
-                                {% set row1.index = row1.index + 1 %}
-                                <div class="compare-summary-cell{% if row1.index == visible.count %} compare-summary-row-end{% endif %}">{{ metric.value1 }}</div>
+                                {% set row.index = row.index + 1 %}
+                                <div class="compare-summary-cell{% if scene_last %} compare-summary-last-row{% endif %}{% if row.index == visible.count %} compare-summary-row-end{% endif %}">{{ metric.cells[row_index] }}</div>
                                 {% endif %}
                                 {% endfor %}
-                                <div class="compare-summary-cell compare-summary-last-row">{{ scene2 }}</div>
-                                {% set row2 = namespace(index=0) %}
-                                {% for metric in metrics %}
-                                {% if metric.show %}
-                                {% set row2.index = row2.index + 1 %}
-                                <div class="compare-summary-cell compare-summary-last-row{% if row2.index == visible.count %} compare-summary-row-end{% endif %}">{{ metric.value2 }}</div>
-                                {% endif %}
                                 {% endfor %}
                             </div>
                         </td>
@@ -140,79 +144,184 @@
 {% endmacro %}
 
 {% block page_body %}
-{% set summary_flags1 = apm_data1.summary_flags|default({}) %}
-{% set summary_flags2 = apm_data2.summary_flags|default({}) %}
-{% set show_cpu_app = summary_flags1.get('cpu_app', apm_data1.cpuAppRate != 0) or summary_flags2.get('cpu_app', apm_data2.cpuAppRate != 0) %}
-{% set show_cpu_system = summary_flags1.get('cpu_system', apm_data1.cpuSystemRate != 0) or summary_flags2.get('cpu_system', apm_data2.cpuSystemRate != 0) %}
-{% set show_mem_total = summary_flags1.get('mem_total', apm_data1.totalPassAvg != 0) or summary_flags2.get('mem_total', apm_data2.totalPassAvg != 0) %}
-{% set show_mem_peak = summary_flags1.get('mem_peak', apm_data1.totalPassPeak != 0) or summary_flags2.get('mem_peak', apm_data2.totalPassPeak != 0) %}
-{% set show_mem_swap = platform == 'Android' and (summary_flags1.get('mem_swap', apm_data1.swapPassAvg != 0) or summary_flags2.get('mem_swap', apm_data2.swapPassAvg != 0)) %}
-{% set show_fps = summary_flags1.get('fps', apm_data1.fps != 0) or summary_flags2.get('fps', apm_data2.fps != 0) %}
-{% set show_frame_stability = summary_flags1.get('frame_stability', apm_data1.frameStability != 0) or summary_flags2.get('frame_stability', apm_data2.frameStability != 0) %}
-{% set show_jank = platform == 'Android' and (summary_flags1.get('jank', apm_data1.jank != 0) or summary_flags2.get('jank', apm_data2.jank != 0)) %}
-{% set show_battery_level = platform == 'Android' and (summary_flags1.get('battery_level', apm_data1.batteryLevel != 0) or summary_flags2.get('battery_level', apm_data2.batteryLevel != 0)) %}
-{% set show_battery_temp = summary_flags1.get('battery_temp', apm_data1.batteryTeml != 0) or summary_flags2.get('battery_temp', apm_data2.batteryTeml != 0) %}
-{% set show_battery_current = platform != 'Android' and (summary_flags1.get('battery_current', apm_data1.batteryCurrent != 0) or summary_flags2.get('battery_current', apm_data2.batteryCurrent != 0)) %}
-{% set show_battery_voltage = platform != 'Android' and (summary_flags1.get('battery_voltage', apm_data1.batteryVoltage != 0) or summary_flags2.get('battery_voltage', apm_data2.batteryVoltage != 0)) %}
-{% set show_battery_power = platform != 'Android' and (summary_flags1.get('battery_power', apm_data1.batteryPower != 0) or summary_flags2.get('battery_power', apm_data2.batteryPower != 0)) %}
-{% set show_network_recv = summary_flags1.get('network_recv', apm_data1.flow_recv != 0) or summary_flags2.get('network_recv', apm_data2.flow_recv != 0) %}
-{% set show_network_send = summary_flags1.get('network_send', apm_data1.flow_send != 0) or summary_flags2.get('network_send', apm_data2.flow_send != 0) %}
-{% set show_file_io = summary_flags1.get('file_io', apm_data1.file_io_flag) or summary_flags2.get('file_io', apm_data2.file_io_flag) %}
-{% set show_gpu = summary_flags1.get('gpu', apm_data1.gpu != 0) or summary_flags2.get('gpu', apm_data2.gpu != 0) %}
-{% set show_thermal = platform == 'Android' and (summary_flags1.get('thermal', apm_data1.thermal_flag|default(false)) or summary_flags2.get('thermal', apm_data2.thermal_flag|default(false))) %}
-{% set show_thermal_cpu_avg = platform == 'Android' and (summary_flags1.get('thermal_cpu_avg', apm_data1.thermalCpuAvg|default(0) != 0) or summary_flags2.get('thermal_cpu_avg', apm_data2.thermalCpuAvg|default(0) != 0)) %}
-{% set show_thermal_gpu_avg = platform == 'Android' and (summary_flags1.get('thermal_gpu_avg', apm_data1.thermalGpuAvg|default(0) != 0) or summary_flags2.get('thermal_gpu_avg', apm_data2.thermalGpuAvg|default(0) != 0)) %}
-{% set show_summary = show_cpu_app or show_cpu_system or show_mem_total or show_mem_peak or show_mem_swap or show_fps or show_frame_stability or show_jank or show_battery_level or show_battery_temp or show_battery_current or show_battery_voltage or show_battery_power or show_network_recv or show_network_send or show_file_io or show_gpu or show_thermal_cpu_avg or show_thermal_gpu_avg %}
+{% if scenes|length >= 2 %}
+{% set flags = namespace(cpu_app=false, cpu_system=false, mem_total=false, mem_peak=false, mem_swap=false, fps=false, frame_stability=false, jank=false, battery_level=false, battery_temp=false, battery_current=false, battery_voltage=false, battery_power=false, network_recv=false, network_send=false, file_io=false, gpu=false, thermal=false, thermal_cpu_avg=false, thermal_gpu_avg=false, cpu_core=false, mem_detail=false, disk=false) %}
+{% for item in apm_data_list %}
+{% set sf = item.summary_flags|default({}) %}
+{% set flags.cpu_app = flags.cpu_app or sf.get('cpu_app', item.get('cpuAppRate', 0) != 0) %}
+{% set flags.cpu_system = flags.cpu_system or sf.get('cpu_system', item.get('cpuSystemRate', 0) != 0) %}
+{% set flags.mem_total = flags.mem_total or sf.get('mem_total', item.get('totalPassAvg', 0) != 0) %}
+{% set flags.mem_peak = flags.mem_peak or sf.get('mem_peak', item.get('totalPassPeak', 0) != 0) %}
+{% set flags.mem_swap = flags.mem_swap or sf.get('mem_swap', item.get('swapPassAvg', 0) != 0) %}
+{% set flags.fps = flags.fps or sf.get('fps', item.get('fps', 0) != 0) %}
+{% set flags.frame_stability = flags.frame_stability or sf.get('frame_stability', item.get('frameStability', 0) != 0) %}
+{% set flags.jank = flags.jank or sf.get('jank', item.get('jank', 0) != 0) %}
+{% set flags.battery_level = flags.battery_level or sf.get('battery_level', item.get('batteryLevel', 0) != 0) %}
+{% set flags.battery_temp = flags.battery_temp or sf.get('battery_temp', item.get('batteryTeml', 0) != 0) %}
+{% set flags.battery_current = flags.battery_current or sf.get('battery_current', item.get('batteryCurrent', 0) != 0) %}
+{% set flags.battery_voltage = flags.battery_voltage or sf.get('battery_voltage', item.get('batteryVoltage', 0) != 0) %}
+{% set flags.battery_power = flags.battery_power or sf.get('battery_power', item.get('batteryPower', 0) != 0) %}
+{% set flags.network_recv = flags.network_recv or sf.get('network_recv', item.get('flow_recv', 0) != 0) %}
+{% set flags.network_send = flags.network_send or sf.get('network_send', item.get('flow_send', 0) != 0) %}
+{% set flags.file_io = flags.file_io or sf.get('file_io', item.get('file_io_flag', false)) %}
+{% set flags.gpu = flags.gpu or sf.get('gpu', item.get('gpu', 0) != 0) %}
+{% set flags.thermal = flags.thermal or sf.get('thermal', item.get('thermal_flag', false)) %}
+{% set flags.thermal_cpu_avg = flags.thermal_cpu_avg or sf.get('thermal_cpu_avg', item.get('thermalCpuAvg', 0) != 0) %}
+{% set flags.thermal_gpu_avg = flags.thermal_gpu_avg or sf.get('thermal_gpu_avg', item.get('thermalGpuAvg', 0) != 0) %}
+{% set flags.cpu_core = flags.cpu_core or item.get('cpu_core_flag', false) %}
+{% set flags.mem_detail = flags.mem_detail or item.get('mem_detail_flag', false) %}
+{% set flags.disk = flags.disk or item.get('disk_flag', false) %}
+{% endfor %}
+{% set show_cpu_app = flags.cpu_app %}
+{% set show_cpu_system = flags.cpu_system %}
+{% set show_mem_total = flags.mem_total %}
+{% set show_mem_peak = flags.mem_peak %}
+{% set show_mem_swap = platform == 'Android' and flags.mem_swap %}
+{% set show_fps = flags.fps %}
+{% set show_frame_stability = flags.frame_stability %}
+{% set show_jank = platform == 'Android' and flags.jank %}
+{% set show_battery_level = platform == 'Android' and flags.battery_level %}
+{% set show_battery_temp = flags.battery_temp %}
+{% set show_battery_current = platform != 'Android' and flags.battery_current %}
+{% set show_battery_voltage = platform != 'Android' and flags.battery_voltage %}
+{% set show_battery_power = platform != 'Android' and flags.battery_power %}
+{% set show_network_recv = flags.network_recv %}
+{% set show_network_send = flags.network_send %}
+{% set show_file_io = flags.file_io %}
+{% set show_gpu = flags.gpu %}
+{% set show_thermal = platform == 'Android' and flags.thermal %}
+{% set show_thermal_cpu_avg = platform == 'Android' and flags.thermal_cpu_avg %}
+{% set show_thermal_gpu_avg = platform == 'Android' and flags.thermal_gpu_avg %}
+{% set show_cpu_core = platform == 'Android' and flags.cpu_core and cpu_cores > 0 %}
+{% set show_mem_detail = platform == 'Android' and flags.mem_detail %}
+{% set show_disk = flags.disk %}
+{% set unity_avg_list = unity_data_list|map(attribute='avg', default={})|list %}
+{% set unity_flags = namespace(cpu_frame=false, gpu_frame=false, draw_calls=false, triangles=false, vertices=false, render_textures=false, render_textures_mb=false, render_textures_changes=false, used_buffers=false, used_buffers_mb=false, vertex_upload=false, vertex_upload_kb=false, index_upload=false, index_upload_kb=false) %}
+{% for avg in unity_avg_list %}
+{% set unity_flags.cpu_frame = unity_flags.cpu_frame or 'cpu_frame_ms' in avg %}
+{% set unity_flags.gpu_frame = unity_flags.gpu_frame or 'gpu_frame_ms' in avg %}
+{% set unity_flags.draw_calls = unity_flags.draw_calls or 'draw_calls' in avg %}
+{% set unity_flags.triangles = unity_flags.triangles or 'triangles' in avg %}
+{% set unity_flags.vertices = unity_flags.vertices or 'vertices' in avg %}
+{% set unity_flags.render_textures = unity_flags.render_textures or 'render_textures' in avg %}
+{% set unity_flags.render_textures_mb = unity_flags.render_textures_mb or 'render_textures_mb' in avg %}
+{% set unity_flags.render_textures_changes = unity_flags.render_textures_changes or 'render_textures_changes' in avg %}
+{% set unity_flags.used_buffers = unity_flags.used_buffers or 'used_buffers' in avg %}
+{% set unity_flags.used_buffers_mb = unity_flags.used_buffers_mb or 'used_buffers_mb' in avg %}
+{% set unity_flags.vertex_upload = unity_flags.vertex_upload or 'vertex_upload' in avg %}
+{% set unity_flags.vertex_upload_kb = unity_flags.vertex_upload_kb or 'vertex_upload_kb' in avg %}
+{% set unity_flags.index_upload = unity_flags.index_upload or 'index_upload' in avg %}
+{% set unity_flags.index_upload_kb = unity_flags.index_upload_kb or 'index_upload_kb' in avg %}
+{% endfor %}
+{% set unity_show_cpu_frame = show_unity and unity_flags.cpu_frame %}
+{% set unity_show_gpu_frame = show_unity and unity_flags.gpu_frame %}
+{% set unity_show_draw_calls = show_unity and unity_flags.draw_calls %}
+{% set unity_show_triangles = show_unity and unity_flags.triangles %}
+{% set unity_show_vertices = show_unity and unity_flags.vertices %}
+{% set unity_show_render_textures = show_unity and (unity_flags.render_textures or unity_flags.render_textures_mb) %}
+{% set unity_show_render_textures_mb = show_unity and unity_flags.render_textures_mb %}
+{% set unity_show_render_textures_changes = show_unity and unity_flags.render_textures_changes %}
+{% set unity_show_used_buffers = show_unity and (unity_flags.used_buffers or unity_flags.used_buffers_mb) %}
+{% set unity_show_used_buffers_mb = show_unity and unity_flags.used_buffers_mb %}
+{% set unity_show_vertex_upload = show_unity and (unity_flags.vertex_upload or unity_flags.vertex_upload_kb) %}
+{% set unity_show_vertex_upload_kb = show_unity and unity_flags.vertex_upload_kb %}
+{% set unity_show_index_upload = show_unity and (unity_flags.index_upload or unity_flags.index_upload_kb) %}
+{% set unity_show_index_upload_kb = show_unity and unity_flags.index_upload_kb %}
+{% set unity_cpu_values = [] %}
+{% set unity_gpu_values = [] %}
+{% set unity_draw_values = [] %}
+{% set unity_triangle_values = [] %}
+{% set unity_vertex_values = [] %}
+{% set unity_render_texture_values = [] %}
+{% set unity_render_texture_change_values = [] %}
+{% set unity_used_buffer_values = [] %}
+{% set unity_vertex_upload_values = [] %}
+{% set unity_index_upload_values = [] %}
+{% for avg in unity_avg_list %}
+{% set _ = unity_cpu_values.append(avg.get('cpu_frame_ms', '-')) %}
+{% set _ = unity_gpu_values.append(avg.get('gpu_frame_ms', '-')) %}
+{% set _ = unity_draw_values.append(avg.get('draw_calls')|int if 'draw_calls' in avg else '-') %}
+{% set _ = unity_triangle_values.append(('%.1f'|format(avg.get('triangles'))) if 'triangles' in avg else '-') %}
+{% set _ = unity_vertex_values.append(('%.1f'|format(avg.get('vertices'))) if 'vertices' in avg else '-') %}
+{% set _ = unity_render_texture_values.append(
+    (avg.get('render_textures')|int|string if 'render_textures' in avg else '-')
+    ~ ' / '
+    ~ (('%.1f'|format(avg.get('render_textures_mb'))) ~ ' MB' if 'render_textures_mb' in avg else '-')
+) %}
+{% set _ = unity_render_texture_change_values.append(
+    avg.get('render_textures_changes')|int if 'render_textures_changes' in avg else '-'
+) %}
+{% set _ = unity_used_buffer_values.append(
+    (avg.get('used_buffers')|int|string if 'used_buffers' in avg else '-')
+    ~ ' / '
+    ~ (('%.1f'|format(avg.get('used_buffers_mb'))) ~ ' MB' if 'used_buffers_mb' in avg else '-')
+) %}
+{% set _ = unity_vertex_upload_values.append(
+    (avg.get('vertex_upload')|int|string if 'vertex_upload' in avg else '-')
+    ~ ' / '
+    ~ (('%.1f'|format(avg.get('vertex_upload_kb'))) ~ ' KB' if 'vertex_upload_kb' in avg else '-')
+) %}
+{% set _ = unity_index_upload_values.append(
+    (avg.get('index_upload')|int|string if 'index_upload' in avg else '-')
+    ~ ' / '
+    ~ (('%.1f'|format(avg.get('index_upload_kb'))) ~ ' KB' if 'index_upload_kb' in avg else '-')
+) %}
+{% endfor %}
+{% set show_summary = show_cpu_app or show_cpu_system or show_mem_total or show_mem_peak or show_mem_swap or show_fps or show_frame_stability or show_jank or show_battery_level or show_battery_temp or show_battery_current or show_battery_voltage or show_battery_power or show_network_recv or show_network_send or show_file_io or show_gpu or show_thermal_cpu_avg or show_thermal_gpu_avg or unity_show_cpu_frame or unity_show_gpu_frame or unity_show_draw_calls or unity_show_triangles or unity_show_vertices or unity_show_render_textures or unity_show_render_textures_changes or unity_show_used_buffers or unity_show_vertex_upload or unity_show_index_upload %}
 {% if show_summary %}
 <div class="col-12 mb-3">
     <div class="card">
         <div class="table-responsive">
             <table class="table table-vcenter table-bordered table-nowrap card-table compare-summary-table">
-                <colgroup>
-                    <col style="width: 16.6667%;">
-                    <col style="width: 16.6667%;">
-                    <col style="width: 16.6667%;">
-                    <col style="width: 16.6667%;">
-                    <col style="width: 16.6667%;">
-                    <col style="width: 16.6667%;">
-                </colgroup>
                 <tbody>
                     {{ compare_summary_section('CPU', [
-                        {'label': '应用' if lan == 'cn' else 'APP', 'show': show_cpu_app, 'value1': apm_data1.cpuAppRate, 'value2': apm_data2.cpuAppRate},
-                        {'label': '整机' if lan == 'cn' else 'Total', 'show': show_cpu_system, 'value1': apm_data1.cpuSystemRate, 'value2': apm_data2.cpuSystemRate},
-                    ], scene1, scene2) }}
+                        {'label': '应用' if lan == 'cn' else 'APP', 'show': show_cpu_app, 'cells': apm_data_list|map(attribute='cpuAppRate', default='-')|list},
+                        {'label': '整机' if lan == 'cn' else 'Total', 'show': show_cpu_system, 'cells': apm_data_list|map(attribute='cpuSystemRate', default='-')|list},
+                    ], scenes) }}
                     {{ compare_summary_section('内存' if lan == 'cn' else 'Memory', [
-                        {'label': '总内存' if lan == 'cn' else 'Total', 'show': show_mem_total, 'value1': apm_data1.totalPassAvg, 'value2': apm_data2.totalPassAvg},
-                        {'label': '峰值' if lan == 'cn' else 'Peak', 'show': show_mem_peak, 'value1': apm_data1.totalPassPeak, 'value2': apm_data2.totalPassPeak},
-                        {'label': '交换内存' if lan == 'cn' else 'Swap', 'show': show_mem_swap, 'value1': apm_data1.swapPassAvg, 'value2': apm_data2.swapPassAvg},
-                    ], scene1, scene2) }}
+                        {'label': '总内存' if lan == 'cn' else 'Total', 'show': show_mem_total, 'cells': apm_data_list|map(attribute='totalPassAvg', default='-')|list},
+                        {'label': '峰值' if lan == 'cn' else 'Peak', 'show': show_mem_peak, 'cells': apm_data_list|map(attribute='totalPassPeak', default='-')|list},
+                        {'label': '交换内存' if lan == 'cn' else 'Swap', 'show': show_mem_swap, 'cells': apm_data_list|map(attribute='swapPassAvg', default='-')|list},
+                    ], scenes) }}
                     {{ compare_summary_section('网络' if lan == 'cn' else 'Network', [
-                        {'label': '接收' if lan == 'cn' else 'Recv', 'show': show_network_recv, 'value1': apm_data1.flow_recv, 'value2': apm_data2.flow_recv},
-                        {'label': '发送' if lan == 'cn' else 'Send', 'show': show_network_send, 'value1': apm_data1.flow_send, 'value2': apm_data2.flow_send},
-                    ], scene1, scene2) }}
+                        {'label': '接收' if lan == 'cn' else 'Recv', 'show': show_network_recv, 'cells': apm_data_list|map(attribute='flow_recv', default='-')|list},
+                        {'label': '发送' if lan == 'cn' else 'Send', 'show': show_network_send, 'cells': apm_data_list|map(attribute='flow_send', default='-')|list},
+                    ], scenes) }}
                     {{ compare_summary_section('File IO', [
-                        {'label': '读取' if lan == 'cn' else 'Read', 'show': show_file_io, 'value1': apm_data1.file_read, 'value2': apm_data2.file_read},
-                        {'label': '写入' if lan == 'cn' else 'Write', 'show': show_file_io, 'value1': apm_data1.file_write, 'value2': apm_data2.file_write},
-                    ], scene1, scene2) }}
+                        {'label': '读取' if lan == 'cn' else 'Read', 'show': show_file_io, 'cells': apm_data_list|map(attribute='file_read', default='-')|list},
+                        {'label': '写入' if lan == 'cn' else 'Write', 'show': show_file_io, 'cells': apm_data_list|map(attribute='file_write', default='-')|list},
+                    ], scenes) }}
                     {{ compare_summary_section('FPS', [
-                        {'label': 'FPS' if lan == 'cn' else 'fps', 'show': show_fps, 'value1': apm_data1.fps, 'value2': apm_data2.fps},
-                        {'label': '流畅度' if lan == 'cn' else 'Smooth', 'show': show_frame_stability, 'value1': apm_data1.frameStability, 'value2': apm_data2.frameStability},
-                        {'label': '卡顿/分钟' if lan == 'cn' else 'jank/min', 'show': show_jank, 'value1': apm_data1.jank, 'value2': apm_data2.jank},
-                    ], scene1, scene2) }}
+                        {'label': 'FPS' if lan == 'cn' else 'fps', 'show': show_fps, 'cells': apm_data_list|map(attribute='fps', default='-')|list},
+                        {'label': '流畅度' if lan == 'cn' else 'Smooth', 'show': show_frame_stability, 'cells': apm_data_list|map(attribute='frameStability', default='-')|list},
+                        {'label': '卡顿/分钟' if lan == 'cn' else 'jank/min', 'show': show_jank, 'cells': apm_data_list|map(attribute='jank', default='-')|list},
+                    ], scenes) }}
                     {{ compare_summary_section('电量' if lan == 'cn' else 'Battery', [
-                        {'label': '电量' if lan == 'cn' else 'Level', 'show': show_battery_level, 'value1': apm_data1.batteryLevel, 'value2': apm_data2.batteryLevel},
-                        {'label': '温度' if lan == 'cn' else 'Temperature', 'show': show_battery_temp, 'value1': apm_data1.batteryTeml, 'value2': apm_data2.batteryTeml},
-                        {'label': '电流' if lan == 'cn' else 'Current', 'show': show_battery_current, 'value1': apm_data1.batteryCurrent, 'value2': apm_data2.batteryCurrent},
-                        {'label': '电压' if lan == 'cn' else 'Voltage', 'show': show_battery_voltage, 'value1': apm_data1.batteryVoltage, 'value2': apm_data2.batteryVoltage},
-                        {'label': '功耗' if lan == 'cn' else 'Power', 'show': show_battery_power, 'value1': apm_data1.batteryPower, 'value2': apm_data2.batteryPower},
-                    ], scene1, scene2) }}
+                        {'label': '电量' if lan == 'cn' else 'Level', 'show': show_battery_level, 'cells': apm_data_list|map(attribute='batteryLevel', default='-')|list},
+                        {'label': '温度' if lan == 'cn' else 'Temperature', 'show': show_battery_temp, 'cells': apm_data_list|map(attribute='batteryTeml', default='-')|list},
+                        {'label': '电流' if lan == 'cn' else 'Current', 'show': show_battery_current, 'cells': apm_data_list|map(attribute='batteryCurrent', default='-')|list},
+                        {'label': '电压' if lan == 'cn' else 'Voltage', 'show': show_battery_voltage, 'cells': apm_data_list|map(attribute='batteryVoltage', default='-')|list},
+                        {'label': '功耗' if lan == 'cn' else 'Power', 'show': show_battery_power, 'cells': apm_data_list|map(attribute='batteryPower', default='-')|list},
+                    ], scenes) }}
                     {{ compare_summary_section('GPU', [
-                        {'label': 'gpu', 'show': show_gpu, 'value1': apm_data1.gpu, 'value2': apm_data2.gpu},
-                    ], scene1, scene2) }}
+                        {'label': 'gpu', 'show': show_gpu, 'cells': apm_data_list|map(attribute='gpu', default='-')|list},
+                    ], scenes) }}
                     {{ compare_summary_section('温度传感器' if lan == 'cn' else 'Temperature', [
-                        {'label': 'CPU均温' if lan == 'cn' else 'CPU Temp', 'show': show_thermal_cpu_avg, 'value1': apm_data1.thermalCpuAvg|default(0), 'value2': apm_data2.thermalCpuAvg|default(0)},
-                        {'label': 'GPU均温' if lan == 'cn' else 'GPU Temp', 'show': show_thermal_gpu_avg, 'value1': apm_data1.thermalGpuAvg|default(0), 'value2': apm_data2.thermalGpuAvg|default(0)},
-                    ], scene1, scene2) }}
+                        {'label': 'CPU均温' if lan == 'cn' else 'CPU Temp', 'show': show_thermal_cpu_avg, 'cells': apm_data_list|map(attribute='thermalCpuAvg', default='-')|list},
+                        {'label': 'GPU均温' if lan == 'cn' else 'GPU Temp', 'show': show_thermal_gpu_avg, 'cells': apm_data_list|map(attribute='thermalGpuAvg', default='-')|list},
+                    ], scenes) }}
+                    {{ compare_summary_section('Unity 引擎' if lan == 'cn' else 'Unity', [
+                        {'label': 'CPU帧耗时(ms)' if lan == 'cn' else 'CPU Frame (ms)', 'show': unity_show_cpu_frame, 'cells': unity_cpu_values},
+                        {'label': 'GPU帧耗时(ms)' if lan == 'cn' else 'GPU Frame (ms)', 'show': unity_show_gpu_frame, 'cells': unity_gpu_values},
+                        {'label': 'Draw Calls', 'show': unity_show_draw_calls, 'cells': unity_draw_values},
+                        {'label': '三角面 (k)' if lan == 'cn' else 'Triangles (k)', 'show': unity_show_triangles, 'cells': unity_triangle_values},
+                        {'label': '顶点 (k)' if lan == 'cn' else 'Vertices (k)', 'show': unity_show_vertices, 'cells': unity_vertex_values},
+                        {'label': 'Render Textures' if lan == 'cn' else 'Render Textures', 'show': unity_show_render_textures, 'cells': unity_render_texture_values},
+                        {'label': 'RT 切换' if lan == 'cn' else 'RT Changes', 'show': unity_show_render_textures_changes, 'cells': unity_render_texture_change_values},
+                        {'label': 'Used Buffers' if lan == 'cn' else 'Used Buffers', 'show': unity_show_used_buffers, 'cells': unity_used_buffer_values},
+                        {'label': 'VB 上传/帧' if lan == 'cn' else 'VB Upload/Frame', 'show': unity_show_vertex_upload, 'cells': unity_vertex_upload_values},
+                        {'label': 'IB 上传/帧' if lan == 'cn' else 'IB Upload/Frame', 'show': unity_show_index_upload, 'cells': unity_index_upload_values},
+                    ], scenes) }}
                 </tbody>
                 <tfoot></tfoot>
           </table>
@@ -227,8 +336,10 @@
     {% if show_cpu_system %}
     {{ chart_card('cpu-system-card', 'CPU 使用率 (%)：整机' if lan == 'cn' else 'CPU (%) : System Usage', 'chart-cpu-system', 'cpu_system_loading', 'cpu_system.png') }}
     {% endif %}
-    {% if platform == 'Android' and apm_data1.cpu_core_flag and apm_data2.cpu_core_flag %}
-    {{ chart_card('cpu-core-card', 'CPU 使用率 (%)：核心' if lan == 'cn' else 'CPU (%) : Core Usage', 'chart-cpu-core', 'cpu_core_loading', 'cpu_core.png') }}
+    {% if show_cpu_core %}
+    {% for core in range(cpu_cores) %}
+    {{ chart_card('cpu-core-' ~ core ~ '-card', ('CPU 使用率 (%)：核心 ' ~ core) if lan == 'cn' else ('CPU (%) : Core ' ~ core), 'chart-cpu-core-' ~ core, 'cpu_core_' ~ core ~ '_loading', 'cpu_core_' ~ core ~ '.png') }}
+    {% endfor %}
     {% endif %}
     {% if show_mem_total %}
     {{ chart_card('mem-total-card', '内存 (MB)：总内存' if lan == 'cn' else 'Memory (MB) : Total Usage', 'chart-mem-total', 'mem_total_loading', 'mem_total.png') }}
@@ -236,8 +347,11 @@
     {% if show_mem_swap %}
     {{ chart_card('mem-swap-card', '内存 (MB)：交换内存' if lan == 'cn' else 'Memory (MB) : Swap Usage', 'chart-mem-swap', 'mem_swap_loading', 'mem_swap.png') }}
     {% endif %}
-    {% if platform == 'Android' and apm_data1.mem_detail_flag and apm_data2.mem_detail_flag %}
-    {{ chart_card('mem-detail-card', '内存详情 (MB)' if lan == 'cn' else 'Memory (MB) : Detail Usage', 'chart-mem-detail', 'mem_detail_loading', 'mem_detail.png') }}
+    {% if show_mem_detail %}
+    {% set mem_detail_metrics = [('java_heap', 'Java Heap'), ('native_heap', 'Native Heap'), ('code_pss', 'Code PSS'), ('stack_pss', 'Stack PSS'), ('graphics_pss', 'Graphics PSS'), ('private_pss', 'Private PSS'), ('system_pss', 'System PSS')] %}
+    {% for key, label in mem_detail_metrics %}
+    {{ chart_card('mem-detail-' ~ key ~ '-card', ('内存详情 (MB)：' ~ label) if lan == 'cn' else ('Memory (MB) : ' ~ label), 'chart-mem-detail-' ~ key, 'mem_detail_' ~ key ~ '_loading', 'mem_detail_' ~ key ~ '.png') }}
+    {% endfor %}
     {% endif %}
     {% if show_fps %}
     {{ chart_card('fps-card', 'FPS (HZ)', 'chart-fps', 'fps_loading', 'fps.png') }}
@@ -269,48 +383,148 @@
     {% if show_file_io %}
     {{ chart_card('file-io-read-card', '文件 IO (KB)：读取' if lan == 'cn' else 'File IO (KB) : Read', 'chart-file-io-read', 'file_io_read_loading', 'file_io_read.png') }}
     {{ chart_card('file-io-write-card', '文件 IO (KB)：写入' if lan == 'cn' else 'File IO (KB) : Write', 'chart-file-io-write', 'file_io_write_loading', 'file_io_write.png') }}
-    {{ chart_card('file-io-total-card', '文件 IO 累计 (KB)' if lan == 'cn' else 'File IO (KB) : Total Read / Write', 'chart-file-io-total', 'file_io_total_loading', 'file_io_total.png') }}
+    {{ chart_card('file-io-total-read-card', '文件 IO 累计 (KB)：读取' if lan == 'cn' else 'File IO (KB) : Total Read', 'chart-file-io-total-read', 'file_io_total_read_loading', 'file_io_total_read.png') }}
+    {{ chart_card('file-io-total-write-card', '文件 IO 累计 (KB)：写入' if lan == 'cn' else 'File IO (KB) : Total Write', 'chart-file-io-total-write', 'file_io_total_write_loading', 'file_io_total_write.png') }}
     {% endif %}
     {% if show_gpu %}
     {{ chart_card('gpu-card', 'GPU (%)', 'chart-gpu', 'gpu_loading', 'gpu.png') }}
     {% endif %}
     {% if show_thermal %}
-    {{ chart_card('thermal-card', '温度传感器 (°C)' if lan == 'cn' else 'Thermal Sensor (°C)', 'chart-thermal', 'thermal_loading', 'thermal.png') }}
+    {% set thermal_metrics = [('CPU', 'CPU'), ('GPU', 'GPU'), ('Memory', '内存' if lan == 'cn' else 'Memory'), ('Battery', '电池' if lan == 'cn' else 'Battery')] %}
+    {% for key, label in thermal_metrics %}
+    {{ chart_card('thermal-' ~ key|lower ~ '-card', ('温度传感器 (°C)：' ~ label) if lan == 'cn' else ('Thermal Sensor (°C) : ' ~ label), 'chart-thermal-' ~ key|lower, 'thermal_' ~ key|lower ~ '_loading', 'thermal_' ~ key|lower ~ '.png') }}
+    {% endfor %}
     {% endif %}
-    {% if apm_data1.disk_flag and apm_data2.disk_flag %}
+    {% if show_disk %}
     {{ chart_card('disk-used-card', '磁盘 (KB)：已用' if lan == 'cn' else 'Disk (KB) : Used', 'chart-disk-used', 'disk_used_loading', 'disk_used.png') }}
     {{ chart_card('disk-free-card', '磁盘 (KB)：可用' if lan == 'cn' else 'Disk (KB) : Free', 'chart-disk-free', 'disk_free_loading', 'disk_free.png') }}
     {% endif %}
+    {% if unity_show_cpu_frame %}
+    {{ chart_card('unity-cpu-frame-card', 'Unity 帧耗时 (ms)：CPU' if lan == 'cn' else 'Unity Frame (ms) : CPU', 'chart-unity-cpu-frame', 'unity_cpu_frame_loading', 'unity_cpu_frame.png') }}
+    {% endif %}
+    {% if unity_show_gpu_frame %}
+    {{ chart_card('unity-gpu-frame-card', 'Unity 帧耗时 (ms)：GPU' if lan == 'cn' else 'Unity Frame (ms) : GPU', 'chart-unity-gpu-frame', 'unity_gpu_frame_loading', 'unity_gpu_frame.png') }}
+    {% endif %}
+    {% if unity_show_draw_calls %}
+    {{ chart_card('unity-drawcalls-card', 'Unity Draw Calls', 'chart-unity-drawcalls', 'unity_drawcalls_loading', 'unity_drawcalls.png') }}
+    {% endif %}
+    {% if unity_show_triangles %}
+    {{ chart_card('unity-triangles-card', 'Unity 几何：三角面 (k)' if lan == 'cn' else 'Unity Geometry : Triangles (k)', 'chart-unity-triangles', 'unity_triangles_loading', 'unity_triangles.png') }}
+    {% endif %}
+    {% if unity_show_vertices %}
+    {{ chart_card('unity-vertices-card', 'Unity 几何：顶点 (k)' if lan == 'cn' else 'Unity Geometry : Vertices (k)', 'chart-unity-vertices', 'unity_vertices_loading', 'unity_vertices.png') }}
+    {% endif %}
+    {% if unity_show_render_textures_mb %}
+    {{ chart_card('unity-render-textures-card', 'Unity Render Textures (MB)', 'chart-unity-render-textures', 'unity_render_textures_loading', 'unity_render_textures.png') }}
+    {% endif %}
+    {% if unity_show_used_buffers_mb %}
+    {{ chart_card('unity-used-buffers-card', 'Unity Used Buffers (MB)', 'chart-unity-used-buffers', 'unity_used_buffers_loading', 'unity_used_buffers.png') }}
+    {% endif %}
+    {% if unity_show_vertex_upload_kb %}
+    {{ chart_card('unity-vertex-upload-card', 'Unity VB 上传 (KB/帧)' if lan == 'cn' else 'Unity VB Upload (KB/frame)', 'chart-unity-vertex-upload', 'unity_vertex_upload_loading', 'unity_vertex_upload.png') }}
+    {% endif %}
+    {% if unity_show_index_upload_kb %}
+    {{ chart_card('unity-index-upload-card', 'Unity IB 上传 (KB/帧)' if lan == 'cn' else 'Unity IB Upload (KB/frame)', 'chart-unity-index-upload', 'unity_index_upload_loading', 'unity_index_upload.png') }}
+    {% endif %}
 </div>
+{% else %}
+<div class="empty mt-5">
+    <p class="empty-title">{% if lan == 'cn' %}至少选择 2 份正常报告进行对比{% else %}Select at least 2 normal reports to compare{% endif %}</p>
+    <div class="empty-action">
+        <a href="/report?lan={{ lan }}" class="btn btn-primary">{% if lan == 'cn' %}返回测试报告{% else %}Back to Reports{% endif %}</a>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block js %}
 <script>
 
+    const compareScenes = {{ scenes|tojson }};
+    const compareTargetCache = {};
+    const compareChartRegistry = {};
+
     $(document).ready(function() {
-        initCompareChart('chart-cpu-app', 'cpu_app_loading', 'cpu');
-        initCompareChart('chart-cpu-system', 'cpu_system_loading', 'cpu_system');
-        initCompareMultiSeriesChart('chart-cpu-core', 'cpu_core_loading', 'cpu_core', buildCpuCoreSeries);
-        initCompareChart('chart-mem-total', 'mem_total_loading', 'memory');
-        initCompareChart('chart-mem-swap', 'mem_swap_loading', 'mem_swap');
-        initCompareMultiSeriesChart('chart-mem-detail', 'mem_detail_loading', 'mem_detail', buildMemoryDetailSeries);
-        initCompareChart('chart-fps', 'fps_loading', 'fps');
-        initCompareChart('chart-jank', 'jank_loading', 'jank');
-        initCompareChart('chart-battery-level', 'battery_level_loading', 'battery');
-        initCompareChart('chart-battery-temp', 'battery_temp_loading', 'battery_temp');
-        initCompareChart('chart-battery-current', 'battery_current_loading', 'battery_current');
-        initCompareChart('chart-battery-voltage', 'battery_voltage_loading', 'battery_voltage');
-        initCompareChart('chart-battery-power', 'battery_power_loading', 'battery_power');
-        initCompareChart('chart-networkdata-recv', 'networkdata_recv_loading', 'net_recv');
-        initCompareChart('chart-networkdata-send', 'networkdata_send_loading', 'net_send');
-        initCompareChart('chart-file-io-read', 'file_io_read_loading', 'file_read');
-        initCompareChart('chart-file-io-write', 'file_io_write_loading', 'file_write');
-        initCompareMultiSeriesChart('chart-file-io-total', 'file_io_total_loading', 'file_io', buildFileIOTotalSeries);
-        initCompareChart('chart-gpu', 'gpu_loading', 'gpu');
-        initCompareMultiSeriesChart('chart-thermal', 'thermal_loading', 'thermal', buildThermalSeries);
-        initCompareChart('chart-disk-used', 'disk_used_loading', 'disk_used');
-        initCompareChart('chart-disk-free', 'disk_free_loading', 'disk_free');
+        if (!Array.isArray(compareScenes) || compareScenes.length < 2) {
+            return;
+        }
+        initCompareChart('chart-cpu-app', 'cpu_app_loading', 'cpu', 'cpuAppData', {unit: '%'});
+        initCompareChart('chart-cpu-system', 'cpu_system_loading', 'cpu', 'cpuSysData', {unit: '%'});
+        {% for core in range(cpu_cores) %}
+        initCompareChart('chart-cpu-core-{{ core }}', 'cpu_core_{{ core }}_loading', 'cpu_core', 'cpu_core.cpu{{ core }}', {unit: '%'});
+        {% endfor %}
+        initCompareChart('chart-mem-total', 'mem_total_loading', 'mem', 'memTotalData', {unit: 'MB'});
+        initCompareChart('chart-mem-swap', 'mem_swap_loading', 'mem', 'memSwapData', {unit: 'MB'});
+        ['java_heap', 'native_heap', 'code_pss', 'stack_pss', 'graphics_pss', 'private_pss', 'system_pss'].forEach(function(key) {
+            initCompareChart('chart-mem-detail-' + key, 'mem_detail_' + key + '_loading', 'mem_detail', 'memory_detail.' + key, {unit: 'MB'});
+        });
+        initCompareChart('chart-fps', 'fps_loading', 'fps', 'fps');
+        initCompareChart('chart-jank', 'jank_loading', 'fps', 'jank');
+        initCompareChart('chart-battery-level', 'battery_level_loading', 'battery', 'batteryLevel', {unit: '%'});
+        initCompareChart('chart-battery-temp', 'battery_temp_loading', 'battery', 'batteryTem', {unit: '°C'});
+        initCompareChart('chart-battery-current', 'battery_current_loading', 'battery', 'batteryCurrent');
+        initCompareChart('chart-battery-voltage', 'battery_voltage_loading', 'battery', 'batteryVoltage');
+        initCompareChart('chart-battery-power', 'battery_power_loading', 'battery', 'batteryPower');
+        initCompareChart('chart-networkdata-recv', 'networkdata_recv_loading', 'flow', 'downFlow', {unit: 'KB'});
+        initCompareChart('chart-networkdata-send', 'networkdata_send_loading', 'flow', 'upFlow', {unit: 'KB'});
+        initCompareChart('chart-file-io-read', 'file_io_read_loading', 'file_io', 'read', {unit: 'KB'});
+        initCompareChart('chart-file-io-write', 'file_io_write_loading', 'file_io', 'write', {unit: 'KB'});
+        initCompareChart('chart-file-io-total-read', 'file_io_total_read_loading', 'file_io', 'read', {unit: 'KB', cumulative: true});
+        initCompareChart('chart-file-io-total-write', 'file_io_total_write_loading', 'file_io', 'write', {unit: 'KB', cumulative: true});
+        initCompareChart('chart-gpu', 'gpu_loading', 'gpu', 'gpu', {unit: '%'});
+        ['cpu', 'gpu', 'memory', 'battery'].forEach(function(key) {
+            initCompareChart('chart-thermal-' + key, 'thermal_' + key + '_loading', 'thermal', 'thermal.' + (key === 'memory' ? 'Memory' : key === 'battery' ? 'Battery' : key.toUpperCase()), {unit: '°C'});
+        });
+        initCompareChart('chart-disk-used', 'disk_used_loading', 'disk', 'used', {unit: 'KB'});
+        initCompareChart('chart-disk-free', 'disk_free_loading', 'disk', 'free', {unit: 'KB'});
+        initCompareChart('chart-unity-cpu-frame', 'unity_cpu_frame_loading', 'unity_stats', 'charts.cpu_frame_ms', {unit: 'ms'});
+        initCompareChart('chart-unity-gpu-frame', 'unity_gpu_frame_loading', 'unity_stats', 'charts.gpu_frame_ms', {unit: 'ms'});
+        initCompareChart('chart-unity-drawcalls', 'unity_drawcalls_loading', 'unity_stats', 'charts.draw_calls', {integer: true});
+        initCompareChart('chart-unity-triangles', 'unity_triangles_loading', 'unity_stats', 'charts.triangles', {unit: 'k', decimals: 1});
+        initCompareChart('chart-unity-vertices', 'unity_vertices_loading', 'unity_stats', 'charts.vertices', {unit: 'k', decimals: 1});
+        initCompareChart('chart-unity-render-textures', 'unity_render_textures_loading', 'unity_stats', 'charts.render_textures_mb', {unit: 'MB', decimals: 1});
+        initCompareChart('chart-unity-used-buffers', 'unity_used_buffers_loading', 'unity_stats', 'charts.used_buffers_mb', {unit: 'MB', decimals: 1});
+        initCompareChart('chart-unity-vertex-upload', 'unity_vertex_upload_loading', 'unity_stats', 'charts.vertex_upload_kb', {unit: 'KB', decimals: 1});
+        initCompareChart('chart-unity-index-upload', 'unity_index_upload_loading', 'unity_stats', 'charts.index_upload_kb', {unit: 'KB', decimals: 1});
     });
+
+    function exportCompareReport(){
+        if (!Array.isArray(compareScenes) || compareScenes.length < 2) {
+            SwalFire('error', uiText('导出失败', 'Export failed'), uiText('至少需要 2 份报告', 'Select at least 2 reports'), 3000);
+            return;
+        }
+        $.ajax({
+            url: '/apm/export/compare',
+            type: 'GET',
+            async: true,
+            cache: false,
+            traditional: true,
+            data: {
+                scenes: compareScenes,
+                platform: platform
+            },
+            beforeSend: function () {
+                SwalLoading(uiText('正在导出对比报告', 'Exporting comparison'), compareScenes.join(', '));
+            },
+            success: function (data) {
+                if (!data || data['status'] != 1) {
+                    SwalFire('error', uiText('导出失败', 'Export failed'), (data && data['msg']) || '', 4000);
+                    return;
+                }
+                var detail = data['path'] || '';
+                detail += '\n' + uiText('已附带各报告原始文件、Unity Profiler JSON 与二进制文件。',
+                    'Original report files, Unity Profiler JSON and binary files are bundled.');
+                if (data['warnings'] && data['warnings'].length) {
+                    detail += '\n' + uiText('部分 Unity 文件未导出：', 'Some Unity files were not exported: ')
+                        + data['warnings'].join('; ');
+                }
+                SwalFire('success', uiText('导出成功', 'Export success'), detail, 6000);
+            },
+            error: function (xhr) {
+                SwalFire('error', uiText('导出失败', 'Export failed'), xhr.responseText || '', 4000);
+            }
+        });
+    }
 
     function saveHtml(platform, scene){
         if(platform=='Android'){
@@ -336,6 +550,19 @@
             },
             dataLabels: {
                 enabled: dataLabels
+            },
+            legend: {
+                show: true,
+                position: 'top',
+                horizontalAlign: 'left',
+                fontSize: '12px',
+                itemMargin: {
+                    horizontal: 8,
+                    vertical: 2
+                },
+                markers: {
+                    size: 5
+                }
             },
             fill: {
                 opacity: 1
@@ -605,10 +832,14 @@
                     return;
                 }
                 const color = colors[index] || '#999';
+                const unit = chart.__compareUnit || '';
+                const valueText = chart.__compareDecimals !== undefined
+                    ? Number(value).toFixed(chart.__compareDecimals)
+                    : formatCompareValue(value);
                 rows.push(`
                     <div style="display:flex;align-items:center;margin:2px 0;gap:6px;">
                         <span style="width:8px;height:8px;background:${color};border-radius:50%;flex:0 0 auto;"></span>
-                        <span style="min-width:0;word-break:break-word;">${escapeCompareHtml(item.name || 'Series ' + (index + 1))}: ${formatCompareValue(value)}</span>
+                        <span style="min-width:0;word-break:break-word;">${escapeCompareHtml(item.name || 'Series ' + (index + 1))}: ${valueText}${escapeCompareHtml(unit)}</span>
                     </div>
                 `);
             });
@@ -660,111 +891,6 @@
         return true;
     }
 
-    function loadCompareChart(chart, target, cardElement) {
-        $.ajax({
-            url: '/apm/log/compare',
-            type: "GET",
-            async: true,
-            cache: false,
-            data:{
-                scene1:'{{ scene1 }}',
-                scene2:'{{ scene2 }}',
-                target:target,
-                platform:platform
-            },
-            beforeSend: function () {
-                SwalLoading(uiText('正在加载', 'Loading'), '')
-            },
-            complete: function () {
-                swal.close();
-            },
-            success: function (data) {
-                if(data['status'] !== 1){
-                    console.error(data['msg'] || 'load compare chart failed');
-                    updateCompareSeries(chart, cardElement, []);
-                    return;
-                }
-                updateCompareSeries(chart, cardElement, [{
-                    name: '{{ scene1 }}',
-                    data: data['scene1'] || []
-                },{
-                    name: '{{ scene2 }}',
-                    data: data['scene2'] || []
-                }])
-            }
-        });
-    }
-
-    function loadCompareMultiSeriesChart(chart, target, seriesBuilder, cardElement) {
-        $.ajax({
-            url: '/apm/log/compare',
-            type: "GET",
-            async: true,
-            cache: false,
-            data:{
-                scene1:'{{ scene1 }}',
-                scene2:'{{ scene2 }}',
-                target:target,
-                platform:platform
-            },
-            beforeSend: function () {
-                SwalLoading(uiText('正在加载', 'Loading'), '')
-            },
-            complete: function () {
-                swal.close();
-            },
-            success: function (data) {
-                if(data['status'] !== 1){
-                    console.error(data['msg'] || 'load compare chart failed');
-                    updateCompareSeries(chart, cardElement, []);
-                    return;
-                }
-                updateCompareSeries(chart, cardElement, seriesBuilder(data));
-            }
-        });
-    }
-
-    function buildMemoryDetailSeries(data) {
-        const metrics = [
-            ['java_heap', 'Java Heap'],
-            ['native_heap', 'Native Heap'],
-            ['code_pss', 'Code PSS'],
-            ['stack_pss', 'Stack PSS'],
-            ['graphics_pss', 'Graphics PSS'],
-            ['private_pss', 'Private PSS'],
-            ['system_pss', 'System PSS'],
-        ];
-        const scene1 = data['scene1'] || {};
-        const scene2 = data['scene2'] || {};
-        const series = [];
-
-        metrics.forEach(function(metric) {
-            const key = metric[0];
-            const label = metric[1];
-            series.push({name: '{{ scene1 }} ' + label, data: scene1[key] || []});
-            series.push({name: '{{ scene2 }} ' + label, data: scene2[key] || []});
-        });
-        return series;
-    }
-
-    function buildCpuCoreSeries(data) {
-        const scene1 = data['scene1'] || {};
-        const scene2 = data['scene2'] || {};
-        const cores = Math.max(
-            Number(data['cores']) || 0,
-            Number(data['scene1Cores']) || 0,
-            Number(data['scene2Cores']) || 0
-        );
-        const series = [];
-
-        for (let i = 0; i < cores; i++) {
-            const key = 'cpu' + i;
-            series.push({name: '{{ scene1 }} ' + key, data: scene1[key] || []});
-            series.push({name: '{{ scene2 }} ' + key, data: scene2[key] || []});
-        }
-        return series;
-    }
-
     function cumulativeSeries(points) {
         let total = 0;
         return (points || []).map(function(point) {
@@ -777,63 +903,106 @@
         });
     }
 
-    function buildFileIOTotalSeries(data) {
-        return [
-            {name: '{{ scene1 }} Total Read', data: cumulativeSeries(data['readScene1'])},
-            {name: '{{ scene1 }} Total Write', data: cumulativeSeries(data['writeScene1'])},
-            {name: '{{ scene2 }} Total Read', data: cumulativeSeries(data['readScene2'])},
-            {name: '{{ scene2 }} Total Write', data: cumulativeSeries(data['writeScene2'])},
-        ];
-    }
-
-    function buildThermalSeries(data) {
-        const metrics = [
-            ['CPU', 'CPU'],
-            ['GPU', 'GPU'],
-            ['Memory', lan == 'cn' ? '内存' : 'Memory'],
-            ['Battery', lan == 'cn' ? '电池' : 'Battery'],
-        ];
-        const scene1 = data['scene1'] || {};
-        const scene2 = data['scene2'] || {};
-        const series = [];
-
-        metrics.forEach(function(metric) {
-            const key = metric[0];
-            const label = metric[1];
-            series.push({name: '{{ scene1 }} ' + label, data: scene1[key] || []});
-            series.push({name: '{{ scene2 }} ' + label, data: scene2[key] || []});
+    function fetchCompareTarget(target, force) {
+        if (!force && compareTargetCache[target]) {
+            return compareTargetCache[target];
+        }
+        const request = $.ajax({
+            url: '/apm/log/compare_multi',
+            type: 'GET',
+            async: true,
+            cache: false,
+            traditional: true,
+            data: {
+                scenes: compareScenes,
+                target: target,
+                platform: platform
+            }
+        }).then(function(data) {
+            if (!data || data['status'] !== 1) {
+                throw new Error((data && data['msg']) || 'load compare data failed');
+            }
+            const map = {};
+            (data['scenes'] || []).forEach(function(item) {
+                map[item['scene']] = item['data'] || {};
+            });
+            return map;
         });
-        return series;
+        compareTargetCache[target] = request;
+        return request;
     }
 
-    function initCompareChart(chartId, loadingId, target) {
-        let chartElement = document.querySelector("#" + chartId);
-        if(!chartElement){
+    function pickCompareValue(data, path) {
+        let value = data;
+        const keys = String(path || '').split('.');
+        for (let i = 0; i < keys.length; i++) {
+            if (value === null || value === undefined) {
+                return [];
+            }
+            value = value[keys[i]];
+        }
+        return Array.isArray(value) ? value : [];
+    }
+
+    function buildCompareSeries(dataMap, path, cumulative) {
+        return compareScenes.map(function(scene) {
+            let points = pickCompareValue(dataMap[scene], path);
+            if (cumulative) {
+                points = cumulativeSeries(points);
+            }
+            return {name: scene, data: points};
+        }).filter(function(item) {
+            return Array.isArray(item.data) && item.data.length > 0;
+        });
+    }
+
+    function initCompareChart(chartId, loadingId, target, path, opts) {
+        const chartElement = document.querySelector('#' + chartId);
+        if (!chartElement) {
             return null;
         }
-        let compareChart = new ApexCharts(chartElement, options('line'));
-        compareChart.render();
-        let cardElement = $(chartElement).closest('.card');
-        $('#' + loadingId).click(function () {
-            loadCompareChart(compareChart, target, cardElement);
+        opts = opts || {};
+        const chartOptions = options('line');
+        chartOptions.yaxis = [{
+            min: 0,
+            labels: {
+                formatter: opts.decimals !== undefined
+                    ? function(value) { return Number(value).toFixed(opts.decimals); }
+                    : opts.integer
+                        ? function(value) { return Math.round(value).toLocaleString(); }
+                        : function(value) { return formatCompareValue(value); }
+            }
+        }];
+        const chart = new ApexCharts(chartElement, chartOptions);
+        chart.render();
+        chart.__compareUnit = opts.unit || '';
+        chart.__compareDecimals = opts.decimals;
+        const cardElement = $(chartElement).closest('.card');
+
+        const load = function() {
+            fetchCompareTarget(target, false).then(function(dataMap) {
+                const series = buildCompareSeries(dataMap, path, opts.cumulative);
+                if (!updateCompareSeries(chart, cardElement, series)) {
+                    hideCompareCrosshair(chart);
+                }
+            }).catch(function(error) {
+                console.error(error);
+                updateCompareSeries(chart, cardElement, []);
+            });
+        };
+
+        compareChartRegistry[target] = compareChartRegistry[target] || [];
+        compareChartRegistry[target].push(load);
+
+        $('#' + loadingId).off('click').on('click', function() {
+            delete compareTargetCache[target];
+            compareChartRegistry[target].forEach(function(loader) {
+                loader();
+            });
         });
-        $('#' + loadingId).click();
-        return compareChart;
+        load();
+        return chart;
     }
 
-    function initCompareMultiSeriesChart(chartId, loadingId, target, seriesBuilder) {
-        let chartElement = document.querySelector("#" + chartId);
-        if(!chartElement){
-            return null;
-        }
-        let compareChart = new ApexCharts(chartElement, options('line'));
-        compareChart.render();
-        let cardElement = $(chartElement).closest('.card');
-        $('#' + loadingId).click(function () {
-            loadCompareMultiSeriesChart(compareChart, target, seriesBuilder, cardElement);
-        });
-        $('#' + loadingId).click();
-        return compareChart;
-    }
 </script>
 {% endblock %}

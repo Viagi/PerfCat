@@ -47,6 +47,7 @@ class ApmSettingsCache:
         "collectCpuCore": "0",
         "collectDisk": "0",
         "collectEnergy": "0",
+        "collectUnity": "0",
     }
 
     @classmethod

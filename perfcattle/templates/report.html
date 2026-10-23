@@ -31,6 +31,11 @@
     <div class="card-header">
         <h3 class="card-title"></h3>
         <div class="card-actions btn-actions">
+            <button type="button" class="btn btn-compare disabled" id="btn-compare-selected" onclick="compareSelected()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2z" /><path d="M4 8h2" /><path d="M4 12h2" /><path d="M4 16h2" /><path d="M18 8h2" /><path d="M18 12h2" /><path d="M18 16h2" /></svg>
+                {% if lan == 'cn' %} 对比 {% else %} Compare {% endif %}
+                <span class="badge bg-secondary ms-1" id="compare-selected-count">0/6</span>
+            </button>
             <button type="button" class="btn btn-remove-all disabled" data-bs-toggle="modal" data-bs-target="#modal-danger-selected">
                 <svg t="1635400029781" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="17941" width="200" height="200"><path d="M877.79 217.23H624.22c0-36.02-29.2-65.23-65.23-65.23H465c-36.02 0-65.23 29.2-65.23 65.23H146.21c-18.01 0-32.61 14.6-32.61 32.61 0 18.01 14.6 32.61 32.61 32.61h49.75l14.43 528.79c1.06 33.91 25.21 60.76 54.64 60.76h493.93c29.43 0 53.58-26.86 54.64-60.76l14.48-528.79h49.7c18.01 0 32.61-14.6 32.61-32.61 0.01-18.01-14.59-32.61-32.6-32.61zM364.24 748.41c-17.98 0.82-33.4-10.01-34.44-24.19L308 427.56c-1.04-14.18 12.69-26.34 30.67-27.16 17.98-0.82 33.4 10.01 34.45 24.19l21.8 296.67c1.04 14.17-12.7 26.33-30.68 27.15z m180.37-25.42c0 14.2-14.6 25.72-32.61 25.72-18.01 0-32.61-11.51-32.61-25.72V425.83c0-14.2 14.6-25.72 32.61-25.72 18.01 0 32.61 11.51 32.61 25.72v297.16zM716 427.56l-21.8 296.67c-1.04 14.18-16.46 25.01-34.44 24.19-17.98-0.82-31.71-12.98-30.67-27.16l21.8-296.67c1.04-14.18 16.46-25.01 34.44-24.19 17.98 0.82 31.72 12.98 30.67 27.16z" fill="#FF5D5D" p-id="17942"></path></svg>
                 {% if lan == 'cn' %} 删除 {% else %} Delete {% endif %}
@@ -63,7 +68,7 @@
             </thead>
             <tbody>
             {% for apm in apm_data %}
-            <tr>
+            <tr data-scene="{{ apm.scene }}" data-app="{{ apm.app }}" data-platform="{{ apm.platform }}" data-model="{{ apm.model }}">
                 <td><input class="form-check-input m-0 align-middle" type="checkbox" name="checksId" aria-label="Select invoice"></td>
                 <td>{{ apm.app }}</td>
                 <td>{{ apm.platform }}</td>
@@ -224,6 +229,7 @@
 
     $(document).ready(function() {
         checkboxHandle()
+        updateSelectionActions()
     });
 
     function play(scene){
@@ -255,6 +261,7 @@
                 }else{
                     $('.btn-remove-all').removeClass('disabled')
                 }
+                updateSelectionActions()
             }
             for(var i = 0; i<inp.length; i++){
                 inp[i].onclick = function(){
@@ -270,6 +277,7 @@
                     }else{
                         $('.btn-remove-all').removeClass('disabled')
                     }
+                    updateSelectionActions()
                 }
             }
 
@@ -287,6 +295,52 @@
         });
         return num;
     }
+
+    function selectedReportRows(){
+        return $("input:checkbox[name='checksId']:checked").map(function(){
+            var row = $(this).closest('tr');
+            return {
+                scene: row.data('scene'),
+                app: row.data('app'),
+                platform: row.data('platform'),
+                model: row.data('model')
+            };
+        }).get();
+    }
+
+    function updateSelectionActions(){
+        var rows = selectedReportRows();
+        $('#compare-selected-count').text(rows.length + '/6');
+        $('.btn-remove-all').toggleClass('disabled', rows.length === 0);
+
+        var canCompare = rows.length >= 2 && rows.length <= 6;
+        if(canCompare){
+            var first = rows[0];
+            canCompare = rows.every(function(row){
+                return row.model === 'normal'
+                    && row.app === first.app
+                    && row.platform === first.platform;
+            });
+        }
+        $('#btn-compare-selected').toggleClass('disabled', !canCompare);
+    }
+
+    function compareSelected(){
+        if($('#btn-compare-selected').hasClass('disabled')){
+            return;
+        }
+        var rows = selectedReportRows();
+        var first = rows[0];
+        var params = [
+            'app=' + encodeURIComponent(first.app),
+            'platform=' + encodeURIComponent(first.platform),
+            'lan=' + encodeURIComponent('{{ lan }}')
+        ];
+        rows.forEach(function(row){
+            params.push('scenes=' + encodeURIComponent(row.scene));
+        });
+        window.location.href = '/compare_analysis?' + params.join('&');
+    }
     
     function exportData(platform, scene){
         window.event.preventDefault();
@@ -303,7 +357,15 @@
                 if(data['status'] != 1 ){
                     SwalFire('error', uiText('导出失败', 'Export failed !'), data['msg'], 2000);
                 }else{
-                    SwalFire('success', uiText('导出成功', 'Export success'), data['path'], 5000);
+                    var detail = data['path'] || '';
+                    if(data['package']){
+                        detail += '\n' + uiText('已打包 Unity Profiler 原始文件与 JSON。', 'Unity Profiler raw files and JSON are bundled.');
+                    }
+                    if(data['warnings'] && data['warnings'].length){
+                        detail += '\n' + uiText('部分 Unity 文件未导出：', 'Some Unity files were not exported: ')
+                            + data['warnings'].join('; ');
+                    }
+                    SwalFire('success', uiText('导出成功', 'Export success'), detail, 5000);
                 }
             }
         });

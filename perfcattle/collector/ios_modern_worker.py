@@ -214,6 +214,22 @@ async def list_processes(device, package):
     return sorted(result, key=lambda row: (row["kind"] != "app", "WebKit" not in row["name"], -row["pid"]))
 
 
+async def launch_app(device, package):
+    await prepare_device(device)
+    async with UserspaceRsdTunnel(serial=device) as rsd:
+        async with DvtProvider(rsd) as dvt:
+            async with ProcessControl(dvt) as control:
+                try:
+                    pid = await control.launch(package, kill_existing=False)
+                except AssertionError:
+                    raise PrerequisiteError(
+                        "The device did not return a PID; the app may not be launchable"
+                    )
+    if not isinstance(pid, int) or pid <= 0:
+        raise PrerequisiteError("The device did not return a valid PID")
+    return pid
+
+
 async def run(device, package, emit, process="", process_start="", network_process="", network_process_start=""):
     loop = asyncio.get_running_loop()
     commands = asyncio.Queue()
@@ -288,6 +304,8 @@ def main():
     try:
         if sys.argv[1] == "--list-processes":
             emit({"status": 1, "processes": asyncio.run(list_processes(sys.argv[2], sys.argv[3]))})
+        elif sys.argv[1] == "--launch-app":
+            emit({"status": 1, "pid": asyncio.run(launch_app(sys.argv[2], sys.argv[3]))})
         else:
             asyncio.run(run(sys.argv[1], sys.argv[2], emit, *sys.argv[3:7]))
     except Exception as exc:

@@ -82,6 +82,15 @@ def build_stream():
         _sampler(0x6A3, "Draw Calls Count"),
         _sampler(0x6A4, "Triangles Count"),
         _sampler(0x6A5, "Vertices Count"),
+        _sampler(0x6A6, "Render Textures Count"),
+        _sampler(0x6A7, "Render Textures Bytes"),
+        _sampler(0x6A8, "Render Textures Changes Count"),
+        _sampler(0x6A9, "Used Buffers Count"),
+        _sampler(0x6AA, "Used Buffers Bytes"),
+        _sampler(0x6AB, "Vertex Buffer Upload In Frame Count"),
+        _sampler(0x6AC, "Vertex Buffer Upload In Frame Bytes"),
+        _sampler(0x6AD, "Index Buffer Upload In Frame Count"),
+        _sampler(0x6AE, "Index Buffer Upload In Frame Bytes"),
         _sampler(0x6C1, "CPU Main Thread Frame Time"),
         _sampler(0x6C3, "GPU Frame Time"),
     ]
@@ -99,6 +108,15 @@ def build_stream():
             _counter(0x6A3, 300),
             _counter(0x6A4, 1000),
             _counter(0x6A5, 1200),
+            _counter(0x6A6, 55),
+            _counter(0x6A7, 50_436_506),
+            _counter(0x6A8, 12),
+            _counter(0x6A9, 1356),
+            _counter(0x6AA, 53_372_518),
+            _counter(0x6AB, 16),
+            _counter(0x6AC, 144_077),
+            _counter(0x6AD, 16),
+            _counter(0x6AE, 9830),
         ],
         2,
     )
@@ -118,6 +136,15 @@ def test_extracts_counters_and_geometry():
     assert snap["values"]["batches"] == 120
     assert snap["values"]["cpu_frame_ms"] == 12.5
     assert snap["values"]["gpu_frame_ms"] == 20.0
+    assert snap["values"]["render_textures"] == 55
+    assert snap["values"]["render_textures_mb"] == 48.1
+    assert snap["values"]["render_textures_changes"] == 12
+    assert snap["values"]["used_buffers"] == 1356
+    assert snap["values"]["used_buffers_mb"] == 50.9
+    assert snap["values"]["vertex_upload"] == 16
+    assert snap["values"]["vertex_upload_kb"] == 140.7
+    assert snap["values"]["index_upload"] == 16
+    assert snap["values"]["index_upload_kb"] == 9.6
 
 
 def test_chunked_feed_matches_single_feed():
@@ -129,6 +156,7 @@ def test_chunked_feed_matches_single_feed():
     assert snap["values"]["draw_calls"] == 300
     assert snap["values"]["triangles"] == 1000
     assert snap["values"]["vertices"] == 1200
+    assert snap["values"]["render_textures_mb"] == 48.1
     assert snap["stats"]["lost_bytes"] == 0
 
 

@@ -13,7 +13,8 @@
 - 全局消息：线程表、SamplerInfo（marker 名称、counter 标记）
 - 线程消息：Frame、Begin/EndSample、SampleWithMetadata
 
-Draw Calls / Batches / Triangles / Vertices / SetPass 由 Render Thread 上报，
+Draw Calls / Batches / Triangles / Vertices / SetPass 以及 Render Textures /
+Used Buffers / Buffer Upload 由 Render Thread 上报，
 CPU/GPU 帧耗时、GC、内存由 Main Thread 上报。为了控制 CPU 开销，识别出
 这两个线程后，其余线程的 block 只做 framing，不再解析消息。
 
@@ -38,6 +39,15 @@ RENDER_COUNTERS = {
     "Triangles Count": ("triangles", 1.0),
     "Vertices Count": ("vertices", 1.0),
     "Shadow Casters Count": ("shadow_casters", 1.0),
+    "Render Textures Count": ("render_textures", 1.0),
+    "Render Textures Bytes": ("render_textures_mb", 1.0 / 1048576.0),
+    "Render Textures Changes Count": ("render_textures_changes", 1.0),
+    "Used Buffers Count": ("used_buffers", 1.0),
+    "Used Buffers Bytes": ("used_buffers_mb", 1.0 / 1048576.0),
+    "Vertex Buffer Upload In Frame Count": ("vertex_upload", 1.0),
+    "Vertex Buffer Upload In Frame Bytes": ("vertex_upload_kb", 1.0 / 1024.0),
+    "Index Buffer Upload In Frame Count": ("index_upload", 1.0),
+    "Index Buffer Upload In Frame Bytes": ("index_upload_kb", 1.0 / 1024.0),
 }
 
 # 这些计数器来自 Main Thread
@@ -69,6 +79,15 @@ VALUE_ORDER = (
     "cpu_total_ms",
     "shadow_casters",
     "gc_used_memory_mb",
+    "render_textures",
+    "render_textures_mb",
+    "render_textures_changes",
+    "used_buffers",
+    "used_buffers_mb",
+    "vertex_upload",
+    "vertex_upload_kb",
+    "index_upload",
+    "index_upload_kb",
 )
 
 # 单位换算后的小数位
@@ -86,6 +105,15 @@ DECIMALS = {
     "triangles": 0,
     "vertices": 0,
     "shadow_casters": 0,
+    "render_textures": 0,
+    "render_textures_mb": 2,
+    "render_textures_changes": 0,
+    "used_buffers": 0,
+    "used_buffers_mb": 2,
+    "vertex_upload": 0,
+    "vertex_upload_kb": 2,
+    "index_upload": 0,
+    "index_upload_kb": 2,
 }
 
 SUPPORTED_VERSION = 539099944  # Unity 2022.2+ raw stream version

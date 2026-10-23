@@ -351,6 +351,7 @@ class AppPerformanceMonitor(ServiceConfig):
             "unity_stats": unity_stats["avg"],
             "unity_stats_charts": unity_stats["charts"],
             "unity_correlation_charts": unity_correlation["charts"],
+            "time_range": f.scene_time_range(scene),
             "summary_flags": summary.get("summary_flags", {}),
         }
 
@@ -470,6 +471,7 @@ class AppPerformanceMonitor(ServiceConfig):
 
         try:
             f.clear_file()
+            f.begin_session()
             if self.record:
                 record_options = None
                 if getattr(self, "duration", 0) > 0:

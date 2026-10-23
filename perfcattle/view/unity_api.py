@@ -3,6 +3,7 @@
 import io
 import json
 import os
+import re
 import zipfile
 
 from flask import Blueprint, request, send_file
@@ -106,11 +107,124 @@ def unityStart():
                 pid=pid,
                 deep_profiling=deep_profiling,
                 areas=areas,
+                record=_bool_arg("record", True),
             )
     except Exception as e:
         logger.exception(e)
         result = {"status": 0, "available": False, "msg": str(e)}
     return result
+
+
+@unity_api.route("/apm/unity/arm", methods=["post", "get"])
+def unityArm():
+    """arm background auto-connect while the Unity switch is on"""
+    params, error = _unity_target_params()
+    if error:
+        return error
+    try:
+        return unity_capture.arm(**params)
+    except Exception as e:
+        logger.exception(e)
+        return {
+            "status": 0,
+            "available": False,
+            "arming": False,
+            "msg": str(e),
+        }
+
+
+@unity_api.route("/apm/unity/disarm", methods=["post", "get"])
+def unityDisarm():
+    """stop background auto-connect (optionally close the capture)"""
+    try:
+        return unity_capture.disarm(
+            stop=_bool_arg("stop", False),
+            discard=_bool_arg("discard", False),
+        )
+    except Exception as e:
+        logger.exception(e)
+        return {"status": 0, "available": False, "msg": str(e)}
+
+
+@unity_api.route("/apm/unity/wait", methods=["post", "get"])
+def unityWait():
+    """wait until Unity is connected, or return the last failure reason"""
+    params, error = _unity_target_params()
+    if error:
+        return error
+    timeout = _arg("timeout") or "15"
+    try:
+        timeout = float(timeout)
+    except (TypeError, ValueError):
+        timeout = 15.0
+    try:
+        unity_capture.arm(**params)
+        return unity_capture.wait_connected(timeout)
+    except Exception as e:
+        logger.exception(e)
+        return {
+            "status": 0,
+            "available": False,
+            "msg": str(e),
+        }
+
+
+def _unity_target_params():
+    """Parse the target arguments shared by arm/wait."""
+    platform = _arg("platform")
+    if platform != Platform.Android:
+        return None, {
+            "status": 1,
+            "available": False,
+            "arming": False,
+            "msg": "unity capture supports android only",
+        }
+    device = _arg("device")
+    pkgname = _arg("pkgname")
+    if not device or not pkgname:
+        return None, {
+            "status": 0,
+            "available": False,
+            "arming": False,
+            "msg": "select a device and app first",
+        }
+    process = _arg("process")
+    pid = process.split(":")[0] if process and ":" in process else (process or None)
+    raw_device_id = re.sub(r"\(.*?\)|\{.*?\}|\[.*?\]", "", device).strip()
+    try:
+        deviceId = d.getIdbyDevice(device, platform)
+    except Exception as e:
+        # The device may be disconnected right now. Keep the serial so the
+        # background retry can attach as soon as it reconnects.
+        if not raw_device_id:
+            logger.exception(e)
+            return None, {
+                "status": 0,
+                "available": False,
+                "arming": False,
+                "msg": str(e) or "device lookup failed",
+            }
+        logger.debug(
+            "unity auto-connect waiting for device %s: %s", raw_device_id, e
+        )
+        deviceId = raw_device_id
+    try:
+        areas = _areas_arg()
+    except ValueError as e:
+        return None, {
+            "status": 0,
+            "available": False,
+            "arming": False,
+            "msg": str(e),
+        }
+    return {
+        "deviceId": deviceId,
+        "pkgName": pkgname,
+        "pid": pid,
+        "deep_profiling": _bool_arg("deep_profiling", False),
+        "areas": areas,
+        "record": _bool_arg("record", False),
+    }, None
 
 
 @unity_api.route("/apm/unity/options", methods=["post", "get"])

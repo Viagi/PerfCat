@@ -52,9 +52,9 @@ class Devices:
         """获取 Android CPU 核心数"""
         return self._android.getCpuCores(deviceId)
 
-    def getPid(self, deviceId, pkgName):
+    def getPid(self, deviceId, pkgName, fast=False):
         """获取 Android 包名对应的 PID"""
-        return self._android.getPid(deviceId, pkgName)
+        return self._android.getPid(deviceId, pkgName, fast=fast)
 
     def checkPkgname(self, pkgname):
         """检查包名是否有效"""
@@ -102,6 +102,16 @@ class Devices:
         return self._ios.getStartupTimeByiOS(pkgname)
 
     # ========== 跨平台方法 ==========
+
+    def launchApp(self, deviceId, pkgName, platform):
+        """按包名 / bundle id 启动应用"""
+        match platform:
+            case Platform.Android:
+                return self._android.launchApp(deviceId, pkgName)
+            case Platform.iOS:
+                return self._ios.launchApp(deviceId, pkgName)
+            case _:
+                raise Exception("platform must be Android or iOS")
 
     def devicesCheck(self, platform, deviceid=None, pkgname=None):
         """检查设备环境"""

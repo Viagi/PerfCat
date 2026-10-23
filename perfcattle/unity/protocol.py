@@ -189,6 +189,9 @@ class UnityProtocolSession(object):
         self._raw_file = None
         self._raw_bytes = 0
         self._raw_path = None
+        # Attach only streams for the live panel (`_raw_file` is None); the
+        # archived stream is opened at the recording start by begin_record.
+        self._stream_bytes = 0
         self._snap_lock = threading.Lock()
         self._snap_state = None
         self._error = None
@@ -400,8 +403,14 @@ class UnityProtocolSession(object):
         self.set_enabled_categories(categories)
         return categories
 
-    def start_profiler(self, raw_path, deep_profiling=False, areas=None):
-        """Enable capture and stream profiler data into raw_path.
+    def start_profiler(self, raw_path=None, deep_profiling=False, areas=None):
+        """Enable capture and optionally stream profiler data into raw_path.
+
+        ``raw_path=None`` starts the stream for the live counters only (the
+        state used after attaching). Beginning a recording re-opens a fresh
+        stream so ``profiler.raw`` starts with its own PD3U header and marker
+        metadata; without that header the hotspot analysis cannot resolve
+        marker names.
 
         ``areas`` is a list of ``ProfilerArea`` names. ``None`` keeps the
         player's default category set; an empty list disables all categories.
@@ -425,8 +434,14 @@ class UnityProtocolSession(object):
             # first profiler frame below.
             self.set_areas(self._areas_to_apply)
         self._raw_path = raw_path
-        os.makedirs(os.path.dirname(raw_path), exist_ok=True)
-        self._raw_file = open(raw_path, "wb")
+        self._stream_bytes = 0
+        if raw_path:
+            os.makedirs(os.path.dirname(raw_path), exist_ok=True)
+            self._raw_file = open(raw_path, "wb")
+            self._raw_bytes = 0
+        else:
+            self._raw_file = None
+            self._raw_bytes = 0
         self._running = True
         self._send(
             build_packet(
@@ -456,7 +471,7 @@ class UnityProtocolSession(object):
         deadline = time.time() + 3.0
         while (
             self._running
-            and self._raw_bytes == 0
+            and self._stream_bytes == 0
             and time.time() < deadline
         ):
             time.sleep(0.05)
@@ -467,6 +482,28 @@ class UnityProtocolSession(object):
         except (OSError, UnityProtocolError) as e:
             self._error = str(e)
             logger.warning("[Unity] cannot apply profiler areas: {}".format(e))
+
+    def begin_record(self, raw_path, deep_profiling=None, areas=None):
+        """Re-open the profiler stream so the archive starts at Start.
+
+        Attaching keeps a stream alive for the live panel without writing a
+        file. Beginning a recording restarts capture: Unity sends a fresh
+        PD3U header, sampler/thread metadata and frames, so ``profiler.raw``
+        starts at the recording start without losing marker names.
+        """
+        if not self._running:
+            return
+        if self._raw_file is not None:
+            return
+        self.stop_profiler()
+        # The restarted stream begins with a new header; reuse the player's
+        # current options so Deep Profiler / Categories stay as configured.
+        self.stats_parser = RawStatsParser()
+        self.start_profiler(
+            raw_path,
+            deep_profiling=self.deep_profiling if deep_profiling is None else deep_profiling,
+            areas=self.areas if areas is None else areas,
+        )
 
     def stop_profiler(self):
         if not self._running:
@@ -566,15 +603,17 @@ class UnityProtocolSession(object):
             if frame is None:
                 break
             if frame.guid == data_guid:
-                if self._raw_file:
+                payload = frame.payload
+                self._stream_bytes += len(payload)
+                if self._raw_file is not None:
                     try:
-                        self._raw_file.write(frame.payload)
-                        self._raw_bytes += len(frame.payload)
-                    except OSError as e:
+                        self._raw_file.write(payload)
+                        self._raw_bytes += len(payload)
+                    except (OSError, ValueError) as e:
                         self._error = str(e)
-                        break
+                        self._raw_file = None
                 try:
-                    self.stats_parser.feed(frame.payload)
+                    self.stats_parser.feed(payload)
                 except Exception as e:
                     # Parsing must never stop the capture stream.
                     logger.warning("[Unity] stats parse failed: {}".format(e))

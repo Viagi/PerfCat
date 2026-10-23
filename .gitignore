@@ -161,3 +161,6 @@ NUL
 .idea/
 *.swp
 
+# Windows 快捷方式（含本机绝对路径）
+/PerfCattle.lnk
+

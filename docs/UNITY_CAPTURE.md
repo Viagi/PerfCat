@@ -19,13 +19,13 @@ Unity 版本或新的 Profiler 功能。
 
 | 功能 | Protocol 模式 | Helper 模式 | UI 入口 | HTTP 入口 |
 | --- | --- | --- | --- | --- |
-| Profiler 原始流 | 支持 | 支持 | Unity Profiler 开关 | `/apm/unity/start` |
+| Profiler 原始流 | 支持 | 支持 | Unity Profiler 开关 + **开始** | `/apm/unity/start` |
 | MemoryProfiler 快照 | 支持 | 支持 | Unity 菜单 → MemoryProfiler → 抓取 | `/apm/unity/snapshot` |
 | Deep Profiler | 支持 | 不支持 | Unity 菜单 → Profiler 模块 → Deep Profiler | `start` / `options` 的 `deep_profiling` |
 | Profiler Modules 勾选 | 支持 | 不支持 | Unity 菜单 → Profiler 模块 | `start` / `options` 的 `areas` |
 | 采集中热切换 | 支持 | 不支持 | 模块弹窗 → 应用 | `/apm/unity/options` |
-| 随 APM 自动开始/停止 | 支持 | 支持 | 随 Unity Profiler 开关 | — |
-| 随报告归档 | 支持 | 支持 | 分析页下载 | `/apm/unity/files` / `download` |
+| 随 APM 自动开始/停止 | 支持 | 支持 | 随 Unity Profiler 开关 + **开始** | — |
+| 随报告归档 | 支持 | 支持 | 测试报告导出 ZIP / 分析页下载 | `/apm/export/report` / `/apm/unity/files` / `download` |
 | 游戏面板实时指标 | 支持（2022.2+ 流解析） | 支持 | 实时页 → Unity 游戏面板 | `/apm/unity/stats` |
 
 ### 1.2 已验证环境
@@ -50,6 +50,11 @@ Unity 版本或新的 Profiler 功能。
   - `perfcattle.unity.areas`：JSON 数组，例如 `["CPU","GPU"]`
   - `perfcattle.unity.deep`：`"1"` / `"0"`
 - 选择只对下一次或当前采集生效，不影响已经采集到的原始数据。
+- 勾选 Unity Profiler 后立即尝试连接；游戏稍后启动时后台轮询（约 2 秒起，
+  失败后退避到 5 秒）自动补连，不会额外启动高频采集。
+- **连接不等于录制**：连上后只刷新 Unity 游戏面板的实时数字，实时曲线、
+  `report/unity_stats.log` 和 `unity/profiler.raw` 都要等点击 **开始** 后才
+  开始写入，时间轴与系统指标从同一刻起算。
 
 ---
 
@@ -80,15 +85,47 @@ Unity 版本或新的 Profiler 功能。
    - 需要方法级采样时打开 **Deep Profiler**；
    - 点击 **应用**。
 
-5. 点击开始监控。Unity 采集与 APM 指标同时开始。
+5. 点击开始监控。Unity 连接成功后，点击 **开始** 才正式录制：
+   Unity 曲线、`unity_stats.log` 与 `profiler.raw` 和 CPU/内存/FPS 等系统
+   指标同时开始；开始前面板只显示实时数字。
 
 6. 需要内存快照时，点击 **MemoryProfiler → 抓取**。
 
-7. 停止监控并生成报告。分析页可以下载：
+7. 停止监控并生成报告。分析页可以单独下载：
 
    - `unity/profiler.raw`
    - `unity/memory_*.snapshot`
    - `unity/meta.json`
+
+   在测试报告页点击 **导出** 时，如果该报告包含 Unity 采集，会生成一个 ZIP，
+   把上面的原始文件、性能数据 Excel 和离线 JSON 一起打包，不需要再逐个下载：
+
+   ```text
+   report/apm_<时间>/apm_<时间>_export.zip
+       apm_<时间>.xls                性能数据
+       result.json                   报告元信息
+       unity/profiler.raw            Unity Profiler 原始二进制流
+       unity/profiler.json           Unity Profiler 离线 JSON（不依赖 Unity）
+       unity/memory_*.snapshot       Memory Profiler 快照
+       unity/meta.json               Unity 采集元信息
+       EXPORT_README.txt             包内文件说明
+   ```
+
+   对比分析页的 **导出对比报告** 会生成一个包含对比汇总和各报告原始文件的
+   ZIP（位置在当前工作目录的 `report/` 下）：
+
+   ```text
+   report/compare_<app>_<时间>.zip
+       compare.xls                   对比汇总（指标为行，报告为列）
+       compare.json                  对比汇总的机器可读版本
+       scenes/<scene>/<scene>.xls    该报告的性能数据
+       scenes/<scene>/result.json    该报告的元信息
+       scenes/<scene>/unity/...      该报告的 Unity 原始文件与离线 JSON
+       README.txt                    包内文件说明
+   ```
+
+   每份报告的内容与单报告导出完全一致，因此对比包可以脱离 PerfCattle
+   离线查看或二次分析。
 
 ### 2.2 采集中修改 Module / Deep Profiler
 
@@ -119,7 +156,8 @@ curl "http://127.0.0.1:50003/apm/unity/stop"
 
 ### 2.4 Unity 游戏面板
 
-Unity Profiler 开关打开并开始监控后，实时页顶部会出现 **Unity 游戏面板**。
+Unity Profiler 开关打开后，实时页顶部会出现 **Unity 游戏面板**。
+连接成功后面板立即显示实时数字；曲线和报告数据要等点击 **开始** 后才记录。
 两种模式都能提供数据：
 
 - **Helper 模式**：游戏内脚本用 `ProfilerRecorder` 采样，每 0.5 秒更新。
@@ -134,23 +172,44 @@ Unity Profiler 开关打开并开始监控后，实时页顶部会出现 **Unity
 | Draw Calls | `Draw Calls Count` | Render Thread | 次 |
 | SetPass Calls | `SetPass Calls Count` | Render Thread | 次 |
 | Batches | `Batches Count` | Render Thread | 次 |
-| 三角面 | `Triangles Count` | Render Thread | 个 |
-| 顶点数 | `Vertices Count` | Render Thread | 个 |
+| 三角面 | `Triangles Count` | Render Thread | 个（界面/报告展示为 k） |
+| 顶点数 | `Vertices Count` | Render Thread | 个（界面/报告展示为 k） |
 | GC Alloc/帧 | `GC Allocated In Frame` | Main Thread | KB |
 | Unity 已用内存 | `Total Used Memory` | Main Thread | MB |
+| Render Textures | `Render Textures Count` / `Render Textures Bytes` | Render Thread | 个 / MB |
+| Render Textures 切换 | `Render Textures Changes Count` | Render Thread | 次 |
+| Used Buffers | `Used Buffers Count` / `Used Buffers Bytes` | Render Thread | 个 / MB |
+| 顶点缓冲上传/帧 | `Vertex Buffer Upload In Frame Count` / `... Bytes` | Render Thread | 次 / KB |
+| 索引缓冲上传/帧 | `Index Buffer Upload In Frame Count` / `... Bytes` | Render Thread | 次 / KB |
 
 同时会用折线图展示 CPU/GPU 帧耗时、Draw Calls、三角面和顶点数的变化。
 `/apm/unity/stats` 还会返回 `cpu_total_ms`、`shadow_casters`、
-`gc_used_memory_mb` 等字段。报告里的图表拆成三张：**帧耗时（CPU/GPU）**、**Draw Calls** 和
-**几何（三角面 / 顶点）**，各自使用独立坐标轴，计数按整数展示。
+`gc_used_memory_mb` 等字段。报告里的图表拆成四张：**帧耗时（CPU/GPU）**、**Draw Calls**、
+**几何（三角面 / 顶点）** 和 **渲染资源与上传**，各自使用独立坐标轴。三角面和顶点在实时面板、
+分析页、对比页和导出报告中统一按 **k（千）** 展示，保留 1 位小数；
+原始日志与 `/apm/unity/stats` 仍返回完整计数。
+
+渲染资源类计数器同样以“数量 / 内存”成对采集并写入 `unity_stats.log`：
+`render_textures` + `render_textures_mb`、`render_textures_changes`、
+`used_buffers` + `used_buffers_mb`、`vertex_upload` + `vertex_upload_kb`、
+`index_upload` + `index_upload_kb`。实时面板按 Unity Profiler 的格式显示为
+`55 / 48.1 MB`；分析页与报告页新增“渲染资源与上传”卡片（内存 MB 与上传
+KB 双坐标轴）；对比页新增对应汇总行和 Render Textures / Used Buffers /
+VB 上传 / IB 上传四张对比曲线；对比导出的 `compare.xls/json` 同时保留
+数量与内存值。
 
 **时间对齐与报告**
 
-- 采集期间每秒把最新计数器写入 `report/unity_stats.log`，时间戳使用本机
+- 开始监控后每秒把最新计数器写入 `report/unity_stats.log`，时间戳使用本机
   `HH:MM:SS.mmm`，与 `cpu_app.log`、`mem_total.log` 等系统指标一致。
+- 日志以开始监控时写入的 `report/apm_session.json` 为共同原点：系统图表和
+  Unity 图表都以该时刻为 `x=0`，不是各自第一条样本，所以同一秒的数据落在
+  同一刻度上。
+- 连接阶段（尚未点开始）只轮询 `/apm/unity/stats` 刷新面板，不写日志、
+  不画曲线；连接期间产生的原始 profiler 数据也不会进入报告。
 - 报告和分析页新增 Unity 指标卡片，以及「系统 CPU 与 Unity 指标对照」卡片；
-  后者把 CPU 应用/整机占用率与 Draw Calls / 三角面放在同一个时间轴（以最早
-  样本为 x=0），方便定位「CPU 90% 时对应多少 DC/三角面」。
+  后者把 CPU 应用/整机占用率与 Draw Calls / 三角面放在同一个时间轴，方便
+  定位「CPU 90% 时对应多少 DC/三角面」。
 - 1 秒级对齐；Unity 流本身是逐帧数据，报告按秒采样后不再保留每一帧。
 
 注意事项：
@@ -574,6 +633,34 @@ snapshot.request + uint32 CaptureFlags(31)
 - 全部取消勾选：badge 变为警告色，发送空 Category 集合。
 - 页面刷新后，如果接口返回的 Module 列表发生变化，会过滤掉无效名称。
 
+### 6.4 自动连接与开始门禁
+
+- 勾选开关且已选择设备/应用后，前端调用 `/apm/unity/arm`，后端立即尝试
+  Helper → Protocol；失败后保持后台轮询。
+- 游戏在页面打开后才启动、或 device 稍后才可用时，无需手动刷新：
+  轮询发现 Player 后自动连接，游戏面板随即出现实时指标。
+- 勾选开关后点击 **开始**：所有采集（CPU/内存/FPS/录屏等）都会先等待
+  Unity 连接，默认最多 15 秒；连接成功后才调用 `/apm/initialize` 并开始
+  采样。
+- **连接与录制分离**：`/apm/unity/arm` 只建立会话并让面板能读实时指标；
+  点开始后调用 `/apm/unity/start?record=1`，此时 helper 会轮转并删除连接
+  期的设备日志，protocol 模式会重开一次 profiler 流（从新的 `PD3U` 流头和
+  marker 元数据开始），`unity_stats.log` 也会清空重写。因此报告里的 Unity
+  数据和系统指标从同一个起点开始。
+- 录制过程中才勾选开关时，`arm` 会带 `record=1`，连上即开始写入本次报告。
+- 超时仍未连接：弹出错误提示并显示最近一次失败原因（helper 未找到、
+  PlayerConnection 不可达、Unity 版本不支持等），本次不进行任何录制。
+- 取消勾选或停止任务会调用 `/apm/unity/disarm`，避免后台轮询继续重连。
+
+### 6.5 报告时间轴对齐
+
+- 每次开始采集时写入 `report/apm_session.json`（采集起点时钟）。
+- 报告页所有图表（系统指标、GPU 扩展指标、Unity 计数器、Unity 相关性图）
+  都以该起点为 `x=0`；没有该文件的旧报告回退到场景内最早日志时间。
+- 前后端统一使用同一段 x 轴范围，Unity 第一帧与系统指标在同一刻度上，
+  不会再出现“选中 Unity 第一帧，其它曲线却相差 1 秒”的情况。
+- 时间换算支持跨零点。
+
 ---
 
 ## 7. HTTP 接口
@@ -581,14 +668,19 @@ snapshot.request + uint32 CaptureFlags(31)
 | 路由 | 说明 |
 | --- | --- |
 | `GET /apm/unity/versions` | 支持的 Unity 版本、能力位、Area/Category 清单、默认勾选 |
-| `GET /apm/unity/start` | 连接 Player，开始采集；参数 `platform/device/pkgname/process/deep_profiling/areas` |
+| `GET /apm/unity/start` | 连接 Player 并开始录制；参数 `platform/device/pkgname/process/deep_profiling/areas`，`record` 默认 `1`；已连接时只切换为录制状态 |
+| `GET /apm/unity/arm` | 勾选开关后调用：立即尝试连接并在后台轮询；参数同上，`record` 默认 `0`（只刷新面板），录制中打开开关时传 `1` |
+| `GET /apm/unity/wait` | 点击开始前调用：等待 Unity 连接，`timeout` 默认 15 秒；返回 `available` 与失败原因 |
+| `GET /apm/unity/disarm` | 取消轮询；`stop=1` 同时关闭采集，`discard=1` 丢弃未归档的暂存目录 |
 | `GET /apm/unity/options` | 采集中修改 `deep_profiling` / `areas`（不传的字段保持不变） |
 | `GET /apm/unity/snapshot` | 抓取 MemoryProfiler 快照 |
-| `GET /apm/unity/status` | 当前模式、版本、字节数、Deep Profiler / Module 状态 |
+| `GET /apm/unity/status` | 当前模式、版本、字节数、`recording` 状态、Deep Profiler / Module 状态 |
 | `GET /apm/unity/stop` | 停止采集并完成文件 |
 | `GET /apm/unity/files?scene=` | 列出场景下的 unity 文件 |
 | `GET /apm/unity/download?scene=&file=` | 下载原始文件 |
 | `GET /apm/unity/helper` | 下载 Unity 侧脚本 ZIP |
+| `GET /apm/export/report?scene=&platform=` | 导出报告包：Excel + Unity 原始文件 + Unity Profiler JSON；可选 `unity_frames` / `unity_top_markers` / `unity_slow_frames` |
+| `GET /apm/export/compare?scenes=&scenes=&platform=` | 导出对比报告包：`compare.xls` / `compare.json` + 每份报告的原始文件与 Unity JSON/二进制；支持 2-6 份同一 App、同一平台的 normal 报告，可选参数同上 |
 
 ### 7.1 `areas` 参数
 
@@ -715,10 +807,35 @@ areas=CPU&areas=GPU     重复参数
 ```text
 report/apm_<时间>/unity/
     profiler.raw              原始 profiler 流 / 二进制日志
+    profiler.json             离线导出的 Profiler JSON（导出时生成）
     memory_<时间>.snapshot    Memory Profiler 快照
     meta.json                 设备、包名、模式、Unity 版本、Deep Profiler、
                               Profiler Modules、实际发送的 Category、字节数
 ```
+
+### 8.1 `profiler.json`
+
+`profiler.json` 由 PerfCattle 直接解析 `profiler.raw` 生成，不依赖 Unity，
+用于在没有 Unity 环境的机器上做初步分析。核心字段：
+
+| 字段 | 说明 |
+| --- | --- |
+| `format` / `format_version` | 固定为 `perfcattle-unity-profiler-json` / `1` |
+| `capture` | 来自 `meta.json`（Unity 版本、模式、Modules 等） |
+| `stream` | 原始流版本、帧数、marker 数、线程列表 |
+| `summary.frame_count` | 原始流中的总帧数 |
+| `summary.exported_frame_count` | 实际写入 JSON 的帧数 |
+| `summary.sampled` | 帧数超过上限时是否等间隔抽样 |
+| `summary.markers` | 导出区间内按 marker 聚合的 calls / total_us / self_us / gc_bytes |
+| `frames[]` | 每帧 `duration_us`、`main_thread_total_us`、`gc_bytes`、线程耗时、Top markers |
+| `slow_frames[]` | 最慢若干帧的完整 Merged Hierarchy |
+| `limitations` | 离线解析的能力边界 |
+
+默认最多导出 1000 帧；`/apm/export/report` 和 `/apm/export/compare` 都支持
+`unity_frames`、`unity_top_markers`、`unity_slow_frames` 三个可选参数覆盖
+默认值。对比导出会为该对比范围内的每份报告各生成一份 profiler JSON。
+JSON 不包含 Unity Counters、Callstack 和对象元数据，需要这些信息时请使用
+原始 `profiler.raw`。
 
 `meta.json` 示例：
 

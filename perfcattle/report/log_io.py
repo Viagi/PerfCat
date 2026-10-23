@@ -3,8 +3,10 @@
 
 负责性能日志文件的读取、写入、解析等操作。
 """
+import datetime
 import json
 import os
+import time
 from logzero import logger
 from perfcattle.core.platform import Platform
 
@@ -12,6 +14,8 @@ from perfcattle.core.platform import Platform
 class LogIO:
     """日志文件读写操作"""
 
+    # 采集开始时写入的会话标记，报告里所有图表共用它的时钟作为 x=0。
+    SESSION_FILE = "apm_session.json"
     MEMORY_DETAIL_LOGS = (
         ("java_heap", "mem_java_heap.log"),
         ("native_heap", "mem_native_heap.log"),
@@ -28,10 +32,14 @@ class LogIO:
         ("Battery", "thermal_battery.log"),
     )
     THERMAL_SNAPSHOT_FILES = ("init_thermal_temp.json", "current_thermal_temp.json")
+    # Unity 几何计数在报告/图表中统一换算为 k（千），保留 1 位小数。
+    GEOMETRY_KEYS = ("triangles", "vertices")
+    GEOMETRY_SCALE = 0.001
 
     def __init__(self, fileroot="."):
         self.fileroot = fileroot
         self.report_dir = self._get_report_dir()
+        self._bounds_cache = {}
 
     def _get_report_dir(self):
         """获取报告目录路径"""
@@ -64,6 +72,115 @@ class LogIO:
             return
         with open(path, "a+", encoding="utf-8") as file:
             file.write(f"{log_time}={json.dumps(value)}" + "\n")
+
+    # ------------------------------------------------------ time origin
+
+    def begin_session(self, clock=None):
+        """记录本次采集的起点，供报告里所有图表统一时间轴。
+
+        ``clock`` 使用与各采集日志相同的 ``HH:MM:SS.ffffff`` 格式。
+        """
+        now = datetime.datetime.now()
+        payload = {
+            "clock": clock or now.strftime("%H:%M:%S.%f"),
+            "epoch": time.time(),
+            "date": now.strftime("%Y-%m-%d"),
+        }
+        path = os.path.join(self.report_dir, self.SESSION_FILE)
+        try:
+            with open(path, "w", encoding="utf-8") as file:
+                json.dump(payload, file, ensure_ascii=False)
+        except OSError as exc:
+            logger.warning("write session marker failed: %s", exc)
+            return False
+        self._bounds_cache.clear()
+        return True
+
+    @staticmethod
+    def _relative_seconds(seconds, origin):
+        """把当日秒数换算成相对 origin 的秒数，并处理跨零点。"""
+        delta = seconds - origin
+        if delta < -43200:
+            delta += 86400
+        elif delta > 43200:
+            delta -= 86400
+        return delta
+
+    def _session_origin(self, scene):
+        if not scene:
+            return None
+        path = os.path.join(self.report_dir, scene, self.SESSION_FILE)
+        try:
+            with open(path, "r", encoding="utf-8") as file:
+                data = json.load(file)
+        except (OSError, ValueError):
+            return None
+        if not isinstance(data, dict) or not data.get("clock"):
+            return None
+        try:
+            return self._clock_seconds(data["clock"])
+        except (TypeError, ValueError):
+            return None
+
+    def _log_timestamps(self, scene):
+        """按写入顺序遍历场景内所有 .log 文件的时间戳。"""
+        if not scene:
+            return
+        folder = os.path.join(self.report_dir, scene)
+        if not os.path.isdir(folder):
+            return
+        for name in sorted(os.listdir(folder)):
+            if not name.endswith(".log"):
+                continue
+            path = os.path.join(folder, name)
+            if not os.path.isfile(path):
+                continue
+            try:
+                for line in self.open_file(path, "r"):
+                    text, sep, _ = line.partition("=")
+                    if not sep:
+                        continue
+                    try:
+                        yield self._clock_seconds(text)
+                    except (TypeError, ValueError):
+                        continue
+            except OSError:
+                continue
+
+    def scene_bounds(self, scene):
+        """返回 (公共时间原点, 所有日志相对原点的最大秒数)。
+
+        优先使用 ``apm_session.json`` 记录的采集起点；旧报告没有该文件时
+        退回场景内最早的一条日志时间。所有图表共用同一个原点，Unity 与
+        系统指标才能按真实时间对齐。
+        """
+        if scene in self._bounds_cache:
+            return self._bounds_cache[scene]
+        origin = self._session_origin(scene)
+        timestamps = list(self._log_timestamps(scene))
+        if origin is None:
+            if not timestamps:
+                return (None, None)
+            origin = min(timestamps)
+        max_relative = (
+            max(self._relative_seconds(value, origin) for value in timestamps)
+            if timestamps
+            else 0.0
+        )
+        bounds = (origin, max(0.0, max_relative))
+        self._bounds_cache[scene] = bounds
+        return bounds
+
+    def scene_origin(self, scene):
+        """场景的公共时间原点；没有日志时返回 None。"""
+        return self.scene_bounds(scene)[0]
+
+    def scene_time_range(self, scene):
+        """所有图表共用的 x 轴范围（秒），保证并排图表视觉上对齐。"""
+        origin, max_relative = self.scene_bounds(scene)
+        if origin is None or max_relative is None:
+            return {"min": 0.0, "max": 0.0}
+        return {"min": 0.0, "max": round(max_relative, 1)}
 
     @staticmethod
     def _clock_seconds(text):
@@ -99,7 +216,7 @@ class LogIO:
     def read_json_lines(self, scene, filename):
         """读取 JSON 行日志，返回 (charts, values)。
 
-        charts 的 x 与普通日志一致，是相对第一条样本的秒数；额外的 t 字段
+        charts 的 x 与普通日志一致，使用场景的公共时间原点；额外的 t 字段
         保存绝对秒数，仅用于与其他日志对齐（前端会忽略）。
         """
         points = self._json_points(scene, filename)
@@ -107,9 +224,11 @@ class LogIO:
         values = {}
         if not points:
             return charts, values
-        origin = points[0][0]
+        origin = self.scene_origin(scene)
+        if origin is None:
+            origin = points[0][0]
         for seconds, data in points:
-            x = round(seconds - origin, 1)
+            x = round(max(0.0, self._relative_seconds(seconds, origin)), 1)
             for key, value in data.items():
                 if value is None:
                     continue
@@ -144,10 +263,15 @@ class LogIO:
         return points
 
     @staticmethod
-    def _nearest_absolute(points, target):
+    def _clock_distance(first, second):
+        """两个当日秒数的最短距离，跨零点时也正确。"""
+        return abs((first - second + 43200) % 86400 - 43200)
+
+    @classmethod
+    def _nearest_absolute(cls, points, target):
         if not points:
             return None
-        return min(points, key=lambda item: abs(item[0] - target))[1]
+        return min(points, key=lambda item: cls._clock_distance(item[0], target))[1]
 
     def getGpuStatsLog(self, platform, scene):
         """GPU 扩展指标；带宽按同一时刻的 FPS 换算成 MB/帧。"""
@@ -192,32 +316,58 @@ class LogIO:
             for key, items in values.items()
             if items
         }
+        for key in self.GEOMETRY_KEYS:
+            if key in avg:
+                avg[key] = round(avg[key] * self.GEOMETRY_SCALE, 1)
         for key in list(charts):
-            charts[key] = [{"x": p["x"], "y": p["y"]} for p in charts[key]]
+            if key in self.GEOMETRY_KEYS:
+                charts[key] = [
+                    {
+                        "x": p["x"],
+                        "y": round(p["y"] * self.GEOMETRY_SCALE, 1),
+                    }
+                    for p in charts[key]
+                ]
+            else:
+                charts[key] = [{"x": p["x"], "y": p["y"]} for p in charts[key]]
         return {"status": 1, "avg": avg, "charts": charts}
+
+    def getUnityStatsLogCompare(self, platform, scene1, scene2):
+        """Unity 侧实时计数器的双场景对比数据。"""
+        return self._status(
+            scene1=self.getUnityStatsLog(platform, scene1),
+            scene2=self.getUnityStatsLog(platform, scene2),
+        )
 
     def getUnityCorrelationLog(self, platform, scene):
         """把系统 CPU 与 Unity 计数器放到同一个时间轴上。
 
-        各日志文件的第一条样本时间可能不同，这里统一用最早的时间点作为
-        x=0，保证 CPU 曲线和 Draw Calls / 三角面能按真实时间对齐。
+        统一使用场景的公共时间原点（采集开始时刻），与其它图表完全一致，
+        Unity 第一帧不会再和系统时间轴错开。
         """
         cpu_app = self._absolute_points(scene, "cpu_app.log")
         cpu_sys = self._absolute_points(scene, "cpu_sys.log")
         unity_points = self._json_points(scene, "unity_stats.log")
-        origins = []
-        for points in (cpu_app, cpu_sys):
-            if points:
-                origins.append(points[0][0])
-        if unity_points:
-            origins.append(unity_points[0][0])
-        if not origins:
-            return {"status": 1, "charts": {}}
-        origin = min(origins)
+        origin = self.scene_origin(scene)
+        if origin is None:
+            origins = []
+            for points in (cpu_app, cpu_sys):
+                if points:
+                    origins.append(points[0][0])
+            if unity_points:
+                origins.append(unity_points[0][0])
+            if not origins:
+                return {"status": 1, "charts": {}}
+            origin = min(origins)
 
-        def convert(points):
+        def convert(points, scale=1.0):
             return [
-                {"x": round(seconds - origin, 1), "y": value}
+                {
+                    "x": round(
+                        max(0.0, self._relative_seconds(seconds, origin)), 1
+                    ),
+                    "y": value if scale == 1.0 else round(value * scale, 1),
+                }
                 for seconds, value in points
             ]
 
@@ -239,7 +389,8 @@ class LogIO:
                 for seconds, data in unity_points
                 if data.get(key) is not None
             ]
-            charts[key] = convert(points)
+            scale = self.GEOMETRY_SCALE if key in self.GEOMETRY_KEYS else 1.0
+            charts[key] = convert(points, scale)
         return {"status": 1, "charts": charts}
 
     def create_file(self, filename, content=""):
@@ -279,12 +430,16 @@ class LogIO:
             case _:
                 logger.error("record network data failed")
 
-    def readLog(self, scene, filename):
-        """读取 APM 日志文件数据，x 轴为相对时间（从起始时间开始的秒数）
+    def readLog(self, scene, filename, origin=None):
+        """读取 APM 日志文件数据，x 轴为相对采集起点的秒数。
+
+        不传 ``origin`` 时使用场景的公共时间原点，因此所有图表（包括
+        Unity 指标）共享同一条时间轴。
 
         Args:
             scene: 场景目录名
             filename: 日志文件名
+            origin: 可选的公共时间原点（当日秒数）
 
         Returns:
             tuple: (log_data_list, target_data_list)
@@ -293,7 +448,8 @@ class LogIO:
         """
         log_data_list = []
         target_data_list = []
-        start_time = None
+        if origin is None:
+            origin = self.scene_origin(scene)
 
         filepath = os.path.join(self.report_dir, scene, filename)
         if not os.path.exists(filepath):
@@ -308,26 +464,13 @@ class LogIO:
             value_str = parts[1].strip()
 
             try:
-                if "." in time_str:
-                    time_parts = time_str.split(".")
-                    hms = time_parts[0].split(":")
-                    microsec = int(time_parts[1][:6].ljust(6, "0"))
-                else:
-                    hms = time_str.split(":")
-                    microsec = 0
-
-                current_seconds = (
-                    int(hms[0]) * 3600
-                    + int(hms[1]) * 60
-                    + int(hms[2])
-                    + microsec / 1000000.0
+                current_seconds = self._clock_seconds(time_str)
+                if origin is None:
+                    origin = current_seconds
+                relative_time = round(
+                    max(0.0, self._relative_seconds(current_seconds, origin)), 1
                 )
-
-                if start_time is None:
-                    start_time = current_seconds
-
-                relative_time = round(current_seconds - start_time, 1)
-            except (ValueError, IndexError):
+            except (ValueError, IndexError, TypeError):
                 relative_time = len(log_data_list)
 
             try:

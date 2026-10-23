@@ -273,6 +273,39 @@ class HelperBackend(object):
             "helper backend cannot change deep profiling or profiler modules"
         )
 
+    def begin_record(self):
+        """Rotate the on-device profiler log at recording start.
+
+        Attaching only needs the stats channel; the binary log that is
+        archived with the report must begin at the Start click. Rotating the
+        helper log discards the frames captured while only the panel was
+        live, so ``profiler.raw`` matches the system-metric timeline.
+        """
+        import time
+
+        if not self.available:
+            return None
+        stamp = "record_{}".format(
+            time.strftime("%Y%m%d_%H%M%S", time.localtime())
+        )
+        try:
+            reply = self._command("start unity_{}".format(stamp), timeout=10)
+        except OSError as e:
+            logger.warning("[Unity] cannot rotate helper log: {}".format(e))
+            return None
+        parts = (reply or "").split()
+        if not reply.startswith("ok") or len(parts) < 2:
+            logger.warning(
+                "[Unity] helper did not rotate log: {}".format(reply)
+            )
+            return None
+        previous = self.remote_log
+        self.remote_log = parts[1]
+        if previous and previous != self.remote_log:
+            self._shell('rm -f "{}"'.format(previous))
+        logger.info("[Unity] recording started: {}".format(self.remote_log))
+        return self.remote_log
+
     def snapshot(self, name):
         self._ensure_channel()
         sock = None
@@ -302,7 +335,7 @@ class HelperBackend(object):
         self.files.append({"name": os.path.basename(local), "size": size})
         return {"file": local, "name": os.path.basename(local), "size": size}
 
-    def stop(self):
+    def stop(self, discard=False):
         result = {"status": 1, "files": []}
         try:
             if self.available:
@@ -313,6 +346,12 @@ class HelperBackend(object):
                 import time
                 time.sleep(0.8)
             remote = self.remote_log or posixpath.join(self.device_dir, PROFILER_FILE)
+            if discard:
+                # Auto-connect closed before recording: drop the device log
+                # instead of pulling a potentially large file.
+                self._shell('rm -f "{}"'.format(remote))
+                result["profiler_size"] = 0
+                return result
             size = self._device_file_size(remote)
             if size > 0:
                 local = os.path.join(self.staging_dir, posixpath.basename(remote))
@@ -377,8 +416,10 @@ class ProtocolBackend(object):
         self.product_name = info.project
         self.remote_log = os.path.join(self.staging_dir, PROFILER_FILE)
         normalized = self.session.profile.normalize_areas(areas)
+        # Attach without a raw file: the stream feeds the live panel, while
+        # the archived file starts at the recording start (begin_record).
         self.session.start_profiler(
-            self.remote_log, deep_profiling=deep_profiling, areas=normalized
+            None, deep_profiling=deep_profiling, areas=normalized
         )
         self.deep_profiling = self.session.deep_profiling
         self.areas = normalized
@@ -427,6 +468,16 @@ class ProtocolBackend(object):
             "size": data["size"],
         }
 
+    def begin_record(self):
+        """Restart capture so ``profiler.raw`` starts at the recording start.
+
+        Attaching only streams for the live panel; the restarted stream brings
+        a fresh PD3U header and marker metadata, so the archived file is a
+        self-contained profiler capture.
+        """
+        self.session.begin_record(self.remote_log)
+        return self.remote_log
+
     def stats(self):
         """Parse live counters out of the raw profiler stream."""
         if not self.available:
@@ -435,13 +486,21 @@ class ProtocolBackend(object):
         data.setdefault("mode", self.mode)
         return data
 
-    def stop(self):
+    def stop(self, discard=False):
         result = {"status": 1, "files": []}
         try:
             self.session.stop_profiler()
             size = 0
             if self.remote_log and os.path.exists(self.remote_log):
                 size = os.path.getsize(self.remote_log)
+            if discard:
+                if self.remote_log and os.path.exists(self.remote_log):
+                    try:
+                        os.remove(self.remote_log)
+                    except OSError:
+                        pass
+                result["profiler_size"] = 0
+                return result
             if size > 0:
                 self.files.append({"name": PROFILER_FILE, "size": size})
                 result["files"].append({"name": PROFILER_FILE, "size": size})

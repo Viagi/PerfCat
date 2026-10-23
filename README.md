@@ -142,11 +142,14 @@ target in ['cpu','memory','memory_detail','network','fps','battery','gpu']
 
   - 🌱2-devices: test the same app on two different phones.
   - 🌱2-apps: test two different apps on two phones with the same configuration.
+* **Multi-Report Compare:** Select 2–6 normal reports of the same app and platform on the report page. The summary table expands per scene, and multi-metric charts are split into separate charts with one series per scene.
 * **Collect In Python/API:** Support Python and API to collect performance data, helping users easily integrate into automated testing processes.
 * **GPU Extended Stats:** Optional GPU clock, bus vote, temperature, memory and Adreno read/write bandwidth. The report shows bandwidth as **MB/frame**, aligned with the FPS samples.
-* **Unity Capture:** Record Unity Profiler / MemoryProfiler data alongside the normal APM session. It tries a drop-in Unity helper first, then falls back to speaking the Editor's PlayerConnection protocol directly (Unity 2022.3 verified, no game changes). Raw files are archived under `report/<scene>/unity/` and downloadable from the analysis page.
+* **Unity Capture:** Record Unity Profiler / MemoryProfiler data alongside the normal APM session. It tries a drop-in Unity helper first, then falls back to speaking the Editor's PlayerConnection protocol directly (Unity 2022.3 verified, no game changes). Raw files are archived under `report/<scene>/unity/`; exporting a test report bundles them with the performance data and an offline JSON.
+* **Unity Profiler JSON Export:** Report export converts `profiler.raw` into JSON (frame/thread timings, hotspot markers, GC allocations, slowest-frame call trees) so captures can be analysed without Unity.
+* **Comparison Export:** The compare page exports a ZIP with `compare.xls` / `compare.json` plus every report's original Excel, metadata, Unity Profiler JSON and `.raw` / `.snapshot` binaries.
 * **Deep Profiler / Profiler Modules:** Tick the same Profiler Modules as the Unity Profiler and toggle Deep Profiler; in protocol mode both can be changed live during a capture (Deep Profiler requires the build's Deep Profiling Support).
-* **Unity Game Panel:** Protocol mode parses the raw Profiler stream directly (Unity 2022.2+), with the in-game helper as an option. It shows CPU/GPU frame time, Draw Calls, SetPass Calls, Batches, Triangles, Vertices, GC Alloc and used memory, and writes them to the report on the same time axis as system CPU.
+* **Unity Game Panel:** Protocol mode parses the raw Profiler stream directly (Unity 2022.2+), with the in-game helper as an option. It shows CPU/GPU frame time, Draw Calls, SetPass Calls, Batches, Triangles, Vertices, GC Alloc, used memory, plus Render Textures, Used Buffers and vertex/index buffer uploads (count + memory), and writes them to the report and comparison pages on the same time axis as system CPU.
 * **Unity Hotspots:** Per-frame Timeline (thread rows of marker blocks), Hierarchy (merged call paths with Total/Self/Calls/GC) and Raw Hierarchy (unmerged calls), with thread selection and sorting in the analysis page.
 * **Unity Capture Guide:** [docs/UNITY_CAPTURE.md](docs/UNITY_CAPTURE.md) — supported PlayerConnection versions, wire format, Area→Category mapping, and the checklist for adding a new Unity version or Profiler feature.
 

@@ -91,6 +91,7 @@ def _log_compare_handlers(platform, scene1, scene2):
         "cpu_core": lambda: f.getCpuCoreLogCompare(platform, scene1, scene2),
         "net_send": lambda: f.getFlowSendLogCompare(platform, scene1, scene2),
         "net_recv": lambda: f.getFlowRecvLogCompare(platform, scene1, scene2),
+        "unity_stats": lambda: f.getUnityStatsLogCompare(platform, scene1, scene2),
         Target.FileIO: lambda: f.getFileIOLogCompare(platform, scene1, scene2),
     }
 
@@ -266,13 +267,47 @@ def editReport():
     return result
 
 
+def _optional_int_arg(name):
+    value = request.values.get(name)
+    if value is None or str(value).strip() == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise ValueError("{} must be an integer".format(name))
+
+
 @report_api.route("/apm/export/report", methods=["post", "get"])
 def exportReport():
     platform = method._request(request, "platform")
     scene = method._request(request, "scene")
     try:
-        path = f.export_excel(platform=platform, scene=scene)
-        result = {"status": 1, "msg": "success", "path": path}
+        result = f.export_report(
+            platform=platform,
+            scene=scene,
+            max_frames=_optional_int_arg("unity_frames"),
+            top_markers=_optional_int_arg("unity_top_markers"),
+            slow_frames=_optional_int_arg("unity_slow_frames"),
+        )
+    except Exception as e:
+        logger.exception(e)
+        result = {"status": 0, "msg": str(e)}
+    return result
+
+
+@report_api.route("/apm/export/compare", methods=["post", "get"])
+def exportCompareReport():
+    """Export a comparison bundle with every report's original files."""
+    scenes = _request_scenes()
+    platform = request.values.get("platform")
+    try:
+        result = f.export_compare(
+            platform=platform,
+            scenes=scenes,
+            max_frames=_optional_int_arg("unity_frames"),
+            top_markers=_optional_int_arg("unity_top_markers"),
+            slow_frames=_optional_int_arg("unity_slow_frames"),
+        )
     except Exception as e:
         logger.exception(e)
         result = {"status": 0, "msg": str(e)}
@@ -338,6 +373,7 @@ def exportAndroidHtml():
             "unity_stats": unity_stats["avg"],
             "unity_stats_charts": unity_stats["charts"],
             "unity_correlation_charts": unity_correlation["charts"],
+            "time_range": f.scene_time_range(scene),
         }
         path = f.make_android_html(scene, summary_dict)
         result = {"status": 1, "msg": "success", "path": path}
@@ -422,6 +458,28 @@ def getLogCompareData():
         else:
             handler = _log_compare_handlers(platform, scene1, scene2).get(target)
             result = handler() if handler else {"status": 0, "msg": "no target found"}
+    except Exception as e:
+        logger.exception(e)
+        result = {"status": 0, "msg": str(e)}
+    return result
+
+
+@report_api.route("/apm/log/compare_multi", methods=["post", "get"])
+def getLogCompareMultiData():
+    """Return one target's log data for 2-6 compared scenes."""
+    scenes = _request_scenes()
+    target = method._request(request, "target")
+    platform = method._request(request, "platform")
+    try:
+        if not 2 <= len(scenes) <= 6:
+            raise ValueError("scenes must contain 2-6 reports")
+        payload = []
+        for scene in scenes:
+            handler = _log_data_handlers(platform, scene).get(target)
+            if handler is None:
+                raise ValueError("no target found: {}".format(target))
+            payload.append({"scene": scene, "data": handler()})
+        result = {"status": 1, "target": target, "scenes": payload}
     except Exception as e:
         logger.exception(e)
         result = {"status": 0, "msg": str(e)}

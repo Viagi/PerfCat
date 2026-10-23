@@ -106,9 +106,12 @@ def getPackagePids():
     platform = method._request(request, "platform")
     device = method._request(request, "device")
     pkgname = method._request(request, "pkgname")
+    fast = str(request.values.get("fast", "0")).strip().lower() in (
+        "1", "true", "yes", "on"
+    )
     try:
         deviceId = d.getIdbyDevice(device, platform)
-        pids = d.getPid(deviceId, pkgname)
+        pids = d.getPid(deviceId, pkgname, fast=fast)
         if len(pids) > 0:
             result = {"status": 1, "pids": pids}
         else:
@@ -119,6 +122,26 @@ def getPackagePids():
     except Exception as e:
         logger.exception(e)
         result = {"status": 0, "msg": "No process found, please start the app first."}
+    return result
+
+
+@device_api.route("/package/launch", methods=["post", "get"])
+def launchPackage():
+    """launch the selected app by package name / bundle id"""
+    platform = request.values.get("platform")
+    device = request.values.get("device")
+    pkgname = (request.values.get("pkgname") or "").strip()
+    if platform not in (Platform.Android, Platform.iOS):
+        return {"status": 0, "msg": "platform is undefined"}
+    if not device or not pkgname:
+        return {"status": 0, "msg": "Select a device and app first"}
+    try:
+        deviceId = d.getIdbyDevice(device, platform)
+        d.launchApp(deviceId, pkgname, platform)
+        result = {"status": 1, "msg": "App launched"}
+    except Exception as e:
+        logger.exception(e)
+        result = {"status": 0, "msg": str(e) or "App launch failed"}
     return result
 
 

@@ -615,9 +615,32 @@ class HotspotReader(object):
             for item in items
         ]
 
+    def info(self):
+        """Return capture metadata without decoding individual frames."""
+        index = self._ensure_index()
+        header = index["header"]
+        threads = [
+            {
+                "id": str(thread_id),
+                "name": item.get("name", "Thread 0x{:x}".format(thread_id)),
+                "group": item.get("group") or "",
+            }
+            for thread_id, item in sorted(index["threads"].items())
+        ]
+        return {
+            "stream_version": header["version"],
+            "align": header["align"],
+            "sample_rate_num": header["num"],
+            "sample_rate_den": header["den"],
+            "main_thread": str(header["main_thread"]),
+            "frame_count": len(index["frames"]),
+            "marker_count": len(index["samplers"]),
+            "threads": threads,
+        }
+
     # -------------------------------------------------------------- frame
 
-    def frame(self, target, selected_thread="main"):
+    def frame(self, target, selected_thread="main", cache=True):
         index = self._ensure_index()
         with self.lock:
             key = (target, selected_thread)
@@ -625,7 +648,8 @@ class HotspotReader(object):
             if cached is not None:
                 return cached
             result = self._read_frame(index, target, selected_thread)
-            self._frame_cache[key] = result
+            if cache:
+                self._frame_cache[key] = result
             return result
 
     def _read_frame(self, index, target, selected_thread):

@@ -185,6 +185,7 @@ def initialize():
         IOSPerformance.stop_requests()
         _clear_collector_sessions()
         f.clear_file()
+        f.begin_session()
         IOSPerformance.resume_requests()
         result = {"status": 1, "msg": "initialize env success"}
     except Exception as e:

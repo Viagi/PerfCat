@@ -235,6 +235,9 @@ class HtmlExporter:
                 unity_correlation_charts=summary.get(
                     "unity_correlation_charts", {}
                 ),
+                time_range=summary.get(
+                    "time_range", {"min": 0.0, "max": 0.0}
+                ),
                 summary_flags=summary_flags,
             )
 

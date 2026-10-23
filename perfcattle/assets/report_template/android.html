@@ -462,9 +462,9 @@
                         </div>
                         <div class="card unity-stats-card mb-3" id="unity-stats-card" style="display: none;">
                             <div class="card-header">
-                                <div class='card-title'>Unity Engine: Frame Time (ms), Draw Calls &amp; Triangles</div>
+                                <div class='card-title'>Unity Engine: Frame Time (ms), Draw Calls &amp; Triangles (k)</div>
                                 <div class="card-actions btn-actions">
-                                    <span class="text-muted">CPU: {{ unity_stats.get('cpu_frame_ms', '-') }} ms &nbsp; GPU: {{ unity_stats.get('gpu_frame_ms', '-') }} ms &nbsp; DC: {{ unity_stats.get('draw_calls', 0)|round|int }} &nbsp; Tri: {{ unity_stats.get('triangles', 0)|round|int }} &nbsp; Vert: {{ unity_stats.get('vertices', 0)|round|int }}</span>
+                                    <span class="text-muted">CPU: {{ unity_stats.get('cpu_frame_ms', '-') }} ms &nbsp; GPU: {{ unity_stats.get('gpu_frame_ms', '-') }} ms &nbsp; DC: {{ unity_stats.get('draw_calls', 0)|round|int }} &nbsp; Tri: {{ '%.1f'|format(unity_stats.get('triangles', 0)) }} k &nbsp; Vert: {{ '%.1f'|format(unity_stats.get('vertices', 0)) }} k</span>
                                     <a class="btn-action cursor-pointer" onclick="screenshot('unity-stats-card','unity_stats.png')">PNG</a>
                                 </div>
                             </div>
@@ -476,10 +476,22 @@
                                         <div id="chart-unity-drawcalls"></div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="text-muted small">Geometry: Triangles / Vertices</div>
+                                        <div class="text-muted small">Geometry: Triangles / Vertices (k)</div>
                                         <div id="chart-unity-geometry"></div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                        <div class="card unity-resources-card mb-3" id="unity-resources-card" style="display: none;">
+                            <div class="card-header">
+                                <div class='card-title'>Unity Render Resources: Textures (MB), Buffers (MB) &amp; Uploads (KB/frame)</div>
+                                <div class="card-actions btn-actions">
+                                    <span class="text-muted">RT: {% if 'render_textures' in unity_stats %}{{ unity_stats.get('render_textures')|int }}{% else %}-{% endif %} / {% if 'render_textures_mb' in unity_stats %}{{ '%.1f'|format(unity_stats.get('render_textures_mb')) }} MB{% else %}-{% endif %} &nbsp; RT Changes: {{ unity_stats.get('render_textures_changes', '-') }} &nbsp; Buffers: {% if 'used_buffers' in unity_stats %}{{ unity_stats.get('used_buffers')|int }}{% else %}-{% endif %} / {% if 'used_buffers_mb' in unity_stats %}{{ '%.1f'|format(unity_stats.get('used_buffers_mb')) }} MB{% else %}-{% endif %} &nbsp; VB: {% if 'vertex_upload' in unity_stats %}{{ unity_stats.get('vertex_upload')|int }}{% else %}-{% endif %} / {% if 'vertex_upload_kb' in unity_stats %}{{ '%.1f'|format(unity_stats.get('vertex_upload_kb')) }} KB{% else %}-{% endif %} &nbsp; IB: {% if 'index_upload' in unity_stats %}{{ unity_stats.get('index_upload')|int }}{% else %}-{% endif %} / {% if 'index_upload_kb' in unity_stats %}{{ '%.1f'|format(unity_stats.get('index_upload_kb')) }} KB{% else %}-{% endif %}</span>
+                                    <a class="btn-action cursor-pointer" onclick="screenshot('unity-resources-card','unity_resources.png')">PNG</a>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="chart-unity-resources"></div>
                             </div>
                         </div>
                         <div class="card unity-correlation-card mb-3" id="unity-correlation-card" style="display: none;">
@@ -498,7 +510,7 @@
                             <div class="card-header">
                                 <div class='card-title'>Unity Hotspots</div>
                                 <div class="card-actions btn-actions">
-                                    <span class="text-muted">Timeline / Hierarchy / Raw Hierarchy</span>
+                                    <span class="text-muted">Hierarchy / Raw Hierarchy / Timeline</span>
                                 </div>
                             </div>
                             <div class="card-body">
@@ -558,6 +570,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 
+    var reportTimeRange = {{ time_range|tojson }};
+
     $(document).ready(function() {
         $('#curYear').text(getCurDate())
         initCPUCharts()
@@ -574,6 +588,7 @@
         initGPUCharts()
         initGPUStatsCharts()
         initUnityStatsCharts()
+        initUnityResourceCharts()
         initUnityCorrelationCharts()
         if({{ thermal_charts.CPU|default([]) }}.length > 0 || {{ thermal_charts.GPU|default([]) }}.length > 0 || {{ thermal_charts.Memory|default([]) }}.length > 0 || {{ thermal_charts.Battery|default([]) }}.length > 0 ){
             initThermalCharts()
@@ -600,6 +615,18 @@
     }
 
     function options(type,dataLabels=false) {
+        let xaxisOptions = {
+            name: "time",
+            tickAmount:6,
+            labels: {
+                rotate: 0,
+            }
+        };
+        if (reportTimeRange && reportTimeRange.max > reportTimeRange.min) {
+            xaxisOptions.type = 'numeric';
+            xaxisOptions.min = reportTimeRange.min;
+            xaxisOptions.max = reportTimeRange.max;
+        }
         let options = {
             chart: {
                 type: type,
@@ -632,13 +659,7 @@
                 },
             strokeDashArray: 4,
             },
-            xaxis: {
-                name: "time",
-                tickAmount:6,
-                labels: {
-                    rotate: 0,
-                }
-            },
+            xaxis: xaxisOptions,
         };
         return options
     }
@@ -774,9 +795,9 @@
         geometryOptions.chart.height = 180;
         geometryOptions.yaxis = [{
             min: 0,
-            title: { text: 'Count' },
+            title: { text: 'k' },
             labels: {
-                formatter: function(value) { return Math.round(value).toLocaleString(); }
+                formatter: function(value) { return Number(value).toFixed(1); }
             }
         }];
         geometryOptions.stroke = { width: 2, lineCap: 'round', curve: 'straight' };
@@ -785,7 +806,7 @@
             enabled: true, shared: true, intersect: false,
             y: {
                 formatter: function(value) {
-                    return Math.round(value).toLocaleString();
+                    return Number(value).toFixed(1) + ' k';
                 }
             }
         };
@@ -794,21 +815,46 @@
         );
         unity_geometry_chart.render();
         unity_geometry_chart.updateSeries([{
-            name: 'Triangles',
+            name: 'Triangles (k)',
             color: '#F59F00',
             data: {{ unity_stats_charts.get('triangles', []) }}
         },{
-            name: 'Vertices',
+            name: 'Vertices (k)',
             color: '#8B5CF6',
             data: {{ unity_stats_charts.get('vertices', []) }}
         }]);
+    }
+
+    function initUnityResourceCharts(){
+        var resourceOptions = options('line');
+        resourceOptions.yaxis = [
+            { seriesName: ['Render Textures (MB)', 'Used Buffers (MB)'], title: { text: 'MB' } },
+            { seriesName: ['Vertex Upload (KB)', 'Index Upload (KB)'], opposite: true, title: { text: 'KB/frame' } }
+        ];
+        var unity_resources_chart = new ApexCharts(
+            document.querySelector("#chart-unity-resources"), resourceOptions
+        );
+        unity_resources_chart.render();
+        updateChartSeries(unity_resources_chart, '.unity-resources-card', [{
+            name: 'Render Textures (MB)',
+            data: {{ unity_stats_charts.get('render_textures_mb', []) }}
+        },{
+            name: 'Used Buffers (MB)',
+            data: {{ unity_stats_charts.get('used_buffers_mb', []) }}
+        },{
+            name: 'Vertex Upload (KB)',
+            data: {{ unity_stats_charts.get('vertex_upload_kb', []) }}
+        },{
+            name: 'Index Upload (KB)',
+            data: {{ unity_stats_charts.get('index_upload_kb', []) }}
+        }])
     }
 
     function initUnityCorrelationCharts(){
         var correlationOptions = options('line');
         correlationOptions.yaxis = [
             { seriesName: ['CPU App (%)', 'CPU Sys (%)'], title: { text: '%' } },
-            { seriesName: ['Draw Calls', 'Triangles'], opposite: true, title: { text: 'Count' } }
+            { seriesName: ['Draw Calls', 'Triangles'], opposite: true, title: { text: 'DC / k' } }
         ];
         var correlation_chart = new ApexCharts(
             document.querySelector("#chart-unity-correlation"), correlationOptions
@@ -824,7 +870,7 @@
             name: 'Draw Calls',
             data: {{ unity_correlation_charts.get('draw_calls', []) }}
         },{
-            name: 'Triangles',
+            name: 'Triangles (k)',
             data: {{ unity_correlation_charts.get('triangles', []) }}
         }])
     }

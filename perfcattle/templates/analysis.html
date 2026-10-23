@@ -969,11 +969,22 @@
                 </div>
                 <div class="col-md-6">
                     <div class="text-muted small" id="unity-geometry-title">
-                        {% if lan == 'cn' %}几何：三角面 / 顶点{% else %}Geometry: Triangles / Vertices{% endif %}
+                        {% if lan == 'cn' %}几何：三角面 / 顶点 (k){% else %}Geometry: Triangles / Vertices (k){% endif %}
                     </div>
                     <div id="chart-unity-geometry"></div>
                 </div>
             </div>
+        </div>
+    </div>
+    <div class="card unity-resources-card mt-3" id="unity-resources-card" style="display: none;">
+        <div class="card-header">
+            <div class='card-title'>{% if lan == 'cn' %} Unity 渲染资源与上传 {% else %} Unity Render Resources &amp; Uploads {% endif %}</div>
+            <div class="card-actions btn-actions">
+                <span class="text-muted" id="unity-resources-summary"></span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="chart-unity-resources"></div>
         </div>
     </div>
     <div class="card unity-correlation-card mt-3" id="unity-correlation-card" style="display: none;">
@@ -1006,22 +1017,14 @@
         </div>
         <div class="card-body">
             <ul class="nav nav-tabs" id="unity-hotspot-tabs">
-                <li class="nav-item"><a class="nav-link active" data-mode="timeline" href="#">Timeline</a></li>
-                <li class="nav-item"><a class="nav-link" data-mode="hierarchy" href="#">Hierarchy</a></li>
+                <li class="nav-item"><a class="nav-link active" data-mode="hierarchy" href="#">Hierarchy</a></li>
                 <li class="nav-item"><a class="nav-link" data-mode="raw" href="#">Raw Hierarchy</a></li>
+                <li class="nav-item"><a class="nav-link" data-mode="timeline" href="#">Timeline</a></li>
             </ul>
             <div class="mt-2 small text-muted" id="unity-hotspot-status"></div>
-            <div class="unity-hotspot-scroll mt-2" id="unity-hotspot-timeline"></div>
-            <div class="unity-hotspot-scroll mt-2" id="unity-hotspot-hierarchy" style="display: none;"></div>
+            <div class="unity-hotspot-scroll mt-2" id="unity-hotspot-hierarchy"></div>
             <div class="unity-hotspot-scroll mt-2" id="unity-hotspot-raw" style="display: none;"></div>
-        </div>
-    </div>
-    <div class="col-12 mt-3" id="unity-captures" style="display: none;">
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">{% if lan == 'cn' %} Unity 采集文件（原始数据，未解析） {% else %} Unity Captures (raw, not parsed) {% endif %}</div>
-            </div>
-            <div class="card-body" id="unity-file-list"></div>
+            <div class="unity-hotspot-scroll mt-2" id="unity-hotspot-timeline" style="display: none;"></div>
         </div>
     </div>
     {% if apm_data.thermal_flag == True %}
@@ -1278,6 +1281,15 @@
 </div>
 {% endif %}
 
+<div class="col-12 mt-3" id="unity-captures" style="display: none;">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">{% if lan == 'cn' %} Unity 采集文件（原始数据，未解析） {% else %} Unity Captures (raw, not parsed) {% endif %}</div>
+        </div>
+        <div class="card-body" id="unity-file-list"></div>
+    </div>
+</div>
+
 <div class="modal modal-blur fade" id="modal-compare" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
         <div class="modal-content">
@@ -1331,6 +1343,9 @@
 <script>
     // Global chart instances for sync access
     window.chartInstances = {};
+    // 所有图表共用采集起点作为 x=0，并使用同一段 x 轴范围，
+    // 避免 Unity 第一帧与系统指标在视觉上错开。
+    var reportTimeRange = {{ time_range|tojson }};
  
     $(document).ready(function() {
         chartsClick()
@@ -1509,6 +1524,19 @@
     };
 
     function options(type, dataLabels = false) {
+        var xaxisOptions = {
+            type: 'numeric',
+            tickAmount: 6,
+            labels: {
+                rotate: 0,
+                formatter: val => formatSecondsToTime(val)
+            },
+            crosshairs: { show: false }
+        };
+        if (reportTimeRange && reportTimeRange.max > reportTimeRange.min) {
+            xaxisOptions.min = reportTimeRange.min;
+            xaxisOptions.max = reportTimeRange.max;
+        }
         return {
             chart: {
                 type: type,
@@ -1532,15 +1560,7 @@
                 padding: { top: -20, bottom: -4 },
                 strokeDashArray: 4
             },
-            xaxis: {
-                type: 'numeric',
-                tickAmount: 6,
-                labels: {
-                    rotate: 0,
-                    formatter: val => formatSecondsToTime(val)
-                },
-                crosshairs: { show: false }
-            },
+            xaxis: xaxisOptions,
             tooltip: { enabled: false }
         };
     }
@@ -1557,8 +1577,14 @@
             chart.updateSeries([]);
             return false;
         }
+        var wasHidden = !$(cardSelector).is(':visible');
         $(cardSelector).show();
         chart.updateSeries(seriesList);
+        if (wasHidden) {
+            // ApexCharts measures its container on render; charts created while
+            // the card was hidden keep a stale width until a resize event.
+            window.dispatchEvent(new Event('resize'));
+        }
         return true;
     }
 
@@ -1818,20 +1844,6 @@
             strokeWidth: 0,
             hover: { size: 6 }
         };
-        unityStatsOptions.tooltip = {
-            enabled: true,
-            shared: true,
-            intersect: false,
-            y: {
-                formatter: function(value, opts) {
-                    var name = (opts && opts.w && opts.w.globals && opts.w.globals.seriesNames)
-                        ? (opts.w.globals.seriesNames[opts.seriesIndex] || '')
-                        : '';
-                    if (name.indexOf('Frame') >= 0) return value.toFixed(2) + ' ms';
-                    return Math.round(value).toLocaleString();
-                }
-            }
-        };
         var unity_stats_chart = new ApexCharts(
             document.querySelector("#chart-unity-stats"), unityStatsOptions
         );
@@ -1849,6 +1861,8 @@
         drawCallsOptions.chart.height = 180;
         drawCallsOptions.yaxis = [{
             min: 0,
+            tickAmount: 4,
+            forceNiceScale: true,
             title: { text: 'Draw Calls' },
             labels: {
                 formatter: function(value) { return Math.round(value).toLocaleString(); }
@@ -1856,14 +1870,6 @@
         }];
         drawCallsOptions.stroke = { width: 2, lineCap: 'round', curve: 'straight' };
         drawCallsOptions.markers = { size: 3, strokeWidth: 0, hover: { size: 6 } };
-        drawCallsOptions.tooltip = {
-            enabled: true, shared: true, intersect: false,
-            y: {
-                formatter: function(value) {
-                    return Math.round(value).toLocaleString();
-                }
-            }
-        };
         var unity_drawcalls_chart = new ApexCharts(
             document.querySelector('#chart-unity-drawcalls'), drawCallsOptions
         );
@@ -1879,9 +1885,16 @@
         geometryOptions.chart.height = 180;
         geometryOptions.yaxis = [{
             min: 0,
-            title: { text: 'Count' },
+            tickAmount: 4,
+            forceNiceScale: true,
+            title: { text: 'Count (k)' },
             labels: {
-                formatter: function(value) { return Math.round(value).toLocaleString(); }
+                formatter: function(value) {
+                    var rounded = Math.round(value * 10) / 10;
+                    return Number.isInteger(rounded)
+                        ? rounded.toLocaleString()
+                        : rounded.toFixed(1);
+                }
             }
         }];
         geometryOptions.stroke = { width: 2, lineCap: 'round', curve: 'straight' };
@@ -1889,16 +1902,6 @@
             size: 3,
             strokeWidth: 0,
             hover: { size: 6 }
-        };
-        geometryOptions.tooltip = {
-            enabled: true,
-            shared: true,
-            intersect: false,
-            y: {
-                formatter: function(value) {
-                    return Math.round(value).toLocaleString();
-                }
-            }
         };
         var unity_geometry_chart = new ApexCharts(
             document.querySelector('#chart-unity-geometry'), geometryOptions
@@ -1910,6 +1913,28 @@
             geometryChartElement.addEventListener('click', unityGeometryChartClick, true);
             geometryChartElement.__unityStatsClickBound = true;
         }
+
+        var resourcesOptions = options('line');
+        resourcesOptions.chart.height = 200;
+        resourcesOptions.yaxis = [{
+            min: 0,
+            tickAmount: 4,
+            forceNiceScale: true,
+            title: { text: 'MB' }
+        }, {
+            min: 0,
+            opposite: true,
+            tickAmount: 4,
+            forceNiceScale: true,
+            title: { text: 'KB' }
+        }];
+        resourcesOptions.stroke = { width: 2, lineCap: 'round', curve: 'straight' };
+        resourcesOptions.markers = { size: 3, strokeWidth: 0, hover: { size: 6 } };
+        var unity_resources_chart = new ApexCharts(
+            document.querySelector('#chart-unity-resources'), resourcesOptions
+        );
+        unity_resources_chart.render();
+        window.chartInstances.unity_resources = unity_resources_chart;
         $.ajax({
             url: '/apm/log',
             type: "GET",
@@ -1933,10 +1958,10 @@
                     data: charts['gpu_frame_ms'] || []
                 }];
                 var hasData = series.some(function(item){ return item.data.length > 0; });
-                $('#unity-stats-card').toggle(hasData);
-                if(!hasData){ return }
-                if(!updateChartSeries(unity_stats_chart, '.unity-stats-card', series)){
-                    return
+                if(hasData){
+                    updateChartSeries(unity_stats_chart, '.unity-stats-card', series);
+                }else{
+                    $('#unity-stats-card').hide();
                 }
                 var drawCallsData = charts['draw_calls'] || [];
                 $('#chart-unity-drawcalls').toggle(drawCallsData.length > 0);
@@ -1949,11 +1974,11 @@
                     }]);
                 }
                 var geometrySeries = [{
-                    name: 'Triangles',
+                    name: 'Triangles (k)',
                     color: '#F59F00',
                     data: charts['triangles'] || []
                 }, {
-                    name: 'Vertices',
+                    name: 'Vertices (k)',
                     color: '#8B5CF6',
                     data: charts['vertices'] || []
                 }];
@@ -1965,18 +1990,68 @@
                 if(geometryHasData){
                     unity_geometry_chart.updateSeries(geometrySeries);
                 }
+                var resourceSeries = [{
+                    name: 'Render Textures (MB)',
+                    color: '#206BC4',
+                    data: charts['render_textures_mb'] || []
+                }, {
+                    name: 'Used Buffers (MB)',
+                    color: '#D63939',
+                    data: charts['used_buffers_mb'] || []
+                }, {
+                    name: 'Vertex Upload (KB)',
+                    color: '#2FB344',
+                    yAxis: 1,
+                    data: charts['vertex_upload_kb'] || []
+                }, {
+                    name: 'Index Upload (KB)',
+                    color: '#F59F00',
+                    yAxis: 1,
+                    data: charts['index_upload_kb'] || []
+                }];
+                var resourcesHasData = resourceSeries.some(function(item){
+                    return item.data.length > 0;
+                });
+                if(resourcesHasData){
+                    updateChartSeries(unity_resources_chart, '.unity-resources-card', resourceSeries);
+                }else{
+                    $('#unity-resources-card').hide();
+                }
                 var show = function (key) { return avg[key] !== undefined ? avg[key] : '-' };
                 var showInt = function (key) {
                     var value = avg[key];
                     return value === undefined ? '-' : Math.round(value).toLocaleString();
                 };
+                var showK = function (key) {
+                    var value = avg[key];
+                    return value === undefined ? '-' : Number(value).toFixed(1);
+                };
+                var showPair = function (countKey, sizeKey, unit) {
+                    var count = avg[countKey];
+                    var size = avg[sizeKey];
+                    if(count === undefined && size === undefined){
+                        return '-';
+                    }
+                    var countText = count === undefined
+                        ? '-' : Math.round(count).toLocaleString();
+                    var sizeText = size === undefined
+                        ? '-' : Number(size).toFixed(1) + ' ' + unit;
+                    return countText + ' / ' + sizeText;
+                };
                 $('#unity-stats-summary').text(
                     'CPU: ' + show('cpu_frame_ms') + ' ms'
                     + ' | GPU: ' + show('gpu_frame_ms') + ' ms'
                     + ' | DC: ' + showInt('draw_calls')
-                    + ' | Tri: ' + showInt('triangles')
-                    + ' | Vert: ' + showInt('vertices')
+                    + ' | Tri: ' + showK('triangles') + ' k'
+                    + ' | Vert: ' + showK('vertices') + ' k'
                     + ' · ' + (lan === 'cn' ? '点击曲线选择帧' : 'click a point to select a frame')
+                );
+                $('#unity-resources-summary').text(
+                    'RT: ' + showPair('render_textures', 'render_textures_mb', 'MB')
+                    + ' | RT Changes: ' + showInt('render_textures_changes')
+                    + ' | Buffers: ' + showPair('used_buffers', 'used_buffers_mb', 'MB')
+                    + ' | VB: ' + showPair('vertex_upload', 'vertex_upload_kb', 'KB')
+                    + ' | IB: ' + showPair('index_upload', 'index_upload_kb', 'KB')
                 );
             }
         });
@@ -2070,7 +2145,7 @@
         var correlationOptions = options('line');
         correlationOptions.yaxis = [
             { seriesName: ['CPU App (%)', 'CPU Sys (%)'], title: { text: '%' } },
-            { seriesName: ['Draw Calls', 'Triangles'], opposite: true, title: { text: 'Count' } }
+            { seriesName: ['Draw Calls', 'Triangles'], opposite: true, title: { text: 'DC / k' } }
         ];
         var correlation_chart = new ApexCharts(
             document.querySelector("#chart-unity-correlation"), correlationOptions
@@ -2100,12 +2175,14 @@
                     name: 'Draw Calls',
                     data: charts['draw_calls'] || []
                 }, {
-                    name: 'Triangles',
+                    name: 'Triangles (k)',
                     data: charts['triangles'] || []
                 }];
                 var hasData = series.some(function(item){ return item.data.length > 0; });
-                $('#unity-correlation-card').toggle(hasData);
-                if(!hasData){ return }
+                if(!hasData){
+                    $('#unity-correlation-card').hide();
+                    return
+                }
                 if(!updateChartSeries(correlation_chart, '.unity-correlation-card', series)){
                     return
                 }
@@ -2123,7 +2200,7 @@
         frames: [],
         frame: null,
         thread: 'main',
-        mode: 'timeline',
+        mode: 'hierarchy',
         data: null,
         loading: false
     };

@@ -91,8 +91,11 @@ def analysis():
     settings = m._settings(request)
     report_dir = os.path.join(os.getcwd(), "report")
     dirs = os.listdir(report_dir)
-    filter_dir = f.list_other_scenes(scene)
+    filter_dir = f.list_other_scenes(
+        scene, app=app, platform=platform, model="normal"
+    )
     apm_data = {}
+    time_range = {"min": 0.0, "max": 0.0}
     # Initialize disk variables with defaults to prevent template errors
     initial_disk = []
     current_disk = []
@@ -100,6 +103,7 @@ def analysis():
     sum_current_disk = {"sum_size": 0, "sum_used": 0, "sum_free": 0}
     if scene in dirs:
         try:
+            time_range = f.scene_time_range(scene)
             if platform == "Android":
                 apm_data = f._setAndroidPerfs(scene)
                 disk = f.analysisDisk(scene)
@@ -134,23 +138,112 @@ def analysis_pk():
     return render_template("analysis_pk.html", **locals())
 
 
+COMPARE_SCENE_LIMIT = 6
+
+
+def _compare_scene_names():
+    """Read requested compare scenes from the URL (new and legacy formats)."""
+    raw = []
+    for source in (request.args, request.form):
+        raw.extend(source.getlist("scenes"))
+        raw.extend(source.getlist("scenes[]"))
+    if not raw:
+        raw = [request.args.get("scene1"), request.args.get("scene2")]
+
+    scenes = []
+    for value in raw:
+        if value is None:
+            continue
+        for item in str(value).split(","):
+            item = item.strip()
+            if item and item not in scenes:
+                scenes.append(item)
+    return scenes[:COMPARE_SCENE_LIMIT]
+
+
+def _scene_result(scene):
+    path = os.path.join(os.getcwd(), "report", scene, "result.json")
+    try:
+        with open(path, encoding="utf-8") as fp:
+            data = json.load(fp)
+        return data if isinstance(data, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+def _valid_compare_scenes(requested):
+    """Keep existing normal reports of the same app and platform."""
+    report_dir = os.path.abspath(os.path.join(os.getcwd(), "report"))
+    entries = []
+    for scene in requested:
+        target = os.path.abspath(os.path.join(report_dir, scene))
+        if os.path.dirname(target) != report_dir or not os.path.isdir(target):
+            continue
+        meta = _scene_result(scene)
+        if meta is None or meta.get("model") != "normal":
+            continue
+        entries.append((scene, meta))
+    if not entries:
+        return [], None, None
+    app = entries[0][1].get("app")
+    platform = entries[0][1].get("platform")
+    matches = [
+        scene
+        for scene, meta in entries
+        if meta.get("app") == app and meta.get("platform") == platform
+    ]
+    return matches[:COMPARE_SCENE_LIMIT], app, platform
+
+
 @page.route("/compare_analysis", methods=["post", "get"])
 def analysis_compare():
     platform = request.args.get("platform")
     lan = request.args.get("lan")
-    scene1 = request.args.get("scene1")
-    scene2 = request.args.get("scene2")
     app = request.args.get("app")
     settings = m._settings(request)
-    try:
-        if platform == "Android":
-            apm_data1 = f._setAndroidPerfs(scene1)
-            apm_data2 = f._setAndroidPerfs(scene2)
-        elif platform == "iOS":
-            apm_data1 = f._setiOSPerfs(scene1)
-            apm_data2 = f._setiOSPerfs(scene2)
-    except ZeroDivisionError:
-        pass
-    except Exception as e:
-        logger.exception(e)
+    scenes, meta_app, meta_platform = _valid_compare_scenes(_compare_scene_names())
+    if meta_app is not None:
+        app = meta_app
+    if meta_platform is not None:
+        platform = meta_platform
+
+    apm_data_list = []
+    unity_data_list = []
+    valid_scenes = []
+    for scene in scenes:
+        try:
+            if platform == "Android":
+                data = f._setAndroidPerfs(scene)
+            else:
+                data = f._setiOSPerfs(scene)
+        except ZeroDivisionError:
+            continue
+        except Exception as e:
+            logger.exception(e)
+            continue
+        valid_scenes.append(scene)
+        apm_data_list.append(data)
+
+    scenes = valid_scenes
+    for scene in scenes:
+        try:
+            unity_data_list.append(f.getUnityStatsLog(platform, scene))
+        except Exception as e:
+            logger.exception(e)
+            unity_data_list.append({})
+
+    show_unity = any(item.get("charts") for item in unity_data_list)
+    cpu_cores = 0
+    if platform == "Android":
+        for scene in scenes:
+            try:
+                cpu_cores = max(
+                    cpu_cores, int(f.read_result(scene).get("cores", 0) or 0)
+                )
+            except Exception:
+                pass
+
+    # Keep the old variables for links/backward-compatible templates.
+    scene1 = scenes[0] if scenes else None
+    scene2 = scenes[1] if len(scenes) > 1 else None
     return render_template("analysis_compare.html", **locals())

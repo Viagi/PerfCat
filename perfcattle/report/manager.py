@@ -13,6 +13,10 @@ from perfcattle.report.log_io import LogIO
 from perfcattle.report.aggregator import Aggregator
 from perfcattle.report.excel_export import ExcelExporter
 from perfcattle.report.html_export import HtmlExporter
+from perfcattle.report.package_export import (
+    ComparePackageExporter,
+    ReportPackageExporter,
+)
 
 REPORT_ARTIFACT_EXTENSIONS = {"log", "json", "mp4"}
 REPORT_ARTIFACT_MOVE_RETRIES = 5
@@ -146,22 +150,62 @@ class ReportManager:
         if os.path.exists(self.report_dir):
             for filename in os.listdir(self.report_dir):
                 path = os.path.join(self.report_dir, filename)
-                if self._is_report_artifact(path):
-                    os.remove(path)
+                if not self._is_report_artifact(path):
+                    continue
+                for attempt in range(4):
+                    try:
+                        os.remove(path)
+                        break
+                    except PermissionError:
+                        # Unity stats logger may hold the file for a few ms.
+                        if attempt == 3:
+                            logger.warning("skip locked report file: %s", filename)
+                        else:
+                            time.sleep(0.05)
         stale_unity = os.path.join(self.report_dir, "unity_capture")
         if os.path.isdir(stale_unity):
             shutil.rmtree(stale_unity, ignore_errors=True)
 
-    def list_other_scenes(self, scene):
+    def list_other_scenes(self, scene, app=None, platform=None, model=None):
         """过滤并按时间排序场景目录列表（排除指定场景）
+
+        仅返回包含 result.json 的完整报告目录，避免把导出文件、
+        采集中间产物等无关条目放进对比下拉框。传入 app / platform /
+        model 时只保留对应报告，例如对比页只列同一 App、同一平台的
+        normal 报告。
 
         Args:
             scene: 要排除的场景名
+            app: 只保留该 App 的报告（None 表示不过滤）
+            platform: 只保留该平台的报告（None 表示不过滤）
+            model: 只保留该模式的报告，例如 "normal"（None 表示不过滤）
 
         Returns:
             list: 按修改时间倒序排列的场景目录列表
         """
-        dirs = os.listdir(self.report_dir)
+        dirs = []
+        for name in os.listdir(self.report_dir):
+            path = os.path.join(self.report_dir, name)
+            if not os.path.isdir(path):
+                continue
+            result_path = os.path.join(path, "result.json")
+            if not os.path.isfile(result_path):
+                continue
+            if app is not None or platform is not None or model is not None:
+                try:
+                    with open(result_path, encoding="utf-8") as fp:
+                        meta = json.load(fp)
+                except (OSError, ValueError):
+                    continue
+                if not isinstance(meta, dict):
+                    continue
+                if app is not None and meta.get("app") != app:
+                    continue
+                if platform is not None and meta.get("platform") != platform:
+                    continue
+                if model is not None and meta.get("model") != model:
+                    continue
+            dirs.append(name)
         dir_list = list(
             reversed(
                 sorted(
@@ -170,7 +214,8 @@ class ReportManager:
                 )
             )
         )
-        dir_list.remove(scene)
+        if scene in dir_list:
+            dir_list.remove(scene)
         return dir_list
 
     def read_result(self, scene):
@@ -239,6 +284,12 @@ class ReportStore(ReportManager):
         self._log_io.report_dir = self.report_dir
         self._aggregator = Aggregator(self._log_io)
         self._excel_exporter = ExcelExporter(self._log_io)
+        self._package_exporter = ReportPackageExporter(
+            self._log_io, self._excel_exporter
+        )
+        self._compare_exporter = ComparePackageExporter(
+            self._log_io, self._aggregator, self._package_exporter
+        )
         self._html_exporter = HtmlExporter(self._log_io)
 
     # === LogIO 委托方法 ===
@@ -254,6 +305,18 @@ class ReportStore(ReportManager):
     def add_json_log(self, path, log_time, value):
         """追加一条 JSON 行日志（GPU 扩展指标）"""
         return self._log_io.add_json_log(path, log_time, value)
+
+    def begin_session(self, clock=None):
+        """记录采集起点，供报告内所有图表统一时间轴"""
+        return self._log_io.begin_session(clock=clock)
+
+    def scene_time_range(self, scene):
+        """报告内所有图表共用的 x 轴范围"""
+        return self._log_io.scene_time_range(scene)
+
+    def scene_origin(self, scene):
+        """报告内所有图表共用的时间原点"""
+        return self._log_io.scene_origin(scene)
 
     def create_file(self, filename, content=""):
         """在报告目录下创建文件"""
@@ -290,6 +353,10 @@ class ReportStore(ReportManager):
     def getUnityStatsLog(self, platform, scene):
         """获取 Unity 侧实时计数器"""
         return self._log_io.getUnityStatsLog(platform, scene)
+
+    def getUnityStatsLogCompare(self, platform, scene1, scene2):
+        """获取 Unity 侧实时计数器的双场景对比数据"""
+        return self._log_io.getUnityStatsLogCompare(platform, scene1, scene2)
 
     def getUnityCorrelationLog(self, platform, scene):
         """获取 CPU 与 Unity 计数器的统一时间轴数据"""
@@ -394,6 +461,28 @@ class ReportStore(ReportManager):
     def export_excel(self, platform, scene):
         """导出 Excel 报告"""
         return self._excel_exporter.export_excel(platform, scene)
+
+    def export_report(self, platform, scene, max_frames=None, top_markers=None,
+                      slow_frames=None):
+        """导出报告包（Excel + Unity 原始文件 + Unity Profiler JSON）。"""
+        return self._package_exporter.export(
+            platform,
+            scene,
+            max_frames=max_frames,
+            top_markers=top_markers,
+            slow_frames=slow_frames,
+        )
+
+    def export_compare(self, platform, scenes, max_frames=None, top_markers=None,
+                       slow_frames=None):
+        """导出对比报告包（对比汇总 + 各报告原始文件 + Unity JSON/二进制）。"""
+        return self._compare_exporter.export(
+            platform,
+            scenes,
+            max_frames=max_frames,
+            top_markers=top_markers,
+            slow_frames=slow_frames,
+        )
 
     # === HtmlExporter 委托方法 ===
 

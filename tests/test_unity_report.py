@@ -1,7 +1,9 @@
 """Report-side Unity metric time alignment."""
 import os
+from unittest.mock import patch
 
 from perfcattle.report.log_io import LogIO
+from perfcattle.report.manager import ReportManager
 
 
 def test_unity_correlation_uses_shared_origin(tmp_path):
@@ -30,7 +32,7 @@ def test_unity_correlation_uses_shared_origin(tmp_path):
         {"x": 1.0, "y": 320},
         {"x": 2.0, "y": 330},
     ]
-    assert data["charts"]["triangles"][0]["y"] == 230000
+    assert data["charts"]["triangles"][0]["y"] == 230.0
 
 
 def test_unity_stats_log_average(tmp_path):
@@ -45,7 +47,100 @@ def test_unity_stats_log_average(tmp_path):
     log.report_dir = str(report)
     data = log.getUnityStatsLog("Android", "scene")
     assert data["avg"]["draw_calls"] == 310.0
-    assert data["avg"]["triangles"] == 150.0
+    # 三角面按 k 展示，保留 1 位小数
+    assert data["avg"]["triangles"] == 0.1
+    assert [point["y"] for point in data["charts"]["triangles"]] == [0.1, 0.2]
     # frame is kept for chart-click -> frame mapping, but not averaged.
     assert [point["y"] for point in data["charts"]["frame"]] == [1, 2]
     assert "frame" not in data["avg"]
+
+
+def test_unity_stats_log_rendering_resources(tmp_path):
+    report = tmp_path / "report"
+    scene_dir = report / "scene"
+    scene_dir.mkdir(parents=True)
+    (scene_dir / "unity_stats.log").write_text(
+        '10:00:00={"render_textures":55,"render_textures_mb":48.1,'
+        '"render_textures_changes":12,"used_buffers":1356,"used_buffers_mb":50.9,'
+        '"vertex_upload":16,"vertex_upload_kb":140.7,'
+        '"index_upload":16,"index_upload_kb":9.6,"frame":1}\n'
+    )
+    log = LogIO(fileroot=str(tmp_path))
+    log.report_dir = str(report)
+    data = log.getUnityStatsLog("Android", "scene")
+    for key, value in (
+        ("render_textures", 55.0),
+        ("render_textures_mb", 48.1),
+        ("render_textures_changes", 12.0),
+        ("used_buffers", 1356.0),
+        ("used_buffers_mb", 50.9),
+        ("vertex_upload", 16.0),
+        ("vertex_upload_kb", 140.7),
+        ("index_upload", 16.0),
+        ("index_upload_kb", 9.6),
+    ):
+        assert data["avg"][key] == value
+        assert data["charts"][key][0]["y"] == value
+
+
+def test_unity_stats_log_compare(tmp_path):
+    report = tmp_path / "report"
+    for scene, draw_calls in (("scene1", 300), ("scene2", 500)):
+        scene_dir = report / scene
+        scene_dir.mkdir(parents=True)
+        (scene_dir / "unity_stats.log").write_text(
+            f'10:00:00={{"draw_calls":{draw_calls},"triangles":100,"frame":1}}\n'
+        )
+    log = LogIO(fileroot=str(tmp_path))
+    log.report_dir = str(report)
+    data = log.getUnityStatsLogCompare("Android", "scene1", "scene2")
+    assert data["status"] == 1
+    assert data["scene1"]["avg"]["draw_calls"] == 300.0
+    assert data["scene2"]["avg"]["draw_calls"] == 500.0
+    assert data["scene1"]["charts"]["draw_calls"] == [{"x": 0.0, "y": 300}]
+
+
+def test_list_other_scenes_ignores_non_report_entries(tmp_path):
+    report = tmp_path / "report"
+    report.mkdir()
+    for scene in ("scene1", "scene2"):
+        scene_dir = report / scene
+        scene_dir.mkdir()
+        (scene_dir / "result.json").write_text("{}")
+    # 非报告目录与导出产物不应出现在对比选项里
+    (report / "loose_dir").mkdir()
+    (report / "export.json").write_text("{}")
+    (report / "export.mkv").write_text("")
+
+    with patch("os.getcwd", return_value=str(tmp_path)):
+        manager = ReportManager()
+    assert manager.list_other_scenes("scene1") == ["scene2"]
+    # 传入的排除场景不在列表里时也不应抛错
+    assert manager.list_other_scenes("missing") == ["scene2", "scene1"]
+
+
+def test_list_other_scenes_filters_app_platform_and_model(tmp_path):
+    import json
+
+    report = tmp_path / "report"
+    report.mkdir()
+    reports = {
+        "normal_a": {"app": "com.a", "platform": "Android", "model": "normal"},
+        "normal_a2": {"app": "com.a", "platform": "Android", "model": "normal"},
+        "pk_a": {"app": "com.a", "platform": "Android", "model": "pk"},
+        "ios_a": {"app": "com.a", "platform": "iOS", "model": "normal"},
+        "normal_b": {"app": "com.b", "platform": "Android", "model": "normal"},
+    }
+    for scene, meta in reports.items():
+        scene_dir = report / scene
+        scene_dir.mkdir()
+        (scene_dir / "result.json").write_text(json.dumps(meta), encoding="utf-8")
+
+    with patch("os.getcwd", return_value=str(tmp_path)):
+        manager = ReportManager()
+
+    assert manager.list_other_scenes(
+        "normal_a", app="com.a", platform="Android", model="normal"
+    ) == ["normal_a2"]
+    # 不传过滤条件时保持旧行为（所有完整报告）
+    assert set(manager.list_other_scenes("normal_a")) == set(reports) - {"normal_a"}

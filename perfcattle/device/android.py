@@ -22,6 +22,7 @@ class AndroidDevice:
         "topResumedActivity",
     )
     ACTIVITY_RE = re.compile(r"([A-Za-z0-9_.$]+/[A-Za-z0-9_.$]+)")
+    PACKAGE_RE = re.compile(r"[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+")
     WIRELESS_LOOKUP_RETRIES = 3
     WIRELESS_POST_CONNECT_RETRIES = 2
     WIRELESS_LOOKUP_DELAY = 0.35
@@ -297,8 +298,12 @@ class AndroidDevice:
             if self._process_name_matches(name, pkgName):
                 self._append_process(processes, seen_pids, pid, name)
 
-    def getPid(self, deviceId, pkgName):
-        """获取 Android 包名对应的 PID"""
+    def getPid(self, deviceId, pkgName, fast=False):
+        """获取 Android 包名对应的 PID。
+
+        ``fast=True`` 只执行 ``pidof``（必要时加一次 ``ps``），用于界面上的
+        后台轮询；完整模式才会继续扫描 ``ps`` / ``/proc`` 以发现子进程。
+        """
         processList = []
         seen_pids = set()
         try:
@@ -306,6 +311,33 @@ class AndroidDevice:
                 cmd=f"pidof {shlex.quote(pkgName)}", deviceId=deviceId, timeout=5
             )
             self._parse_pidof_output(pidof_output, pkgName, processList, seen_pids)
+
+            if fast:
+                if not processList:
+                    # pidof is unavailable on a few Android builds; a single
+                    # ps call is still far cheaper than the full fallback chain.
+                    try:
+                        ps_output = adb.shell(
+                            cmd="ps -A -o PID,NAME",
+                            deviceId=deviceId,
+                            timeout=3,
+                        )
+                        self._parse_ps_output(
+                            ps_output, pkgName, processList, seen_pids
+                        )
+                    except Exception as exc:
+                        logger.debug(
+                            f"fast pid fallback failed for {pkgName}: {exc}"
+                        )
+                processList.sort(
+                    key=lambda item: (
+                        0 if item.split(":", 1)[1] == pkgName else 1,
+                        item,
+                    )
+                )
+                if not processList:
+                    logger.debug(f"{pkgName}: no pid found (fast)")
+                return processList
 
             for ps_cmd in ("ps -A -o PID,NAME", "ps -ef", "ps"):
                 ps_output = adb.shell(cmd=ps_cmd, deviceId=deviceId, timeout=10)
@@ -451,6 +483,44 @@ class AndroidDevice:
                 match = self.ACTIVITY_RE.search(line)
                 if match:
                     return match.group(1).rstrip("}")
+        return ""
+
+    def launchApp(self, deviceId, pkgName):
+        """按包名启动应用，已在前台时则切回前台。"""
+        pkgName = (pkgName or "").strip()
+        if not self.PACKAGE_RE.fullmatch(pkgName):
+            raise Exception("Invalid package name")
+
+        output = adb.shell(
+            cmd=f"monkey -p {pkgName} -c android.intent.category.LAUNCHER 1",
+            deviceId=deviceId,
+            timeout=15,
+        )
+        if "Events injected" in (output or ""):
+            return True
+
+        detail = (output or "").strip()
+        component = self._resolve_launcher_activity(deviceId, pkgName)
+        if component:
+            started = adb.shell(
+                cmd=f"am start -n {component}", deviceId=deviceId, timeout=15
+            )
+            started = (started or "").strip()
+            if started and "Error" not in started and "Exception" not in started:
+                return True
+            detail = started or detail
+        raise Exception(detail or "No launcher activity found for this package")
+
+    def _resolve_launcher_activity(self, deviceId, pkgName):
+        output = adb.shell(
+            cmd=f"cmd package resolve-activity --brief {pkgName}",
+            deviceId=deviceId,
+            timeout=10,
+        )
+        for line in reversed((output or "").splitlines()):
+            line = line.strip()
+            if self.ACTIVITY_RE.fullmatch(line):
+                return line
         return ""
 
     def getStartupTimeByAndroid(self, activity, deviceId):
