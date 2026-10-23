@@ -74,3 +74,36 @@ class TestAggregator:
             assert result["summary_flags"]["gpu"] is True
             assert result["summary_flags"]["thermal_cpu_avg"] is True
             assert result["summary_flags"]["thermal_gpu_avg"] is True
+            # 没有 Unity 日志时，顶部摘要不出现 Unity 卡片
+            assert result["unity_flag"] is False
+            assert result["summary_flags"]["unity_cpu_frame"] is False
+
+    def test_set_android_perfs_adds_unity_summary(
+        self, tmp_report_dir, sample_log_file
+    ):
+        """Unity 日志存在时，聚合出报告顶部的 Unity 摘要值"""
+        with patch("os.getcwd", return_value=str(tmp_report_dir.parent)):
+            log_io = LogIO()
+            agg = Aggregator(log_io=log_io)
+            scene_dir = tmp_report_dir / "test_scene"
+            (scene_dir / "unity_stats.log").write_text(
+                '10:00:00={"cpu_frame_ms":16.7,"gpu_frame_ms":12.5,'
+                '"draw_calls":300,"triangles":230000,"vertices":231000,"frame":1}\n'
+                '10:00:01={"cpu_frame_ms":17.1,"gpu_frame_ms":12.9,'
+                '"draw_calls":320,"triangles":231000,"vertices":232000,"frame":2}\n'
+            )
+
+            result = agg._setAndroidPerfs("test_scene")
+
+            assert result["unity_flag"] is True
+            assert result["unityCpuFrame"] == 16.9
+            assert result["unityGpuFrame"] == 12.7
+            assert result["unityDrawCalls"] == 310.0
+            # 三角面 / 顶点统一换算为 k
+            assert result["unityTriangles"] == 230.5
+            assert result["unityVertices"] == 231.5
+            assert result["summary_flags"]["unity_cpu_frame"] is True
+            assert result["summary_flags"]["unity_gpu_frame"] is True
+            assert result["summary_flags"]["unity_draw_calls"] is True
+            assert result["summary_flags"]["unity_triangles"] is True
+            assert result["summary_flags"]["unity_vertices"] is True

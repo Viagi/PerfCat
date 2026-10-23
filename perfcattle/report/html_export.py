@@ -108,6 +108,7 @@ class HtmlExporter:
         jank_points = (
             jank_charts.get("jank") if isinstance(jank_charts, dict) else jank_charts
         )
+        unity_stats = summary.get("unity_stats") or {}
         return {
             "cpu_app": self._has_points(cpu_charts.get("cpuAppData")),
             "cpu_system": self._has_points(cpu_charts.get("cpuSysData")),
@@ -127,6 +128,11 @@ class HtmlExporter:
             "thermal": self._has_points(thermal_points),
             "thermal_cpu_avg": self._has_points(thermal_points.get("CPU")),
             "thermal_gpu_avg": self._has_points(thermal_points.get("GPU")),
+            "unity_cpu_frame": "cpu_frame_ms" in unity_stats,
+            "unity_gpu_frame": "gpu_frame_ms" in unity_stats,
+            "unity_draw_calls": "draw_calls" in unity_stats,
+            "unity_triangles": "triangles" in unity_stats,
+            "unity_vertices": "vertices" in unity_stats,
         }
 
     def _ios_summary_flags(self, summary):

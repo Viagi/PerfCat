@@ -338,6 +338,91 @@
                                 </div>
                             </div>
                             {% endif %}
+                            {% if summary_flags.get('unity_cpu_frame', 'cpu_frame_ms' in unity_stats) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-indigo text-white avatar">U3D</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Unity CPU Frame</div>
+                                                <div class="text-muted">Avg: {{ unity_stats.get('cpu_frame_ms') }} ms</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('unity_gpu_frame', 'gpu_frame_ms' in unity_stats) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-indigo text-white avatar">U3D</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Unity GPU Frame</div>
+                                                <div class="text-muted">Avg: {{ unity_stats.get('gpu_frame_ms') }} ms</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('unity_draw_calls', 'draw_calls' in unity_stats) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-indigo text-white avatar">DC</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Draw Calls</div>
+                                                <div class="text-muted">Avg: {{ unity_stats.get('draw_calls')|round|int }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('unity_triangles', 'triangles' in unity_stats) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-indigo text-white avatar">TRI</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Triangles</div>
+                                                <div class="text-muted">Avg: {{ '%.1f'|format(unity_stats.get('triangles')) }} k</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if summary_flags.get('unity_vertices', 'vertices' in unity_stats) %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-indigo text-white avatar">VRT</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Vertices</div>
+                                                <div class="text-muted">Avg: {{ '%.1f'|format(unity_stats.get('vertices')) }} k</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="col-12">

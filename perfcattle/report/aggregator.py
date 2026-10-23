@@ -305,6 +305,24 @@ class Aggregator:
         else:
             gpu = 0
 
+        unity_avg = self.log_io.getUnityStatsLog("Android", scene)["avg"]
+        unity_keys = {
+            "unity_cpu_frame": ("cpu_frame_ms", "unityCpuFrame"),
+            "unity_gpu_frame": ("gpu_frame_ms", "unityGpuFrame"),
+            "unity_draw_calls": ("draw_calls", "unityDrawCalls"),
+            "unity_triangles": ("triangles", "unityTriangles"),
+            "unity_vertices": ("vertices", "unityVertices"),
+        }
+        unity_flags = {
+            flag: source in unity_avg for flag, (source, _) in unity_keys.items()
+        }
+        unity_summary = {
+            field: unity_avg.get(source)
+            for flag, (source, field) in unity_keys.items()
+            if unity_flags[flag]
+        }
+        unity_flag = any(unity_flags.values())
+
         mem_detail_flag = self._scene_file_exists(scene, "mem_java_heap.log")
         disk_flag = self._scene_file_exists(scene, "disk_free.log")
         thermal_flag = self._thermal_flag(scene)
@@ -333,6 +351,7 @@ class Aggregator:
             "thermal": thermal_flag,
             "thermal_cpu_avg": thermal_cpu_avg_flag,
             "thermal_gpu_avg": thermal_gpu_avg_flag,
+            **unity_flags,
         }
         apm_dict = {
             **metadata,
@@ -358,6 +377,8 @@ class Aggregator:
             "thermalCpuAvg": thermalCpuAvg,
             "thermalGpuAvg": thermalGpuAvg,
             "cpu_core_flag": cpu_core_flag,
+            "unity_flag": unity_flag,
+            **unity_summary,
             "summary_flags": summary_flags,
         }
 

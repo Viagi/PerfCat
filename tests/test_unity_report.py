@@ -2,6 +2,7 @@
 import os
 from unittest.mock import patch
 
+from perfcattle.report.html_export import HtmlExporter
 from perfcattle.report.log_io import LogIO
 from perfcattle.report.manager import ReportManager
 
@@ -98,6 +99,80 @@ def test_unity_stats_log_compare(tmp_path):
     assert data["scene1"]["avg"]["draw_calls"] == 300.0
     assert data["scene2"]["avg"]["draw_calls"] == 500.0
     assert data["scene1"]["charts"]["draw_calls"] == [{"x": 0.0, "y": 300}]
+
+
+def _render_android_report(tmp_path, unity_stats):
+    scene_dir = tmp_path / "report" / "scene"
+    scene_dir.mkdir(parents=True)
+    report_path = scene_dir / "report.html"
+    log_io = LogIO()
+    log_io.report_dir = str(tmp_path / "report")
+    exporter = HtmlExporter(log_io=log_io)
+    summary = {
+        "devices": "test_device",
+        "app": "com.test.app",
+        "platform": "Android",
+        "ctime": "2024-01-01-12-00-00",
+        "cpu_app": "10%",
+        "cpu_sys": "20%",
+        "mem_total": "100MB",
+        "mem_peak": "120MB",
+        "mem_swap": "0MB",
+        "fps": "60HZ/s",
+        "frame_stability": "99",
+        "jank": "0/min",
+        "level": "100%",
+        "tem": "30°C",
+        "net_send": "0MB",
+        "net_recv": "0MB",
+        "file_read": "0MB",
+        "file_write": "0MB",
+        "gpu": 0,
+        "cpu_charts": {},
+        "mem_charts": {},
+        "net_charts": {},
+        "battery_charts": {},
+        "fps_charts": {},
+        "jank_charts": {},
+        "mem_detail_charts": {"memory_detail": {}},
+        "gpu_charts": {},
+        "gpu_stats": {},
+        "gpu_stats_charts": {},
+        "unity_stats": unity_stats,
+        "unity_stats_charts": {},
+        "unity_correlation_charts": {},
+    }
+    exporter.make_android_html("scene", summary, report_path=str(report_path))
+    return report_path.read_text(encoding="utf-8")
+
+
+def test_android_report_top_cards_include_unity_stats(tmp_path):
+    html = _render_android_report(
+        tmp_path,
+        {
+            "cpu_frame_ms": 16.9,
+            "gpu_frame_ms": 12.7,
+            "draw_calls": 310.0,
+            "triangles": 230.5,
+            "vertices": 231.5,
+        },
+    )
+
+    assert "Unity CPU Frame" in html
+    assert "Avg: 16.9 ms" in html
+    assert "Unity GPU Frame" in html
+    assert "Avg: 12.7 ms" in html
+    assert "Draw Calls" in html
+    assert "Avg: 310" in html
+    assert "Avg: 230.5 k" in html
+    assert "Avg: 231.5 k" in html
+
+
+def test_android_report_top_cards_hide_unity_without_data(tmp_path):
+    html = _render_android_report(tmp_path, {})
+
+    assert "Unity CPU Frame" not in html
+    assert "Unity GPU Frame" not in html
 
 
 def test_list_other_scenes_ignores_non_report_entries(tmp_path):
