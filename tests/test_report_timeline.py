@@ -60,6 +60,54 @@ def test_unity_stats_fall_back_to_earliest_log_without_session_file(tmp_path):
     assert log.scene_time_range("scene")["max"] == 1.0
 
 
+def test_session_origin_refreshes_when_scene_is_re_recorded(tmp_path):
+    log, report = make_log(tmp_path)
+    scene = report / "scene"
+    scene.mkdir()
+    (scene / "apm_session.json").write_text(
+        json.dumps({"clock": "10:00:00.000000"}), encoding="utf-8"
+    )
+    (scene / "cpu_app.log").write_text(
+        "10:00:01.000000=90\n10:00:02.000000=95\n", encoding="utf-8"
+    )
+    assert log.scene_origin("scene") == 36000.0
+    assert log.scene_time_range("scene") == {"min": 0.0, "max": 2.0}
+
+    # A new recording reuses the same scene name and replaces the logs.
+    (scene / "apm_session.json").write_text(
+        json.dumps({"clock": "12:00:00.000000"}), encoding="utf-8"
+    )
+    (scene / "cpu_app.log").write_text(
+        "12:00:01.000000=80\n12:00:03.000000=85\n", encoding="utf-8"
+    )
+
+    # The cached origin from the previous recording must not leak through.
+    assert log.scene_origin("scene") == 43200.0
+    assert log.getCpuLog("Android", "scene")["cpuAppData"] == [
+        {"x": 1.0, "y": 80},
+        {"x": 3.0, "y": 85},
+    ]
+    assert log.scene_time_range("scene") == {"min": 0.0, "max": 3.0}
+
+
+def test_scene_time_range_refreshes_while_logs_grow(tmp_path):
+    log, report = make_log(tmp_path)
+    scene = report / "scene"
+    scene.mkdir()
+    (scene / "apm_session.json").write_text(
+        json.dumps({"clock": "10:00:00.000000"}), encoding="utf-8"
+    )
+    log_path = scene / "cpu_app.log"
+    log_path.write_text("10:00:01.000000=90\n", encoding="utf-8")
+    assert log.scene_time_range("scene")["max"] == 1.0
+
+    with open(log_path, "a", encoding="utf-8") as file:
+        file.write("10:00:05.000000=95\n")
+
+    # Appended samples extend the shared x axis instead of freezing at 1s.
+    assert log.scene_time_range("scene")["max"] == 5.0
+
+
 def test_begin_session_writes_shared_origin(tmp_path):
     log, report = make_log(tmp_path)
 

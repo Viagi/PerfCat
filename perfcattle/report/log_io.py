@@ -180,15 +180,55 @@ class LogIO:
             except OSError:
                 continue
 
+    def _scene_signature(self, scene):
+        """场景目录当前状态标识，用于判断时间轴缓存是否过期。
+
+        同名场景可以被重新采集，目录里会写入新的会话标记和日志。签名
+        同时包含会话标记内容与各日志文件的大小和修改时间，任一变化都会
+        让缓存失效；旧报告没有会话标记时仍按日志文件判断。
+        """
+        if not scene:
+            return None
+        folder = os.path.join(self.report_dir, scene)
+        if not os.path.isdir(folder):
+            return None
+        signature = []
+        session_path = os.path.join(folder, self.SESSION_FILE)
+        try:
+            with open(session_path, "rb") as file:
+                signature.append((self.SESSION_FILE, file.read()))
+        except OSError:
+            pass
+        try:
+            with os.scandir(folder) as entries:
+                logs = []
+                for entry in entries:
+                    if not entry.name.endswith(".log"):
+                        continue
+                    try:
+                        if not entry.is_file():
+                            continue
+                        stat = entry.stat()
+                    except OSError:
+                        continue
+                    logs.append((entry.name, stat.st_mtime_ns, stat.st_size))
+        except OSError:
+            return None
+        signature.extend(sorted(logs))
+        return tuple(signature) if signature else None
+
     def scene_bounds(self, scene):
         """返回 (公共时间原点, 所有日志相对原点的最大秒数)。
 
         优先使用 ``apm_session.json`` 记录的采集起点；旧报告没有该文件时
         退回场景内最早的一条日志时间。所有图表共用同一个原点，Unity 与
-        系统指标才能按真实时间对齐。
+        系统指标才能按真实时间对齐。缓存按场景目录状态校验，同名场景被
+        重新采集后会重新计算，不会沿用上一次的时间原点。
         """
-        if scene in self._bounds_cache:
-            return self._bounds_cache[scene]
+        signature = self._scene_signature(scene)
+        cached = self._bounds_cache.get(scene)
+        if cached is not None and cached[0] == signature:
+            return cached[1]
         origin = self._session_origin(scene)
         timestamps = list(self._log_timestamps(scene))
         if origin is None:
@@ -201,7 +241,8 @@ class LogIO:
             else 0.0
         )
         bounds = (origin, max(0.0, max_relative))
-        self._bounds_cache[scene] = bounds
+        if signature is not None:
+            self._bounds_cache[scene] = (signature, bounds)
         return bounds
 
     def scene_origin(self, scene):
