@@ -2,6 +2,7 @@
 """磁盘性能采集器"""
 import datetime
 import os
+import time
 
 import tidevice
 from logzero import logger
@@ -20,6 +21,7 @@ class Disk(ReusableCollector):
         self.deviceId = deviceId
         self.platform = platform
         self._last_disk = self._disk_cache.get(self._cache_key())
+        self.last_sample_time = None
 
     @classmethod
     def _make_cache_key(cls, platform, deviceId):
@@ -83,7 +85,10 @@ class Disk(ReusableCollector):
             "free": sum(row[2] for row in rows),
             "mount_points": [row[3] for row in rows],
             "snapshot_only": True,
+            "sample_epoch_ms": int(time.time() * 1000),
+            "sample_monotonic_ns": time.monotonic_ns(),
         }
+        self.last_sample_time = disk_dict["sample_epoch_ms"] / 1000.0
         self._last_disk = dict(disk_dict)
         self._disk_cache[self._cache_key()] = dict(disk_dict)
         return disk_dict

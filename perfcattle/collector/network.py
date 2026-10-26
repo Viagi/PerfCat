@@ -11,6 +11,7 @@ from logzero import logger
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
 from perfcattle.collector.base import ReusableCollector, adb_shell
+from perfcattle.core.metrics import MetricSample, MetricStatus
 
 
 class Network(ReusableCollector):
@@ -46,6 +47,7 @@ class Network(ReusableCollector):
         self.last_source = None
         self.last_scope = None
         self.fallback_reason = None
+        self.last_sample = None
         if self.pid is None and self.platform == Platform.Android:
             self._refresh_pid()
 
@@ -383,13 +385,18 @@ class Network(ReusableCollector):
             if self.platform == Platform.Android
             else self.getiOSNet()
         )
-        if noLog is False and sendNum is not None and recNum is not None:
+        status = MetricStatus.OK if sendNum is not None and recNum is not None else MetricStatus.MISSING
+        self.last_sample = {
+            "send": sendNum, "recv": recNum, "unit": "KB", "status": status.value,
+            "source": self.last_source, "scope": self.last_scope,
+            "sample_epoch_ms": int((self.last_sample_time or time.time()) * 1000),
+            "error": self.fallback_reason if status is not MetricStatus.OK else None,
+        }
+        if noLog is False and status is MetricStatus.OK:
             if self.last_sample_time == self._last_logged_sample_time:
                 return sendNum, recNum
             sample_time = self.last_sample_time or time.time()
-            apm_time = datetime.datetime.fromtimestamp(sample_time).strftime(
-                "%H:%M:%S.%f"
-            )
+            apm_time = datetime.datetime.fromtimestamp(sample_time).strftime("%H:%M:%S.%f")
             _f.add_log(os.path.join(_f.report_dir, "upflow.log"), apm_time, sendNum)
             _f.add_log(os.path.join(_f.report_dir, "downflow.log"), apm_time, recNum)
             self._last_logged_sample_time = self.last_sample_time

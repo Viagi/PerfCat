@@ -8,6 +8,7 @@ import shlex
 import threading
 import time
 import traceback
+import time
 
 from logzero import logger
 
@@ -915,6 +916,7 @@ class FPS(ReusableCollector):
         self.last_sample_time = None
         self._last_sample_sequence = None
         self._last_logged_sample_time = None
+        self.last_sample = None
 
     def _get_devices(self):
         return create_devices()
@@ -1024,10 +1026,12 @@ class FPS(ReusableCollector):
                 background=True,
             )
             if isinstance(result, MetricSample):
+                self.last_sample = result.to_dict()
                 if result.status in (MetricStatus.OK, MetricStatus.CACHED):
                     fps = result.value
-                    jank = 0
+                    jank = None
                     self.last_sample_time = (
+
                         result.sample_epoch_ms / 1000.0
                         if result.sample_epoch_ms is not None
                         else self.last_sample_time
@@ -1043,6 +1047,8 @@ class FPS(ReusableCollector):
             jank = result["jank"]
             self.last_sample_time = result.get("sample_time")
             self._last_sample_sequence = result.get("sequence")
+            self.last_sample = {"fps": fps, "jank": jank, "status": MetricStatus.OK.value,
+                                "unit": "fps", "sample_epoch_ms": int((self.last_sample_time or time.time()) * 1000)}
             if (
                 noLog is False
                 and (fps > 0 or self._last_fps is not None)

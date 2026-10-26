@@ -19,6 +19,7 @@ from perfcattle.collector.base import (
 )
 from perfcattle.core.adb_client import adb
 from perfcattle.core.platform import Platform
+from perfcattle.core.metrics import MetricStatus
 
 
 class FileIO(ReusableCollector):
@@ -69,6 +70,7 @@ class FileIO(ReusableCollector):
         self.last_source = None
         self.last_scope = None
         self.fallback_reason = None
+        self.last_sample = None
         if self.pid is None and self.platform == Platform.Android:
             self._refresh_pid()
 
@@ -495,15 +497,18 @@ class FileIO(ReusableCollector):
         """获取文件读写增量数据，单位 KB。"""
         _f = self._get_report_store()
         read_kb, write_kb = self.getAndroidFileIO()
-        if noLog is False and read_kb is not None and write_kb is not None:
+        status = MetricStatus.OK if read_kb is not None and write_kb is not None else MetricStatus.MISSING
+        self.last_sample = {
+            "read": read_kb, "write": write_kb, "unit": "KB", "status": status.value,
+            "source": self.last_source, "scope": self.last_scope,
+            "sample_epoch_ms": int((self.last_sample_time or time.time()) * 1000),
+            "error": self.fallback_reason if status is not MetricStatus.OK else None,
+        }
+        if noLog is False and status is MetricStatus.OK:
             if self.last_sample_time == self._last_logged_sample_time:
                 return read_kb, write_kb
             apm_time = self.format_log_time(self.last_sample_time)
-            _f.add_log(
-                os.path.join(_f.report_dir, "file_read.log"), apm_time, read_kb
-            )
-            _f.add_log(
-                os.path.join(_f.report_dir, "file_write.log"), apm_time, write_kb
-            )
+            _f.add_log(os.path.join(_f.report_dir, "file_read.log"), apm_time, read_kb)
+            _f.add_log(os.path.join(_f.report_dir, "file_write.log"), apm_time, write_kb)
             self._last_logged_sample_time = self.last_sample_time
         return read_kb, write_kb

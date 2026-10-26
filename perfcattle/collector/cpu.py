@@ -8,7 +8,8 @@ from logzero import logger
 
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
-from perfcattle.collector.base import ReusableCollector, adb_shell
+from perfcattle.collector.base import ReusableCollector, adb_shell, CollectorUnavailableError
+from perfcattle.core.metrics import MetricSample, MetricStatus
 
 
 class CPU(ReusableCollector):
@@ -246,14 +247,18 @@ class CPU(ReusableCollector):
 
     def _calculate_core_cpu_rate(self, first, second, cores):
         core_cpu_rate_list = []
-        for index in range(min(len(first["cores"]), len(second["cores"]))):
+        if cores <= 0 or len(first.get("cores", [])) != len(second.get("cores", [])):
+            return None
+        process_delta = second["process"] - first["process"]
+        if process_delta < 0:
+            return None
+        for index in range(len(first["cores"])):
             cpu_delta = second["cores"][index] - first["cores"][index]
-            process_delta = second["process"] - first["process"]
-            if cpu_delta <= 0 or process_delta < 0 or cores <= 0:
-                core_cpu_rate = 0
-            else:
-                core_cpu_rate = round(float(process_delta / cpu_delta * 100), 2)
-                core_cpu_rate = round(float(core_cpu_rate / cores), 2)
+            if cpu_delta <= 0 or process_delta > cpu_delta * cores:
+                return None
+            core_cpu_rate = round(float(process_delta / cpu_delta / cores * 100), 2)
+            if not 0 <= core_cpu_rate <= 100:
+                return None
             core_cpu_rate_list.append(core_cpu_rate)
         return core_cpu_rate_list
 
@@ -283,6 +288,8 @@ class CPU(ReusableCollector):
                 previous_sample, current_sample, cores
             )
             self._last_core_cpu_sample = current_sample
+        if coreCpuRateList is None:
+            raise CollectorUnavailableError("invalid CPU core delta")
         self._last_core_cpu_rate = list(coreCpuRateList)
         self._core_cpu_rate_cache[self._cache_key()] = list(coreCpuRateList)
         return list(coreCpuRateList)
@@ -339,14 +346,16 @@ class CPU(ReusableCollector):
             else:
                 time.sleep(self.FIRST_SAMPLE_INTERVAL_SECONDS)
                 next_sample = self._read_cpu_rate_sample()
-                appCpuRate, sysCpuRate = self._calculate_cpu_rate(
-                    current_sample, next_sample
-                )
+                rates = self._calculate_cpu_rate(current_sample, next_sample)
+                if rates is None:
+                    raise CollectorUnavailableError("invalid CPU delta")
+                appCpuRate, sysCpuRate = rates
                 self._last_cpu_sample = next_sample
         else:
-            appCpuRate, sysCpuRate = self._calculate_cpu_rate(
-                previous_sample, current_sample
-            )
+            rates = self._calculate_cpu_rate(previous_sample, current_sample)
+            if rates is None:
+                raise CollectorUnavailableError("invalid CPU delta")
+            appCpuRate, sysCpuRate = rates
             self._last_cpu_sample = current_sample
         self._last_cpu_rate = (appCpuRate, sysCpuRate)
         self._cpu_rate_cache[self._cache_key()] = self._last_cpu_rate

@@ -11,6 +11,7 @@ from logzero import logger
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
 from perfcattle.collector.base import ReusableCollector, adb_shell
+from perfcattle.core.metrics import MetricStatus
 
 
 class Memory(ReusableCollector):
@@ -42,6 +43,7 @@ class Memory(ReusableCollector):
         self._last_meminfo_output = None
         self._last_meminfo_time = 0
         self._last_meminfo_pid = None
+        self.last_sample = None
         self._meminfo_lock = threading.RLock()
         if self.pid is None and self.platform == Platform.Android:
             self._refresh_pid()
@@ -342,4 +344,9 @@ class Memory(ReusableCollector):
                 _f.add_log(
                     os.path.join(_f.report_dir, "mem_swap.log"), apm_time, swapPass
                 )
+        self.last_sample = {
+            "total": totalPass, "swap": swapPass, "unit": "MB",
+            "status": MetricStatus.OK if totalPass is not None else MetricStatus.MISSING,
+            "sample_epoch_ms": int(time.time() * 1000),
+        }
         return totalPass, swapPass

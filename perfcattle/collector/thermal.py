@@ -5,12 +5,14 @@ import json
 import math
 import os
 import re
+import time
 
 from logzero import logger
 
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
 from perfcattle.collector.base import ReusableCollector, adb_shell
+from perfcattle.core.metrics import MetricStatus
 
 
 class ThermalSensor(ReusableCollector):
@@ -74,6 +76,7 @@ class ThermalSensor(ReusableCollector):
         self._last_thermal_temps = self._thermal_cache.get(self._cache_key())
         self._sensor_aliases = None
         self._tsens_decidegrees = False
+        self.last_sample = None
 
     @classmethod
     def _make_cache_key(cls, platform, deviceId):
@@ -335,4 +338,9 @@ class ThermalSensor(ReusableCollector):
                 logger.exception(e)
         if noLog is False and temp_list:
             self._log_thermal_temps(temp_list)
+        self.last_sample = {
+            "sensors": temp_list if temp_list else None,
+            "status": MetricStatus.OK.value if temp_list else MetricStatus.MISSING.value,
+            "unit": "celsius", "sample_epoch_ms": int(time.time() * 1000),
+        }
         return temp_list

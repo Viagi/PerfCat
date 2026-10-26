@@ -248,7 +248,8 @@ class AppPerformanceMonitor(ServiceConfig):
             sample = _fps.getFPS(noLog=self.noLog)
             if isinstance(sample, MetricSample):
                 if sample.status in (MetricStatus.OK, MetricStatus.CACHED):
-                    result = {"fps": sample.value, "jank": 0, "status": sample.status.value}
+                    result = {"fps": sample.value, "jank": None, "status": sample.status.value,
+                              "sample_epoch_ms": sample.sample_epoch_ms, "source": sample.source}
                 else:
                     result = {"fps": None, "jank": None, "status": sample.status.value, "error": sample.error}
             else:
@@ -267,10 +268,8 @@ class AppPerformanceMonitor(ServiceConfig):
             started = time.time()
             sample = _gpu.getGPU(noLog=self.noLog)
             if isinstance(sample, MetricSample):
-                if sample.status in (MetricStatus.OK, MetricStatus.CACHED):
-                    result = {"gpu": sample.value, "status": sample.status.value}
-                else:
-                    result = {"gpu": None, "status": sample.status.value, "error": sample.error}
+                result = sample.to_dict()
+                result["jank"] = None
             else:
                 result = {"gpu": sample}
             logger.info(f"gpu: {result}")
@@ -293,8 +292,10 @@ class AppPerformanceMonitor(ServiceConfig):
             started = time.time()
             data = _gpu.sample()
             if not data:
+                result = {"status": MetricStatus.MISSING.value, "metrics": {}}
                 break
-            result = data
+            result = {"status": MetricStatus.OK.value, "metrics": data, "sample_epoch_ms": int(time.time() * 1000),
+                      "snapshot_only": False}
             logger.info(f"gpu stats: {result}")
             if self.noLog is False:
                 apm_time = datetime.datetime.now().strftime("%H:%M:%S.%f")
@@ -321,6 +322,10 @@ class AppPerformanceMonitor(ServiceConfig):
         """采集磁盘使用数据"""
         _disk = Disk.getObject(self.deviceId, self.platform)
         result = _disk.getDisk()
+        result.setdefault("snapshot_only", True)
+        result.setdefault("sample_epoch_ms", int(time.time() * 1000))
+        result.setdefault("sample_monotonic_ns", time.monotonic_ns())
+        result.setdefault("status", MetricStatus.OK.value)
         logger.info(f"disk: {result}")
         return result
 

@@ -18,10 +18,10 @@ from perfcattle.collector.gpu_counters import GpuBandwidth
 BYTES_PER_MB = 1024 * 1024
 
 _UTIL_SOURCES = [
-    ("kgsl_gpubusy", "/sys/class/kgsl/kgsl-3d0/gpubusy"),
-    ("kgsl_percentage", "/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage"),
-    ("kernel_gpu_busy", "/sys/kernel/gpu/gpu_busy"),
-    ("mali_utilization", "/sys/class/misc/mali0/device/utilization"),
+    ("kgsl_gpubusy", "/sys/class/kgsl/kgsl-3d0/gpubusy", "cumulative_delta"),
+    ("kgsl_percentage", "/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage", "window_ratio"),
+    ("kernel_gpu_busy", "/sys/kernel/gpu/gpu_busy", "window_ratio"),
+    ("mali_utilization", "/sys/class/misc/mali0/device/utilization", "window_ratio"),
 ]
 
 _CLOCK_SOURCES = [
@@ -115,44 +115,48 @@ class GpuStats(object):
         self.previous_busy = None
         self.previous_total = None
         self.counter_semantics = "window_ratio"
+        self.counter_source = None
 
     def _parse_counter_sample(self, text):
         parts = (text or "").split()
         try:
             busy, total = int(parts[0]), int(parts[1])
         except (IndexError, TypeError, ValueError):
-            return {"value": None, "status": MetricStatus.INVALID}
+            return {"value": None, "status": MetricStatus.INVALID, "source": self.counter_source,
+                    "semantics": "cumulative_delta", "error": "invalid counter"}
         if busy < 0 or total <= 0 or busy > total:
-            return {"value": None, "status": MetricStatus.INVALID}
-        if self.previous_busy is not None and (
-            busy < self.previous_busy or total < self.previous_total
-        ):
+            return {"value": None, "status": MetricStatus.INVALID, "source": self.counter_source,
+                    "semantics": "cumulative_delta", "error": "invalid counter"}
+        if self.previous_busy is None or self.previous_total is None:
             self.previous_busy = busy
             self.previous_total = total
-            return {"value": None, "status": MetricStatus.INVALID}
-        if self.previous_busy is None:
-            value = busy / total * 100
-        else:
-            busy_delta = busy - self.previous_busy
-            total_delta = total - self.previous_total
-            if total_delta <= 0 or busy_delta < 0 or busy_delta > total_delta:
-                self.previous_busy = busy
-                self.previous_total = total
-                return {"value": None, "status": MetricStatus.INVALID}
-            value = busy_delta / total_delta * 100
+            return {"value": None, "status": MetricStatus.INVALID, "source": self.counter_source,
+                    "semantics": "cumulative_delta", "error": "initial baseline"}
+        if busy < self.previous_busy or total < self.previous_total:
+            self.previous_busy = busy
+            self.previous_total = total
+            return {"value": None, "status": MetricStatus.INVALID, "source": self.counter_source,
+                    "semantics": "cumulative_delta", "error": "counter reset or wrap"}
+        busy_delta = busy - self.previous_busy
+        total_delta = total - self.previous_total
         self.previous_busy = busy
         self.previous_total = total
+        if total_delta <= 0 or busy_delta < 0 or busy_delta > total_delta:
+            return {"value": None, "status": MetricStatus.INVALID, "source": self.counter_source,
+                    "semantics": "cumulative_delta", "error": "invalid counter delta"}
         self.counter_semantics = "cumulative_delta"
-        return {"value": round(value, 2), "status": MetricStatus.OK}
+        return {"value": round(busy_delta / total_delta * 100, 2), "status": MetricStatus.OK,
+                "source": self.counter_source, "semantics": "cumulative_delta"}
 
     def _probe(self, sources, parser):
-        for name, path in sources:
+        for entry in sources:
+            name, path, *semantics = entry
             text = _read(self.deviceId, path)
             if not text.strip():
                 continue
             value = parser(text)
             if value is not None:
-                return name, path
+                return name, path, (semantics[0] if semantics else "window_ratio")
         return None
 
     def _probe_temperature(self):
@@ -188,6 +192,8 @@ class GpuStats(object):
         )
         if util:
             self._sources["gpu_util"] = util
+            self.counter_source = util[0]
+            self.counter_semantics = util[2]
         clock = self._probe(_CLOCK_SOURCES, _parse_hz_to_mhz)
         if clock:
             self._sources["gpu_clock"] = clock
@@ -202,7 +208,10 @@ class GpuStats(object):
         return self._sources
 
     def capabilities(self):
-        return {key: path for key, (_, path) in self._sources.items()}
+        return {
+            key: {"source": entry[0], "path": entry[1], "semantics": entry[2] if len(entry) > 2 else "window_ratio"}
+            for key, entry in self._sources.items()
+        }
 
     def _resolve_pid(self):
         if self.pid:
@@ -250,9 +259,21 @@ class GpuStats(object):
             "gpu_bus": _parse_hz_to_mhz,
             "gpu_temp": _parse_temperature,
         }
-        for key, (_, path) in self._sources.items():
-            parser = readers[key]
+        for key, entry in self._sources.items():
+            name, path, *rest = entry
+            semantics = rest[0] if rest else "window_ratio"
             text = _read(self.deviceId, path)
+            if key == "gpu_util" and semantics == "cumulative_delta":
+                parsed = self._parse_counter_sample(text)
+                if parsed["status"] is MetricStatus.OK:
+                    data[key] = MetricSample.ok(
+                        key, parsed["value"], unit="percent", source=name,
+                        aggregation="cumulative_delta",
+                    ).to_dict()
+                else:
+                    data[key] = parsed
+                continue
+            parser = readers[key]
             value = parser(text)
             if value is None and key == "gpu_util":
                 value = _parse_percentage(text)

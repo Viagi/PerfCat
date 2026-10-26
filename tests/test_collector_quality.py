@@ -7,7 +7,12 @@ from perfcattle.collector.cpu import CPU
 from perfcattle.collector.disk import Disk
 from perfcattle.collector.gpu_stats import GpuStats
 from perfcattle.collector.network import Network
-from perfcattle.core.metrics import MetricStatus
+from perfcattle.collector.memory import Memory
+from perfcattle.collector.file_io import FileIO
+from perfcattle.collector.fps import FPS
+from perfcattle.collector.thermal import ThermalSensor
+from perfcattle.collector.gpu import GPU
+from perfcattle.core.metrics import MetricSample, MetricStatus
 
 
 def test_proc_stat_parser_handles_spaces_and_right_parenthesis():
@@ -60,3 +65,28 @@ def test_permission_failure_does_not_become_valid_zero(monkeypatch):
     monkeypatch.setattr("perfcattle.collector.disk.adb_shell", MagicMock(side_effect=PermissionError("denied")))
     with pytest.raises(PermissionError):
         disk.getAndroidDisk()
+
+
+def test_public_error_paths_expose_status_without_fake_zero(monkeypatch):
+    network = Network("app", "device", pid="123")
+    network.getAndroidNet = lambda wifi=True: (None, None)
+    assert network.getNetWorkData(noLog=True) == (None, None)
+    assert network.last_sample["status"] == "missing"
+
+    file_io = FileIO("app", "device", pid="123")
+    file_io.getAndroidFileIO = lambda: (None, None)
+    assert file_io.getFileIOData(noLog=True) == (None, None)
+    assert file_io.last_sample["status"] == "missing"
+
+    thermal = ThermalSensor("device")
+    thermal._sampled_value = lambda *args, **kwargs: []
+    assert thermal.getThermalTemp() == []
+    assert thermal.last_sample["status"] == "missing"
+
+
+def test_cpu_public_invalid_delta_is_not_unpackable(monkeypatch):
+    cpu = CPU("app", "device", pid="123")
+    monkeypatch.setattr(cpu, "_read_cpu_rate_sample", lambda: {"time": 1, "process": 2, "total": 1, "idle": 1})
+    cpu._last_cpu_sample = {"time": 0, "process": 1, "total": 1, "idle": 1}
+    with pytest.raises(RuntimeError, match="invalid CPU delta"):
+        cpu._sample_android_cpu_rate()
