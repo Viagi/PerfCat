@@ -17,6 +17,7 @@ from perfcattle.collector.memory import Memory
 from perfcattle.collector.network import Network
 from perfcattle.collector.thermal import ThermalSensor
 from perfcattle.report.log_io import LogIO
+from perfcattle.core.metrics import MetricSample, MetricStatus
 
 
 @pytest.fixture(autouse=True)
@@ -449,6 +450,78 @@ com.example 1024 2048 512 256 4096 8192 128 64
     assert FileIO._parse_storaged_output(
         output, "com.example", metric="foreground"
     ) == (1536, 2304)
+
+
+@pytest.mark.parametrize(
+    "status,value,error",
+    [
+        (MetricStatus.OK, 30, None),
+        (MetricStatus.CACHED, 29, None),
+        (MetricStatus.MISSING, None, "surface unavailable"),
+    ],
+)
+def test_android_fps_unified_returns_metric_sample_for_all_statuses(
+    monkeypatch, status, value, error
+):
+    fps = FPS("com.example", "device-1")
+    sample = MetricSample(
+        metric="fps", value=value, status=status, unit="fps", error=error
+    )
+    monkeypatch.setattr(fps, "_sampled_value", lambda *args, **kwargs: sample)
+
+    result = fps.getAndroidFps(noLog=True)
+
+    assert isinstance(result, MetricSample)
+    assert result.status is status
+    assert result.value == value
+    assert result.error == error
+
+
+def test_android_fps_unified_preserves_legal_zero(monkeypatch):
+    fps = FPS("com.example", "device-1")
+    sample = MetricSample(metric="fps", value=0, status=MetricStatus.OK)
+    monkeypatch.setattr(fps, "_sampled_value", lambda *args, **kwargs: sample)
+
+    result = fps.getAndroidFps(noLog=True)
+
+    assert result.status is MetricStatus.OK
+    assert result.value == 0
+
+
+@pytest.mark.parametrize(
+    "status,value,error",
+    [
+        (MetricStatus.OK, 25, None),
+        (MetricStatus.CACHED, 24, None),
+        (MetricStatus.MISSING, None, "gpu unavailable"),
+    ],
+)
+def test_android_gpu_unified_returns_metric_sample_for_all_statuses(
+    monkeypatch, status, value, error
+):
+    gpu = GPU("com.example", "device-1")
+    sample = MetricSample(
+        metric="gpu", value=value, status=status, unit="percent", error=error
+    )
+    monkeypatch.setattr(gpu, "_sampled_value", lambda *args, **kwargs: sample)
+
+    result = gpu.getAndroidGpuRate()
+
+    assert isinstance(result, MetricSample)
+    assert result.status is status
+    assert result.value == value
+    assert result.error == error
+
+
+def test_android_gpu_unified_preserves_legal_zero(monkeypatch):
+    gpu = GPU("com.example", "device-1")
+    sample = MetricSample(metric="gpu", value=0, status=MetricStatus.OK)
+    monkeypatch.setattr(gpu, "_sampled_value", lambda *args, **kwargs: sample)
+
+    result = gpu.getAndroidGpuRate()
+
+    assert result.status is MetricStatus.OK
+    assert result.value == 0
 
 
 def test_android_file_io_storaged_returns_kb_delta(monkeypatch):

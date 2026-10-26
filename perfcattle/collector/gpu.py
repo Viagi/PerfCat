@@ -7,6 +7,7 @@ from logzero import logger
 
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
+from perfcattle.core.metrics import MetricSample, MetricStatus
 from perfcattle.collector.base import (
     ReusableCollector,
     CachedSample,
@@ -73,13 +74,16 @@ class GPU(ReusableCollector):
     def getAndroidGpuRate(self):
         """获取 Android GPU 使用率"""
         try:
-            return self._sampled_value(
+            result = self._sampled_value(
                 "gpu",
                 self._sample_android_gpu_rate,
                 interval=self.SAMPLER_INTERVAL_SECONDS,
                 stale_ttl=self.SAMPLER_STALE_TTL_SECONDS,
                 background=True,
             )
+            if isinstance(result, MetricSample):
+                return result
+            return result
         except Exception as e:
             cached = self._cached_sampled_value(
                 "gpu", max_age=self.SAMPLER_STALE_TTL_SECONDS
@@ -107,5 +111,10 @@ class GPU(ReusableCollector):
         )
         if noLog is False:
             apm_time = datetime.datetime.now().strftime("%H:%M:%S.%f")
-            _f.add_log(os.path.join(_f.report_dir, "gpu.log"), apm_time, gpu)
+            log_value = gpu.value if isinstance(gpu, MetricSample) else gpu
+            if not isinstance(gpu, MetricSample) or gpu.status in (
+                MetricStatus.OK,
+                MetricStatus.CACHED,
+            ):
+                _f.add_log(os.path.join(_f.report_dir, "gpu.log"), apm_time, log_value)
         return gpu

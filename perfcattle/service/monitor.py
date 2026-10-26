@@ -19,6 +19,7 @@ from perfcattle.collector.memory import Memory
 from perfcattle.collector.battery import Battery
 from perfcattle.collector.network import Network
 from perfcattle.collector.fps import FPS
+from perfcattle.core.metrics import MetricSample, MetricStatus
 from perfcattle.collector.gpu import GPU
 from perfcattle.collector.gpu_stats import create_gpu_stats, clear_gpu_stats
 from perfcattle.collector.thermal import ThermalSensor
@@ -244,8 +245,15 @@ class AppPerformanceMonitor(ServiceConfig):
         result = {}
         while self.get_status() == "on":
             started = time.time()
-            fps, jank = _fps.getFPS(noLog=self.noLog)
-            result = {"fps": fps, "jank": jank}
+            sample = _fps.getFPS(noLog=self.noLog)
+            if isinstance(sample, MetricSample):
+                if sample.status in (MetricStatus.OK, MetricStatus.CACHED):
+                    result = {"fps": sample.value, "jank": 0, "status": sample.status.value}
+                else:
+                    result = {"fps": None, "jank": None, "status": sample.status.value, "error": sample.error}
+            else:
+                fps, jank = sample
+                result = {"fps": fps, "jank": jank}
             logger.info(f"fps: {result}")
             if not self._continue_sampling(started):
                 break
@@ -257,8 +265,14 @@ class AppPerformanceMonitor(ServiceConfig):
         result = {}
         while self.get_status() == "on":
             started = time.time()
-            gpu = _gpu.getGPU(noLog=self.noLog)
-            result = {"gpu": gpu}
+            sample = _gpu.getGPU(noLog=self.noLog)
+            if isinstance(sample, MetricSample):
+                if sample.status in (MetricStatus.OK, MetricStatus.CACHED):
+                    result = {"gpu": sample.value, "status": sample.status.value}
+                else:
+                    result = {"gpu": None, "status": sample.status.value, "error": sample.error}
+            else:
+                result = {"gpu": sample}
             logger.info(f"gpu: {result}")
             if not self._continue_sampling(started):
                 break

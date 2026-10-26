@@ -75,4 +75,15 @@ pytest -q tests/test_adb_command_result.py tests/test_core_adb_client.py tests/t
 ### 新增测试与验证
 - 覆盖真实成功后连续 cached fallback、fallback 状态、TTL 时间戳不刷新、TTL 到期最终 `MISSING`，以及真实零值成功。
 - `pytest -q tests/test_collection_stability.py -k 'cached_sample_fallback or real_zero'` → `2 passed`。
-- `pytest -q tests/test_collection_stability.py tests/test_collector_adb_metrics.py tests/test_collector_fps.py tests/test_device_android.py tests/test_android_device.py tests/test_metric_model.py` → `60 passed`；保留既有 1269 个 Python/Werkzeug 弃用警告。
+- `pytest -q tests/test_collection_stability.py tests/test_collector_adb_metrics.py tests/test_collector_fps.py tests/test_device_android.py tests/test_android_device.py tests/test_metric_model.py` → `68 passed`；保留既有 1269 个 Python/Werkzeug 弃用警告。
+
+## Task 2 unified FPS/GPU 公共接口修复（2026-10-26）
+
+- FPS/GPU 在 unified sampler 返回 `MetricSample` 时不再按 dict/标量解包，避免 `TypeError` 并保持 `OK/CACHED/MISSING/error` 状态与错误元数据。
+- legacy 模式继续返回 FPS `(fps, jank)` 和 GPU 数值，页面/旧调用方兼容；统一模式返回 `MetricSample`，合法零值保持 `OK`，missing/error 不伪造零并不写入伪造日志。
+- 监控日志路径可识别统一样本状态：成功/缓存记录 value，missing/error 记录结构化状态和 error；GPU 日志仅写有效或缓存样本。
+- 新增 FPS/GPU unified 成功、cached、missing/error、合法零值端到端契约测试。
+
+验证：
+`pytest -q tests/test_collector_adb_metrics.py -k 'fps_unified or gpu_unified'` → `8 passed`。
+`pytest -q tests/test_collection_stability.py tests/test_collector_adb_metrics.py tests/test_collector_fps.py tests/test_device_android.py tests/test_android_device.py tests/test_metric_model.py` → `68 passed`；保留既有 1269 个 Python/Werkzeug 弃用警告。

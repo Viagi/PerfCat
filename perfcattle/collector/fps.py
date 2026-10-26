@@ -21,6 +21,7 @@ from perfcattle.collector.base import (
 )
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
+from perfcattle.core.metrics import MetricSample, MetricStatus
 
 
 class SurfaceStatsCollector(object):
@@ -1022,6 +1023,22 @@ class FPS(ReusableCollector):
                 stale_ttl=self.SAMPLER_STALE_TTL_SECONDS,
                 background=True,
             )
+            if isinstance(result, MetricSample):
+                if result.status in (MetricStatus.OK, MetricStatus.CACHED):
+                    fps = result.value
+                    jank = 0
+                    self.last_sample_time = (
+                        result.sample_epoch_ms / 1000.0
+                        if result.sample_epoch_ms is not None
+                        else self.last_sample_time
+                    )
+                    if (
+                        noLog is False
+                        and self.last_sample_time != self._last_logged_sample_time
+                    ):
+                        self._write_fps_log(_f, fps, jank)
+                        self._last_logged_sample_time = self.last_sample_time
+                return result
             fps = result["fps"]
             jank = result["jank"]
             self.last_sample_time = result.get("sample_time")
@@ -1072,10 +1089,12 @@ class FPS(ReusableCollector):
         return fps, 0
 
     def getFPS(self, noLog=False):
-        """获取 fps 和 jank"""
-        fps, jank = (
-            self.getAndroidFps(noLog)
-            if self.platform == Platform.Android
-            else self.getiOSFps(noLog)
-        )
+        """获取 fps 和 jank；统一模式返回 MetricSample。"""
+        if self.platform == Platform.Android:
+            result = self.getAndroidFps(noLog)
+            if isinstance(result, MetricSample):
+                return result
+            fps, jank = result
+        else:
+            fps, jank = self.getiOSFps(noLog)
         return fps, jank
