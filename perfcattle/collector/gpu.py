@@ -29,6 +29,9 @@ class GPU(ReusableCollector):
         self._last_gpu = self._gpu_cache.get(self._cache_key())
         self._previous_busy = None
         self._previous_total = None
+        # None until a second reading reveals whether the node is cumulative.
+        self._gpu_counter_mode = None
+        self._counter_semantics = "unknown"
 
     @classmethod
     def _make_cache_key(cls, platform, deviceId, pkgName):
@@ -66,21 +69,38 @@ class GPU(ReusableCollector):
             raise CollectorUnavailableError("no valid GPU sample: invalid GPU counter") from exc
         if busy < 0 or total <= 0 or busy > total:
             raise CollectorUnavailableError("no valid GPU sample: invalid GPU counter")
-        # ``gpubusy`` is a cumulative cycles counter. The first read only
-        # establishes a baseline; a single window ratio would otherwise report
-        # the since-boot average rather than the current sampling window.
-        if self._previous_busy is None or self._previous_total is None:
-            self._previous_busy, self._previous_total = busy, total
-            raise CollectorUnavailableError("GPU counter baseline unavailable")
-        if busy < self._previous_busy or total < self._previous_total:
-            self._previous_busy, self._previous_total = busy, total
-            raise CollectorUnavailableError("GPU counter reset or wrap")
-        busy_delta = busy - self._previous_busy
-        total_delta = total - self._previous_total
+
+        # ``gpubusy`` semantics differ per kernel: some report cumulative
+        # cycles since boot, others the busy/total of the current window (the
+        # pair then drops or stalls between reads). Detect which one we have
+        # instead of assuming, otherwise a windowed node looks like a counter
+        # reset on every sample and the GPU curve stops.
+        ratio = round(busy / total * 100, 2)
+        previous = (self._previous_busy, self._previous_total)
         self._previous_busy, self._previous_total = busy, total
-        if total_delta <= 0 or busy_delta < 0 or busy_delta > total_delta:
-            raise CollectorUnavailableError("no valid GPU sample: invalid GPU counter delta")
-        gpu = round(busy_delta / total_delta * 100, 2)
+
+        if self._gpu_counter_mode == "ratio":
+            gpu = ratio
+        elif previous[0] is None or previous[1] is None:
+            # A single reading is a valid measurement under both semantics;
+            # decide the mode once the next pair arrives.
+            gpu = ratio
+        elif busy <= previous[0] or total <= previous[1]:
+            self._gpu_counter_mode = "ratio"
+            self._counter_semantics = "window_ratio"
+            gpu = ratio
+        else:
+            busy_delta = busy - previous[0]
+            total_delta = total - previous[1]
+            if busy_delta > total_delta:
+                self._gpu_counter_mode = "ratio"
+                self._counter_semantics = "window_ratio"
+                gpu = ratio
+            else:
+                self._gpu_counter_mode = "delta"
+                self._counter_semantics = "cumulative_delta"
+                gpu = round(busy_delta / total_delta * 100, 2)
+
         self._last_gpu = gpu
         self._gpu_cache[self._cache_key()] = gpu
         return gpu
@@ -112,5 +132,5 @@ class GPU(ReusableCollector):
             if not isinstance(gpu, MetricSample) or gpu.status in (MetricStatus.OK, MetricStatus.CACHED):
                 _f.add_log(os.path.join(_f.report_dir, "gpu.log"), apm_time, log_value)
         if unified:
-            return gpu.to_dict() if isinstance(gpu, MetricSample) else MetricSample.ok("gpu", gpu, unit="percent", source="kgsl_gpubusy", aggregation="cumulative_delta").to_dict()
+            return gpu.to_dict() if isinstance(gpu, MetricSample) else MetricSample.ok("gpu", gpu, unit="percent", source="kgsl_gpubusy", aggregation=self._counter_semantics).to_dict()
         return gpu

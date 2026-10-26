@@ -114,7 +114,9 @@ class GpuStats(object):
         self._bandwidth = GpuBandwidth(deviceId)
         self.previous_busy = None
         self.previous_total = None
-        self.counter_semantics = "window_ratio"
+        # None until a second reading reveals whether the node is cumulative.
+        self.counter_mode = None
+        self.counter_semantics = "unknown"
         self.counter_source = None
 
     def _counter_result(self, value, status, error):
@@ -125,7 +127,7 @@ class GpuStats(object):
             unit="percent",
             status=status,
             source=self.counter_source,
-            aggregation="cumulative_delta",
+            aggregation=self.counter_semantics,
             sample_epoch_ms=int(time.time() * 1000),
             sample_monotonic_ns=time.monotonic_ns(),
             error=error,
@@ -139,20 +141,28 @@ class GpuStats(object):
             return self._counter_result(None, MetricStatus.INVALID, "invalid counter")
         if busy < 0 or total <= 0 or busy > total:
             return self._counter_result(None, MetricStatus.INVALID, "invalid counter")
-        if self.previous_busy is None or self.previous_total is None:
-            self.previous_busy = busy
-            self.previous_total = total
-            return self._counter_result(None, MetricStatus.INVALID, "initial baseline")
-        if busy < self.previous_busy or total < self.previous_total:
-            self.previous_busy = busy
-            self.previous_total = total
-            return self._counter_result(None, MetricStatus.INVALID, "counter reset or wrap")
-        busy_delta = busy - self.previous_busy
-        total_delta = total - self.previous_total
-        self.previous_busy = busy
-        self.previous_total = total
-        if total_delta <= 0 or busy_delta < 0 or busy_delta > total_delta:
-            return self._counter_result(None, MetricStatus.INVALID, "invalid counter delta")
+
+        # Same adaptive semantics as the main GPU collector: a kernel may
+        # report cumulative cycles or the busy/total of the current window.
+        ratio = round(busy / total * 100, 2)
+        previous = (self.previous_busy, self.previous_total)
+        self.previous_busy, self.previous_total = busy, total
+
+        if self.counter_mode == "ratio":
+            return self._counter_result(ratio, MetricStatus.OK, None)
+        if previous[0] is None or previous[1] is None:
+            return self._counter_result(ratio, MetricStatus.OK, None)
+        if busy <= previous[0] or total <= previous[1]:
+            self.counter_mode = "ratio"
+            self.counter_semantics = "window_ratio"
+            return self._counter_result(ratio, MetricStatus.OK, None)
+        busy_delta = busy - previous[0]
+        total_delta = total - previous[1]
+        if busy_delta > total_delta:
+            self.counter_mode = "ratio"
+            self.counter_semantics = "window_ratio"
+            return self._counter_result(ratio, MetricStatus.OK, None)
+        self.counter_mode = "delta"
         self.counter_semantics = "cumulative_delta"
         return self._counter_result(round(busy_delta / total_delta * 100, 2), MetricStatus.OK, None)
 

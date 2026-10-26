@@ -330,22 +330,40 @@ def test_android_fps_reuses_running_monitor_across_instances(monkeypatch):
     assert FakeMonitor.starts == 1
 
 
-def test_android_gpu_cumulative_delta_and_cached_fallback(monkeypatch):
+def test_android_gpu_cumulative_counter_uses_delta(monkeypatch):
     mock_adb = MagicMock()
     outputs = iter(["25 100", "50 200", ""])
     mock_adb.shell.side_effect = lambda cmd, deviceId, timeout=None: next(outputs)
     monkeypatch.setattr(gpu_module, "adb", mock_adb)
     gpu = GPU("com.example", "device-1")
 
-    # First read only establishes the cumulative-counter baseline.
-    with pytest.raises(RuntimeError, match="baseline unavailable"):
-        gpu._sample_android_gpu_rate()
-    # Second read is a window delta: (50-25)/(200-100) = 25%.
+    # A single reading is already a valid measurement (25%).
     assert gpu._sample_android_gpu_rate() == 25.0
+    # A monotonic pair switches to window deltas: (50-25)/(200-100) = 25%.
+    assert gpu._sample_android_gpu_rate() == 25.0
+    assert gpu._counter_semantics == "cumulative_delta"
     # A subsequent invalid read leaves the last valid value cached.
     with pytest.raises(RuntimeError, match="invalid GPU counter"):
         gpu._sample_android_gpu_rate()
     assert gpu._last_gpu == 25.0
+
+
+def test_android_gpu_windowed_counter_keeps_sampling(monkeypatch):
+    """A windowed kgsl node drops/stalls between reads; that must not stop
+    the GPU curve (regression: every sample was reported as a reset)."""
+    mock_adb = MagicMock()
+    outputs = iter(["760 1000", "800 1000", "500 1000", "760 1000"])
+    mock_adb.shell.side_effect = lambda cmd, deviceId, timeout=None: next(outputs)
+    monkeypatch.setattr(gpu_module, "adb", mock_adb)
+    gpu = GPU("com.example", "device-windowed")
+
+    assert gpu._sample_android_gpu_rate() == 76.0
+    # The window total stalls -> the node is windowed, so the raw ratio wins
+    # instead of being reported as an invalid/reset counter.
+    assert gpu._sample_android_gpu_rate() == 80.0
+    assert gpu._sample_android_gpu_rate() == 50.0
+    assert gpu._sample_android_gpu_rate() == 76.0
+    assert gpu._counter_semantics == "window_ratio"
 
 
 def test_android_gpu_treats_invalid_output_as_unavailable(monkeypatch):
@@ -373,9 +391,8 @@ def test_android_gpu_accepts_zero_utilization_as_valid(monkeypatch):
     monkeypatch.setattr(gpu_module, "adb", mock_adb)
     gpu = GPU("com.example", "device-1")
 
-    with pytest.raises(RuntimeError, match="baseline unavailable"):
-        gpu._sample_android_gpu_rate()
-    # busy stays 0 across the window -> a real 0% utilization, not a failure.
+    # busy stays 0 -> a real 0% utilization, never a failure or a fake value.
+    assert gpu._sample_android_gpu_rate() == 0
     assert gpu._sample_android_gpu_rate() == 0
 
 

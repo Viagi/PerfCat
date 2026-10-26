@@ -28,13 +28,19 @@ def test_cpu_rate_rejects_negative_and_over_total_deltas():
     assert cpu._calculate_cpu_rate(first, {"total": 110, "idle": 55, "process": 25}) is None
 
 
-def test_gpu_cumulative_counter_uses_delta_and_marks_reset_invalid():
+def test_gpu_cumulative_counter_uses_delta_then_falls_back_to_ratio():
     stats = GpuStats("device")
     stats.previous_busy = 100
     stats.previous_total = 200
-    assert stats._parse_counter_sample("150 300")["value"] == 50.0
-    invalid = stats._parse_counter_sample("90 250")
-    assert invalid["status"] == MetricStatus.INVALID.value
+    # Monotonic pair -> window delta: (150-100)/(300-200) = 50%.
+    delta_sample = stats._parse_counter_sample("150 300")
+    assert delta_sample["value"] == 50.0
+    assert delta_sample["aggregation"] == "cumulative_delta"
+    # Counter drops -> windowed node, keep sampling with the raw ratio.
+    recovered = stats._parse_counter_sample("90 250")
+    assert recovered["status"] == MetricStatus.OK.value
+    assert recovered["value"] == 36.0
+    assert recovered["aggregation"] == "window_ratio"
 
 
 def test_network_uid_totals_are_not_claimed_as_transport():
