@@ -330,15 +330,22 @@ def test_android_fps_reuses_running_monitor_across_instances(monkeypatch):
     assert FakeMonitor.starts == 1
 
 
-def test_android_gpu_reuses_last_value_after_invalid_output(monkeypatch):
+def test_android_gpu_cumulative_delta_and_cached_fallback(monkeypatch):
     mock_adb = MagicMock()
-    outputs = iter(["25 100", ""])
+    outputs = iter(["25 100", "50 200", ""])
     mock_adb.shell.side_effect = lambda cmd, deviceId, timeout=None: next(outputs)
     monkeypatch.setattr(gpu_module, "adb", mock_adb)
     gpu = GPU("com.example", "device-1")
 
-    assert gpu.getAndroidGpuRate() == 25
-    assert gpu.getAndroidGpuRate() == 25
+    # First read only establishes the cumulative-counter baseline.
+    with pytest.raises(RuntimeError, match="baseline unavailable"):
+        gpu._sample_android_gpu_rate()
+    # Second read is a window delta: (50-25)/(200-100) = 25%.
+    assert gpu._sample_android_gpu_rate() == 25.0
+    # A subsequent invalid read leaves the last valid value cached.
+    with pytest.raises(RuntimeError, match="invalid GPU counter"):
+        gpu._sample_android_gpu_rate()
+    assert gpu._last_gpu == 25.0
 
 
 def test_android_gpu_treats_invalid_output_as_unavailable(monkeypatch):
@@ -361,10 +368,15 @@ def test_android_gpu_treats_zero_denominator_as_unavailable(monkeypatch):
 
 def test_android_gpu_accepts_zero_utilization_as_valid(monkeypatch):
     mock_adb = MagicMock()
-    mock_adb.shell.return_value = "0 100"
+    outputs = iter(["0 100", "0 200"])
+    mock_adb.shell.side_effect = lambda cmd, deviceId, timeout=None: next(outputs)
     monkeypatch.setattr(gpu_module, "adb", mock_adb)
+    gpu = GPU("com.example", "device-1")
 
-    assert GPU("com.example", "device-1").getAndroidGpuRate() == 0
+    with pytest.raises(RuntimeError, match="baseline unavailable"):
+        gpu._sample_android_gpu_rate()
+    # busy stays 0 across the window -> a real 0% utilization, not a failure.
+    assert gpu._sample_android_gpu_rate() == 0
 
 
 def test_android_cpu_refreshes_stale_pid_by_process_name(monkeypatch):

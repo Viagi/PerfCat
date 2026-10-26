@@ -320,6 +320,7 @@ class ThermalSensor(ReusableCollector):
 
     def getThermalTemp(self, noLog=True, unified=False):
         """获取温度数据"""
+        used_cache = False
         try:
             temp_list = self._sampled_value(
                 "thermal",
@@ -332,15 +333,20 @@ class ThermalSensor(ReusableCollector):
             temp_list = self._cached_sampled_value(
                 "thermal", max_age=self.SAMPLER_STALE_TTL_SECONDS
             ) or []
+            used_cache = bool(temp_list)
             if temp_list:
                 logger.warning("[Thermal] %s, using cached value", e)
             else:
                 logger.exception(e)
         if noLog is False and temp_list:
             self._log_thermal_temps(temp_list)
+        if temp_list:
+            status = MetricStatus.CACHED.value if used_cache else MetricStatus.OK.value
+        else:
+            status = MetricStatus.MISSING.value
         self.last_sample = {
             "sensors": temp_list if temp_list else None,
-            "status": MetricStatus.CACHED.value if temp_list and self._cached_sampled_value("thermal", max_age=self.SAMPLER_STALE_TTL_SECONDS) is not None else (MetricStatus.OK.value if temp_list else MetricStatus.MISSING.value),
+            "status": status,
             "unit": "celsius", "sample_epoch_ms": int(time.time() * 1000),
         }
         if unified:

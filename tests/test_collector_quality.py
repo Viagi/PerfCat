@@ -34,7 +34,7 @@ def test_gpu_cumulative_counter_uses_delta_and_marks_reset_invalid():
     stats.previous_total = 200
     assert stats._parse_counter_sample("150 300")["value"] == 50.0
     invalid = stats._parse_counter_sample("90 250")
-    assert invalid["status"] is MetricStatus.INVALID
+    assert invalid["status"] == MetricStatus.INVALID.value
 
 
 def test_network_uid_totals_are_not_claimed_as_transport():

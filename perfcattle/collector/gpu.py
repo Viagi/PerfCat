@@ -55,7 +55,7 @@ class GPU(ReusableCollector):
             return CachedSample(cached)
         raise CollectorUnavailableError("no valid GPU sample")
 
-    def _sample_android_gpu_rate(self, allow_baseline=True):
+    def _sample_android_gpu_rate(self):
         result = adb_shell(adb, cmd="cat /sys/class/kgsl/kgsl-3d0/gpubusy", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
         parts = result.strip().split()
         if len(parts) < 2:
@@ -66,10 +66,11 @@ class GPU(ReusableCollector):
             raise CollectorUnavailableError("no valid GPU sample: invalid GPU counter") from exc
         if busy < 0 or total <= 0 or busy > total:
             raise CollectorUnavailableError("no valid GPU sample: invalid GPU counter")
+        # ``gpubusy`` is a cumulative cycles counter. The first read only
+        # establishes a baseline; a single window ratio would otherwise report
+        # the since-boot average rather than the current sampling window.
         if self._previous_busy is None or self._previous_total is None:
             self._previous_busy, self._previous_total = busy, total
-            if allow_baseline:
-                return round(busy / total * 100, 2)
             raise CollectorUnavailableError("GPU counter baseline unavailable")
         if busy < self._previous_busy or total < self._previous_total:
             self._previous_busy, self._previous_total = busy, total
@@ -86,7 +87,7 @@ class GPU(ReusableCollector):
 
     def getAndroidGpuRate(self, unified=None):
         try:
-            result = self._sampled_value("gpu", lambda: self._sample_android_gpu_rate(True), interval=self.SAMPLER_INTERVAL_SECONDS, stale_ttl=self.SAMPLER_STALE_TTL_SECONDS, background=True)
+            result = self._sampled_value("gpu", lambda: self._sample_android_gpu_rate(), interval=self.SAMPLER_INTERVAL_SECONDS, stale_ttl=self.SAMPLER_STALE_TTL_SECONDS, background=True)
             if isinstance(result, MetricSample):
                 return result
             return result
@@ -111,5 +112,5 @@ class GPU(ReusableCollector):
             if not isinstance(gpu, MetricSample) or gpu.status in (MetricStatus.OK, MetricStatus.CACHED):
                 _f.add_log(os.path.join(_f.report_dir, "gpu.log"), apm_time, log_value)
         if unified:
-            return gpu.to_dict() if isinstance(gpu, MetricSample) else MetricSample.ok("gpu", gpu, unit="percent", source="kgsl_gpubusy").to_dict()
+            return gpu.to_dict() if isinstance(gpu, MetricSample) else MetricSample.ok("gpu", gpu, unit="percent", source="kgsl_gpubusy", aggregation="cumulative_delta").to_dict()
         return gpu

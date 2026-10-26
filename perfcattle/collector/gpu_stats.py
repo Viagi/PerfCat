@@ -117,36 +117,44 @@ class GpuStats(object):
         self.counter_semantics = "window_ratio"
         self.counter_source = None
 
+    def _counter_result(self, value, status, error):
+        """Return a serialized, schema-consistent counter sample."""
+        return MetricSample(
+            metric="gpu_util",
+            value=value,
+            unit="percent",
+            status=status,
+            source=self.counter_source,
+            aggregation="cumulative_delta",
+            sample_epoch_ms=int(time.time() * 1000),
+            sample_monotonic_ns=time.monotonic_ns(),
+            error=error,
+        ).to_dict()
+
     def _parse_counter_sample(self, text):
         parts = (text or "").split()
         try:
             busy, total = int(parts[0]), int(parts[1])
         except (IndexError, TypeError, ValueError):
-            return {"value": None, "status": MetricStatus.INVALID, "source": self.counter_source,
-                    "semantics": "cumulative_delta", "error": "invalid counter"}
+            return self._counter_result(None, MetricStatus.INVALID, "invalid counter")
         if busy < 0 or total <= 0 or busy > total:
-            return {"value": None, "status": MetricStatus.INVALID, "source": self.counter_source,
-                    "semantics": "cumulative_delta", "error": "invalid counter"}
+            return self._counter_result(None, MetricStatus.INVALID, "invalid counter")
         if self.previous_busy is None or self.previous_total is None:
             self.previous_busy = busy
             self.previous_total = total
-            return {"value": None, "status": MetricStatus.INVALID, "source": self.counter_source,
-                    "semantics": "cumulative_delta", "error": "initial baseline"}
+            return self._counter_result(None, MetricStatus.INVALID, "initial baseline")
         if busy < self.previous_busy or total < self.previous_total:
             self.previous_busy = busy
             self.previous_total = total
-            return {"value": None, "status": MetricStatus.INVALID, "source": self.counter_source,
-                    "semantics": "cumulative_delta", "error": "counter reset or wrap"}
+            return self._counter_result(None, MetricStatus.INVALID, "counter reset or wrap")
         busy_delta = busy - self.previous_busy
         total_delta = total - self.previous_total
         self.previous_busy = busy
         self.previous_total = total
         if total_delta <= 0 or busy_delta < 0 or busy_delta > total_delta:
-            return {"value": None, "status": MetricStatus.INVALID, "source": self.counter_source,
-                    "semantics": "cumulative_delta", "error": "invalid counter delta"}
+            return self._counter_result(None, MetricStatus.INVALID, "invalid counter delta")
         self.counter_semantics = "cumulative_delta"
-        return {"value": round(busy_delta / total_delta * 100, 2), "status": MetricStatus.OK,
-                "source": self.counter_source, "semantics": "cumulative_delta"}
+        return self._counter_result(round(busy_delta / total_delta * 100, 2), MetricStatus.OK, None)
 
     def _probe(self, sources, parser):
         for entry in sources:
@@ -264,14 +272,7 @@ class GpuStats(object):
             semantics = rest[0] if rest else "window_ratio"
             text = _read(self.deviceId, path)
             if key == "gpu_util" and semantics == "cumulative_delta":
-                parsed = self._parse_counter_sample(text)
-                if parsed["status"] is MetricStatus.OK:
-                    data[key] = MetricSample.ok(
-                        key, parsed["value"], unit="percent", source=name,
-                        aggregation="cumulative_delta",
-                    ).to_dict()
-                else:
-                    data[key] = parsed
+                data[key] = self._parse_counter_sample(text)
                 continue
             parser = readers[key]
             value = parser(text)
