@@ -263,7 +263,9 @@ class CollectorSampler:
         self.status_on_error = status_on_error
         self.last_valid_result = None
         self.last_sample_time = None
+        self.last_sample_monotonic = None
         self.last_error = None
+        self.consecutive_failures = 0
         self._lock = threading.RLock()
         self._sample_lock = threading.Lock()
         self._stop_event = threading.Event()
@@ -298,7 +300,7 @@ class CollectorSampler:
         with self._lock:
             if self.last_valid_result is None or self.last_sample_time is None:
                 return None
-            if max_age is not None and time.time() - self.last_sample_time > max_age:
+            if max_age is not None and time.monotonic() - self.last_sample_monotonic > max_age:
                 return None
             return copy.deepcopy(self.last_valid_result)
 
@@ -318,7 +320,7 @@ class CollectorSampler:
             return None
         if not self.unified:
             return cached
-        age_ms = max(0.0, (time.time() - self.last_sample_time) * 1000)
+        age_ms = max(0.0, (time.monotonic() - self.last_sample_monotonic) * 1000)
         return self._as_sample(cached, MetricStatus.CACHED, stale_age_ms=age_ms)
 
     def sample(self):
@@ -395,14 +397,18 @@ class CollectorSampler:
             finally:
                 _SAMPLER_ADB_SEMAPHORE.release()
             now = time.time()
+            now_monotonic = time.monotonic()
             with self._lock:
                 self.last_valid_result = copy.deepcopy(result)
                 self.last_sample_time = now
+                self.last_sample_monotonic = now_monotonic
                 self.last_error = None
+                self.consecutive_failures = 0
             return self._as_sample(result) if self.unified else copy.deepcopy(result)
         except Exception as exc:
             with self._lock:
                 self.last_error = exc
+                self.consecutive_failures += 1
             if self.unified:
                 cached = self._cached_result(max_age=self.stale_ttl)
                 if cached is not None:

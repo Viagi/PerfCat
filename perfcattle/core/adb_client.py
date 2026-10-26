@@ -6,7 +6,10 @@ import shutil
 import shlex
 import stat
 import subprocess
+import time
 from logzero import logger
+
+from perfcattle.core.command_result import CommandResult
 
 ASSETS_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "assets"
@@ -75,28 +78,66 @@ class ADB:
             return [str(part) for part in cmd]
         return shlex.split(cmd)
 
-    def shell(self, cmd, deviceId, timeout=30):
-        """执行 adb shell 命令，改进编码处理"""
+    def shell_result(self, cmd, deviceId, timeout=30):
+        """Execute an adb shell command and return structured outcome metadata."""
+        started = time.monotonic()
         try:
             result = subprocess.run(
                 [self.adb_path, "-s", deviceId, "shell", cmd],
                 capture_output=True,
                 timeout=timeout,
             )
-            output = self._decode_output(result.stdout)
-            error = self._decode_output(result.stderr)
-            if result.returncode != 0 and error:
-                logger.debug("adb shell failed: %s, stderr: %s", cmd, error)
-            return output
-        except subprocess.TimeoutExpired:
+            stdout = self._decode_output(result.stdout)
+            stderr = self._decode_output(result.stderr)
+            ok = result.returncode == 0
+            if not ok:
+                logger.debug("adb shell failed: %s, stderr: %s", cmd, stderr)
+            return CommandResult(
+                ok=ok,
+                stdout=stdout,
+                stderr=stderr,
+                returncode=result.returncode,
+                duration_ms=(time.monotonic() - started) * 1000,
+                error_kind=None if ok else "returncode",
+            )
+        except subprocess.TimeoutExpired as exc:
             logger.warning("adb shell timed out after %ss: %s", timeout, cmd)
-            return ""
-        except (OSError, subprocess.SubprocessError) as exc:
+            return CommandResult(
+                ok=False,
+                stdout=self._decode_output(exc.stdout or ""),
+                stderr=self._decode_output(exc.stderr or ""),
+                timed_out=True,
+                duration_ms=(time.monotonic() - started) * 1000,
+                error_kind="timeout",
+            )
+        except OSError as exc:
             logger.error("adb shell failed: %s, error: %s", cmd, exc)
-            return ""
-        except Exception:
+            return CommandResult(
+                ok=False,
+                stderr=str(exc),
+                duration_ms=(time.monotonic() - started) * 1000,
+                error_kind="os_error",
+            )
+        except subprocess.SubprocessError as exc:
+            logger.error("adb shell failed: %s, error: %s", cmd, exc)
+            return CommandResult(
+                ok=False,
+                stderr=str(exc),
+                duration_ms=(time.monotonic() - started) * 1000,
+                error_kind="subprocess_error",
+            )
+        except Exception as exc:
             logger.exception("adb shell failed: %s", cmd)
-            return ""
+            return CommandResult(
+                ok=False,
+                stderr=str(exc),
+                duration_ms=(time.monotonic() - started) * 1000,
+                error_kind="exception",
+            )
+
+    def shell(self, cmd, deviceId, timeout=30):
+        """Backward-compatible text output; new callers should use shell_result."""
+        return self.shell_result(cmd, deviceId, timeout=timeout).stdout
 
     def tcp_shell(self, deviceId, cmd, timeout=30):
         try:
