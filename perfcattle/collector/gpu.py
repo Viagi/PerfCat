@@ -67,6 +67,13 @@ class GPU(ReusableCollector):
             busy, total = int(parts[0]), int(parts[1])
         except ValueError as exc:
             raise CollectorUnavailableError("no valid GPU sample: invalid GPU counter") from exc
+        if busy == 0 and total == 0:
+            # An idle Adreno reports ``0 0``. That is a real 0% reading, not a
+            # broken counter; treating it as invalid stopped the GPU curve
+            # whenever the game was paused or backgrounded.
+            self._last_gpu = 0
+            self._gpu_cache[self._cache_key()] = 0
+            return 0
         if busy < 0 or total <= 0 or busy > total:
             raise CollectorUnavailableError("no valid GPU sample: invalid GPU counter")
 

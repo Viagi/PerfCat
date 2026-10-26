@@ -590,7 +590,9 @@ def getGpu():
         logger.exception(e)
         if platform == Platform.iOS:
             return _ios_sampling_error(e)
-        result = {"status": 1, "gpu": 0}
+        # Do not fabricate 0%: a null point leaves a gap in the curve while
+        # still letting the page keep polling.
+        result = {"status": 1, "gpu": None, "msg": str(e)}
     return result
 
 

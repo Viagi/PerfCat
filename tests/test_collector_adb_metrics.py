@@ -375,13 +375,22 @@ def test_android_gpu_treats_invalid_output_as_unavailable(monkeypatch):
         GPU("com.example", "device-1").getAndroidGpuRate()
 
 
-def test_android_gpu_treats_zero_denominator_as_unavailable(monkeypatch):
+def test_android_gpu_treats_idle_zero_pair_as_zero_percent(monkeypatch):
+    """An idle Adreno reports ``0 0``; that is 0%, not a broken counter."""
     mock_adb = MagicMock()
     mock_adb.shell.return_value = "0 0"
     monkeypatch.setattr(gpu_module, "adb", mock_adb)
 
+    assert GPU("com.example", "device-idle").getAndroidGpuRate() == 0
+
+
+def test_android_gpu_treats_busy_without_total_as_unavailable(monkeypatch):
+    mock_adb = MagicMock()
+    mock_adb.shell.return_value = "500 0"
+    monkeypatch.setattr(gpu_module, "adb", mock_adb)
+
     with pytest.raises(RuntimeError, match="no valid GPU sample"):
-        GPU("com.example", "device-1").getAndroidGpuRate()
+        GPU("com.example", "device-bad").getAndroidGpuRate()
 
 
 def test_android_gpu_accepts_zero_utilization_as_valid(monkeypatch):

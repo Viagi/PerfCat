@@ -139,6 +139,9 @@ class GpuStats(object):
             busy, total = int(parts[0]), int(parts[1])
         except (IndexError, TypeError, ValueError):
             return self._counter_result(None, MetricStatus.INVALID, "invalid counter")
+        if busy == 0 and total == 0:
+            # Idle GPU (no work submitted yet): a genuine 0% sample.
+            return self._counter_result(0, MetricStatus.OK, None)
         if busy < 0 or total <= 0 or busy > total:
             return self._counter_result(None, MetricStatus.INVALID, "invalid counter")
 
