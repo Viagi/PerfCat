@@ -389,3 +389,21 @@ def test_report_batch_delete_removes_all_selected_reports(monkeypatch, tmp_path)
 
     assert response.json["status"] == 0
     assert report_dir.exists()
+
+
+def test_background_sampler_falls_back_to_sync_sample_before_first_cache():
+    """A first poll must not surface "no cached value" while the background
+    thread is still queued behind the shared ADB semaphore."""
+    from perfcattle.collector.base import CollectorSampler
+
+    sampler = CollectorSampler(
+        "startup", lambda: 7.5, background=True, unified=False
+    )
+    # Simulate a background thread that has not produced a value yet.
+    sampler.start = lambda: None
+    sampler._wait_for_latest = lambda: (_ for _ in ()).throw(
+        RuntimeError("startup sampler has no cached value")
+    )
+
+    assert sampler.get_or_sample() == 7.5
+    sampler.stop()

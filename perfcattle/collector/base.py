@@ -441,9 +441,15 @@ class CollectorSampler:
             try:
                 return self._wait_for_latest()
             except Exception as exc:
-                if self.unified:
-                    return self._missing_result(error=self._error_text(exc))
-                raise
+                # The background thread may still be queued behind the shared
+                # ADB semaphore right after Start. Falling back to one
+                # synchronous sample keeps the first poll from surfacing a
+                # transient "no cached value" error to the UI.
+                logger.debug(
+                    "%s sampler wait failed (%s), sampling synchronously",
+                    self.name,
+                    exc,
+                )
         return self.sample()
 
     def sample_once(self):
