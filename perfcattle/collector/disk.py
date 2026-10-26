@@ -8,7 +8,7 @@ from logzero import logger
 
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
-from perfcattle.collector.base import ReusableCollector
+from perfcattle.collector.base import ReusableCollector, adb_shell
 
 
 class Disk(ReusableCollector):
@@ -39,7 +39,7 @@ class Disk(ReusableCollector):
     def setInitialDisk(self):
         """记录初始磁盘状态"""
         _f = self._get_report_store()
-        disk_info = adb.shell(cmd="df", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
+        disk_info = adb_shell(adb, cmd="df", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
         with open(
             os.path.join(_f.report_dir, "initail_disk.log"), "a+", encoding="utf-8"
         ) as file:
@@ -48,7 +48,7 @@ class Disk(ReusableCollector):
     def setCurrentDisk(self):
         """记录当前磁盘状态"""
         _f = self._get_report_store()
-        disk_info = adb.shell(cmd="df", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
+        disk_info = adb_shell(adb, cmd="df", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
         with open(
             os.path.join(_f.report_dir, "current_disk.log"), "a+", encoding="utf-8"
         ) as file:
@@ -56,11 +56,11 @@ class Disk(ReusableCollector):
 
     def getAndroidDisk(self):
         """获取 Android 内部存储信息（只统计 /data，避免多挂载点重复计数）"""
-        disk_info = adb.shell(
+        disk_info = adb_shell(adb,
             cmd="df -k /data", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT
         )
         if not disk_info.strip():
-            disk_info = adb.shell(
+            disk_info = adb_shell(adb,
                 cmd="df -k", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT
             )
         disk_lines = disk_info.splitlines()

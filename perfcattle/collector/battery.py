@@ -9,7 +9,7 @@ from logzero import logger
 
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
-from perfcattle.collector.base import ReusableCollector
+from perfcattle.collector.base import ReusableCollector, adb_shell
 from perfcattle.tools.http_utils import Method
 
 
@@ -54,7 +54,7 @@ class Battery(ReusableCollector):
             self.recoverBattery()
             self._android_battery_prepared = True
         cmd = "dumpsys battery"
-        output = adb.shell(cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
+        output = adb_shell(adb, cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
         level = int(re.findall(r"level:\s?(\d+)", output)[0])
         temperature = int(re.findall(r"temperature:\s?(\d+)", output)[0]) / 10
         self._last_battery = (level, temperature)
@@ -83,7 +83,7 @@ class Battery(ReusableCollector):
                 level, temperature = cached
                 has_sample = True
             else:
-                level, temperature = 0, 0
+                raise
             if used_cache:
                 logger.warning("[Battery] %s, using cached value", e)
             else:
@@ -126,4 +126,4 @@ class Battery(ReusableCollector):
     def recoverBattery(self):
         """重置手机充电状态"""
         cmd = "dumpsys battery reset"
-        adb.shell(cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
+        adb_shell(adb, cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)

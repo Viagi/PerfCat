@@ -10,7 +10,7 @@ from logzero import logger
 
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
-from perfcattle.collector.base import ReusableCollector
+from perfcattle.collector.base import ReusableCollector, adb_shell
 
 
 class Network(ReusableCollector):
@@ -123,7 +123,7 @@ class Network(ReusableCollector):
     def _read_uid(self):
         if self._uid is not None:
             return self._uid
-        output = adb.shell(
+        output = adb_shell(adb,
             cmd=f"cat /proc/{self.pid}/status",
             deviceId=self.deviceId,
             timeout=self.ADB_TIMEOUT,
@@ -138,7 +138,7 @@ class Network(ReusableCollector):
 
     def _read_uid_stat_counter(self, uid, filename):
         path = PurePosixPath("/proc/uid_stat") / str(uid) / filename
-        return adb.shell(
+        return adb_shell(adb,
             cmd=f"cat {path}",
             deviceId=self.deviceId,
             timeout=self.ADB_TIMEOUT,
@@ -192,12 +192,12 @@ class Network(ReusableCollector):
         return stats
 
     def _read_netstats_detail(self):
-        adb.shell(
+        adb_shell(adb,
             cmd="dumpsys netstats poll",
             deviceId=self.deviceId,
             timeout=self.ADB_TIMEOUT,
         )
-        return adb.shell(
+        return adb_shell(adb,
             cmd="dumpsys netstats detail",
             deviceId=self.deviceId,
             timeout=15,

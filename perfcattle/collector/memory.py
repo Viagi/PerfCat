@@ -10,7 +10,7 @@ from logzero import logger
 
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
-from perfcattle.collector.base import ReusableCollector
+from perfcattle.collector.base import ReusableCollector, adb_shell
 
 
 class Memory(ReusableCollector):
@@ -135,7 +135,7 @@ class Memory(ReusableCollector):
             ):
                 return self._last_meminfo_output
 
-            output = adb.shell(
+            output = adb_shell(adb,
                 cmd="dumpsys meminfo {}".format(self.pid),
                 deviceId=self.deviceId,
                 timeout=self.ADB_TIMEOUT,
@@ -254,7 +254,7 @@ class Memory(ReusableCollector):
             if cached is not None:
                 totalPass, swapPass = cached
             else:
-                totalPass, swapPass = 0, 0
+                raise
             if used_cache:
                 logger.warning("[Memory] %s, using cached value", e)
             elif not self._process_exists(_d):

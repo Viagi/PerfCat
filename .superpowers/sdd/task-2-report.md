@@ -41,3 +41,14 @@ pytest -q tests/test_adb_command_result.py tests/test_core_adb_client.py tests/t
 ### 最终验证
 - `pytest -q tests/test_adb_command_result.py tests/test_core_adb_client.py tests/test_collection_stability.py tests/test_recording_stability.py tests/test_collector_adb_metrics.py tests/test_collector_fps.py tests/test_device_android.py tests/test_android_device.py tests/test_metric_model.py`
 - 结果：`63 passed`；保留既有 1269 个 Python/Werkzeug 弃用警告。
+
+## Task 2 最终验收修复（2026-10-26）
+
+- 新增 `collector.base.adb_shell()` 统一适配：真实 `ADB` 调用 strict structured mode，失败抛出携带 `CommandResult` 的 `ADBCommandError`；测试 double 保持历史 shell 兼容。
+- cpu/disk/battery/fps/network/device/android/memory/gpu/thermal/file_io/gpu_stats 等实际路径迁移到该适配器。
+- collector 无缓存时不再把 ADB 失败伪装为 0；失败继续穿透 sampler，统一 sampler 可填充 `MetricSample.error`。
+- `CollectorSampler._age_seconds()` 使用 `getattr` 安全读取缺失的 `last_sample_monotonic`，回退 `last_sample_time`，墙钟倒退按 missing/stale 处理。
+- 补充 `delattr` 缺失属性回归测试。
+
+验证：
+`pytest -q tests/test_collection_stability.py tests/test_collector_adb_metrics.py tests/test_collector_fps.py tests/test_device_android.py tests/test_android_device.py` → 41 passed。

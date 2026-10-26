@@ -13,6 +13,7 @@ from logzero import logger
 
 from perfcattle.collector.base import (
     ReusableCollector,
+    adb_shell,
     _SAMPLER_ADB_SEMAPHORE,
     _SAMPLER_PHASE_OFFSETS,
 )
@@ -159,7 +160,7 @@ class FileIO(ReusableCollector):
     def _read_uid(self):
         if self._uid is not None:
             return self._uid
-        output = adb.shell(
+        output = adb_shell(adb,
             cmd=f"cat /proc/{self.pid}/status",
             deviceId=self.deviceId,
             timeout=self.ADB_TIMEOUT,
@@ -304,7 +305,7 @@ class FileIO(ReusableCollector):
 
     def _read_storaged_events(self):
         uid = self._read_uid()
-        output = adb.shell(
+        output = adb_shell(adb,
             cmd=f"dumpsys storaged --force --hours {self.STORAGED_HOURS}",
             deviceId=self.deviceId,
             timeout=15,

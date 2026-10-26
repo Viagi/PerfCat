@@ -7,7 +7,7 @@ from logzero import logger
 
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
-from perfcattle.collector.base import ReusableCollector
+from perfcattle.collector.base import ReusableCollector, adb_shell
 
 
 class GPU(ReusableCollector):
@@ -49,7 +49,7 @@ class GPU(ReusableCollector):
 
     def _sample_android_gpu_rate(self):
         cmd = "cat /sys/class/kgsl/kgsl-3d0/gpubusy"
-        result = adb.shell(cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
+        result = adb_shell(adb, cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
         parts = result.strip().split()
         if len(parts) < 2 or not parts[0] or not parts[1]:
             return self._fallback_gpu_value()
@@ -83,7 +83,7 @@ class GPU(ReusableCollector):
                 logger.warning("[GPU] %s, using cached value", e)
                 return cached
             logger.warning("[GPU] %s, no cached value", e)
-            return 0
+            raise
 
     def getiOSGpuRate(self):
         """获取 iOS GPU 使用率"""

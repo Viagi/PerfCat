@@ -10,7 +10,7 @@ from logzero import logger
 
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
-from perfcattle.collector.base import ReusableCollector
+from perfcattle.collector.base import ReusableCollector, adb_shell
 
 
 class ThermalSensor(ReusableCollector):
@@ -101,7 +101,7 @@ class ThermalSensor(ReusableCollector):
             'read -r v < "$z/temp" 2>/dev/null || continue; '
             'printf "%s|%s|%s\\n" "$z" "$t" "$v"; done'
         )
-        return adb.shell(cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
+        return adb_shell(adb, cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
 
     def _load_sensor_metadata(self):
         if self._sensor_aliases is not None:
@@ -117,7 +117,7 @@ class ThermalSensor(ReusableCollector):
             'printf "__DRIVERS__\\n"; '
             'readlink /sys/bus/platform/devices/*tsens*/driver 2>/dev/null'
         )
-        output = adb.shell(cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
+        output = adb_shell(adb, cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
         config, marker, compatible = (output or "").partition("__COMPATIBLE__")
         compatible, _, hardware = compatible.partition("__PLATFORM__")
         board, _, drivers = hardware.partition("__DRIVERS__")
@@ -311,7 +311,7 @@ class ThermalSensor(ReusableCollector):
     def getThermalType(self):
         """获取温度传感器类型列表"""
         cmd = "cat /sys/class/thermal/thermal_zone*/type"
-        result = adb.shell(cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
+        result = adb_shell(adb, cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
         typeList = result.splitlines()
         return typeList
 

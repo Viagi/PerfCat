@@ -10,6 +10,7 @@ import time
 from logzero import logger
 
 from perfcattle.core.adb_client import adb
+from perfcattle.collector.base import adb_shell
 from perfcattle.core.platform import Platform
 from perfcattle.collector.gpu_counters import GpuBandwidth
 
@@ -43,7 +44,7 @@ _TEMP_SOURCES = [
 
 def _read(deviceId, path):
     """cat 一个设备节点；不可读时返回空字符串。"""
-    return adb.shell(cmd=f"cat {path}", deviceId=deviceId, timeout=5)
+    return adb_shell(adb, cmd=f"cat {path}", deviceId=deviceId, timeout=5)
 
 
 def _to_number(text):
@@ -127,7 +128,7 @@ class GpuStats(object):
             if text.strip() and _parse_temperature(text) is not None:
                 return name, path
 
-        listing = adb.shell(
+        listing = adb_shell(adb,
             cmd=(
                 'for f in /sys/class/thermal/thermal_zone*/type; do '
                 'echo "$f $(cat $f 2>/dev/null)"; done'
@@ -190,7 +191,7 @@ class GpuStats(object):
         if self._mem_cache and now - self._mem_ts < self.MEMORY_INTERVAL:
             return self._mem_cache
 
-        dump = adb.shell(cmd="dumpsys gpu", deviceId=self.deviceId, timeout=8) or ""
+        dump = adb_shell(adb, cmd="dumpsys gpu", deviceId=self.deviceId, timeout=8) or ""
         result = {}
         total = re.search(r"Global total:\s*(\d+)", dump)
         if total:

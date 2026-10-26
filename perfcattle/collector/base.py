@@ -6,7 +6,19 @@ import threading
 import time
 
 from logzero import logger
+from perfcattle.core.adb_client import ADB
 from perfcattle.core.metrics import MetricSample, MetricStatus, finite_number
+
+
+def adb_shell(client, **kwargs):
+    """Run a collector ADB command with structured failure propagation.
+
+    Test doubles that only implement the historical ``shell`` API remain
+    supported, while the real ADB client always uses strict structured mode.
+    """
+    if isinstance(client, ADB):
+        return client.shell(strict=True, **kwargs)
+    return client.shell(**kwargs)
 
 
 def adapt_metric_sample(
@@ -300,8 +312,9 @@ class CollectorSampler:
         """Return cache age, safely handling samplers persisted before monotonic timestamps."""
         if self.last_sample_time is None:
             return None
-        if self.last_sample_monotonic is not None:
-            age = time.monotonic() - self.last_sample_monotonic
+        monotonic_sample_time = getattr(self, "last_sample_monotonic", None)
+        if monotonic_sample_time is not None:
+            age = time.monotonic() - monotonic_sample_time
         else:
             # Wall-clock fallback is only an estimate. A backwards clock jump
             # is unsafe, so treat it as stale rather than fabricating freshness.

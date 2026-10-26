@@ -123,6 +123,18 @@ def test_missing_monotonic_timestamp_is_not_fresh_after_wall_clock_jump(monkeypa
     assert sampler.get_latest(max_age=1.0) is None
 
 
+def test_missing_monotonic_attribute_is_safe(monkeypatch):
+    sampler = CollectorSampler(
+        name="cpu", sample_func=lambda: 5, interval=0.1, stale_ttl=1.0,
+        background=False, unified=True,
+    )
+    sampler.sample_once()
+    del sampler.last_sample_monotonic
+    assert sampler.get_latest(max_age=1.0) == 5
+    monkeypatch.setattr("perfcattle.collector.base.time.time", lambda: sampler.last_sample_time - 10)
+    assert sampler.get_latest(max_age=1.0) is None
+
+
 def test_wait_for_latest_returns_cached_sample_without_rewrapping(monkeypatch):
     sampler = CollectorSampler(
         name="cpu", sample_func=lambda: 5, interval=0.1, stale_ttl=1.0,

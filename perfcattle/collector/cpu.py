@@ -9,7 +9,7 @@ from logzero import logger
 
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
-from perfcattle.collector.base import ReusableCollector
+from perfcattle.collector.base import ReusableCollector, adb_shell
 
 
 class CPU(ReusableCollector):
@@ -90,7 +90,7 @@ class CPU(ReusableCollector):
         return True
 
     def _read_cpu_stat_lines(self):
-        result = adb.shell(
+        result = adb_shell(adb,
             cmd="cat /proc/stat", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT
         )
         return result.splitlines()
@@ -132,7 +132,7 @@ class CPU(ReusableCollector):
         """获取某一时刻进程的 CPU 使用量"""
         for attempt in range(2):
             cmd = "cat /proc/{}/stat".format(self.pid)
-            result = adb.shell(
+            result = adb_shell(adb,
                 cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT
             )
             toks = re.split("\\s+", result.strip())
@@ -360,7 +360,7 @@ class CPU(ReusableCollector):
             if cached is not None:
                 appCpuRate, sysCpuRate = cached
             else:
-                appCpuRate, sysCpuRate = 0, 0
+                raise
             if not self._process_exists(_d):
                 logger.error("[CPU] {} : No process found".format(self.pkgName))
             elif used_cache:
