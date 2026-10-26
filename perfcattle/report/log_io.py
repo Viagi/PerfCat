@@ -8,6 +8,7 @@ import json
 import os
 import time
 from logzero import logger
+from perfcattle.core.metrics import MetricQuality, finite_number
 from perfcattle.core.platform import Platform
 
 
@@ -240,27 +241,38 @@ class LogIO:
 
     def _absolute_points(self, scene, filename):
         """读取普通日志，返回 [(绝对秒数, 数值), ...]。"""
+        points, _ = self._absolute_points_with_quality(scene, filename)
+        return points
+
+    def _absolute_points_with_quality(self, scene, filename):
+        """读取普通日志并返回点集与结构化质量统计。"""
         points = []
+        quality = MetricQuality()
         filepath = os.path.join(self.report_dir, scene, filename)
         if not os.path.exists(filepath):
-            return points
+            return points, quality
         for line in self.open_file(filepath, "r"):
-            parts = line.split("=")
+            quality.total += 1
+            parts = line.split("=", 1)
             if len(parts) < 2:
+                quality.invalid += 1
                 continue
             try:
                 seconds = self._clock_seconds(parts[0])
-            except (ValueError, IndexError):
+                value = float(parts[1].strip())
+                if not finite_number(value):
+                    raise ValueError("non-finite value")
+                if value.is_integer() and not any(c in parts[1] for c in ".eE"):
+                    value = int(value)
+            except (ValueError, TypeError, IndexError):
+                quality.invalid += 1
                 continue
-            try:
-                value = int(parts[1].strip())
-            except ValueError:
-                try:
-                    value = float(parts[1].strip())
-                except ValueError:
-                    continue
             points.append((seconds, value))
-        return points
+            quality.valid += 1
+            epoch_ms = int(seconds * 1000)
+            quality.first_epoch_ms = epoch_ms if quality.first_epoch_ms is None else min(quality.first_epoch_ms, epoch_ms)
+            quality.last_epoch_ms = epoch_ms if quality.last_epoch_ms is None else max(quality.last_epoch_ms, epoch_ms)
+        return points, quality
 
     @staticmethod
     def _clock_distance(first, second):
@@ -430,6 +442,11 @@ class LogIO:
             case _:
                 logger.error("record network data failed")
 
+    def readLogWithQuality(self, scene, filename, origin=None):
+        """读取日志点集、数值和 MetricQuality。"""
+        points, values = self.readLog(scene, filename, origin=origin)
+        return points, values, self._last_quality
+
     def readLog(self, scene, filename, origin=None):
         """读取 APM 日志文件数据，x 轴为相对采集起点的秒数。
 
@@ -448,16 +465,21 @@ class LogIO:
         """
         log_data_list = []
         target_data_list = []
+        quality = MetricQuality()
+        self._last_quality = quality
         if origin is None:
             origin = self.scene_origin(scene)
 
         filepath = os.path.join(self.report_dir, scene, filename)
         if not os.path.exists(filepath):
+            quality.missing = 1
             return log_data_list, target_data_list
 
         for line in self.open_file(filepath, "r"):
-            parts = line.split("=")
+            quality.total += 1
+            parts = line.split("=", 1)
             if len(parts) < 2:
+                quality.invalid += 1
                 continue
 
             time_str = parts[0].strip()
@@ -471,13 +493,20 @@ class LogIO:
                     max(0.0, self._relative_seconds(current_seconds, origin)), 1
                 )
             except (ValueError, IndexError, TypeError):
-                relative_time = len(log_data_list)
+                quality.invalid += 1
+                continue
 
             try:
-                value = int(value_str)
-            except ValueError:
                 value = float(value_str)
+                if not finite_number(value):
+                    raise ValueError("non-finite value")
+                if value.is_integer() and not any(c in value_str for c in ".eE"):
+                    value = int(value)
+            except (ValueError, TypeError):
+                quality.invalid += 1
+                continue
 
+            quality.valid += 1
             log_data_list.append({"x": relative_time, "y": value})
             target_data_list.append(value)
 
