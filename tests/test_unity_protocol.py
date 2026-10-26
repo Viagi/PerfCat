@@ -1,4 +1,5 @@
 """Protocol capture: profiler.raw is opened at the recording start."""
+import pytest
 from unittest.mock import patch
 
 from perfcattle.unity.profiles import FEATURE_PROFILER_STREAM
@@ -133,3 +134,33 @@ def test_wait_stream_idle_returns_once_data_stops():
     started = _time.monotonic()
     assert session._wait_stream_idle(idle_seconds=0.05, timeout=1.0) is True
     assert _time.monotonic() - started < 0.6
+
+
+def test_start_profiler_resets_integrity_state(tmp_path):
+    """A new stream must not inherit a previous truncation flag."""
+    session = _session()
+    session._truncated = True
+    session._error = "frame payload truncated"
+    session._last_snapshot = {"available": True, "values": {}, "frame": 1}
+
+    with patch.object(session, "set_deep_profiling"), patch.object(
+        session, "set_areas"
+    ), patch.object(session, "_send"), patch(
+        "perfcattle.unity.protocol.threading.Thread"
+    ):
+        session.start_profiler(str(tmp_path / "profiler.raw"))
+
+    assert session.raw_complete is True
+    assert session.error is None
+    assert session._last_snapshot is None
+
+
+def test_start_profiler_refuses_a_second_reader(tmp_path):
+    from perfcattle.unity.protocol import UnityProtocolError
+
+    session = _session()
+    alive = type("T", (), {"is_alive": lambda self: True})()
+    session._reader = alive
+
+    with pytest.raises(UnityProtocolError, match="reader is still running"):
+        session.start_profiler(str(tmp_path / "profiler.raw"))

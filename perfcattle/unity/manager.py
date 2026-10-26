@@ -209,7 +209,10 @@ class UnityCapture(object):
         while not self._stats_stop.is_set():
             try:
                 data = self.stats()
-                if data.get("available"):
+                # ``stale`` means the stream was just restarted and the values
+                # belong to the previous stream; logging them would duplicate a
+                # sample with the wrong frame number.
+                if data.get("available") and not data.get("stale"):
                     stamp = datetime.datetime.now().strftime("%H:%M:%S.%f")
                     payload = dict(data.get("values") or {})
                     payload["frame"] = data.get("frame")

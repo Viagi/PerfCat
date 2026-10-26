@@ -71,3 +71,47 @@ def test_helper_stats_reads_command_reply(monkeypatch):
     assert data["available"] is True
     assert data["values"]["cpu_frame_ms"] == 9.5
     assert backend.last_stats == data
+
+
+def test_stats_logger_does_not_write_stale_snapshots(tmp_path, monkeypatch):
+    """A stale snapshot (stream restart) must not be logged as a new sample."""
+    import json
+    from perfcattle.unity import manager as unity_manager
+
+    monkeypatch.setattr(
+        unity_manager, "_report_dir", lambda: str(tmp_path), raising=False
+    )
+    capture = unity_manager.UnityCapture()
+    capture._stats_available = True
+    capture._stats_backend = object()
+    capture._stats_mode = "protocol"
+    capture._stats_version = "2022.3"
+
+    calls = {"n": 0}
+
+    def fake_stats():
+        calls["n"] += 1
+        return {"available": True, "stale": True, "values": {"draw_calls": 1},
+                "frame": 1}
+
+    monkeypatch.setattr(capture, "stats", fake_stats)
+    monkeypatch.setattr(capture, "_stats_stop", _StopAfterFirstIteration())
+
+    capture._stats_logger_loop()
+
+    log = tmp_path / "unity_stats.log"
+    assert not log.exists() or log.read_text(encoding="utf-8").strip() == ""
+
+
+class _StopAfterFirstIteration:
+    """Behaves like an Event that turns set after the first loop pass."""
+
+    def __init__(self):
+        self._checks = 0
+
+    def is_set(self):
+        self._checks += 1
+        return self._checks > 1
+
+    def wait(self, timeout):
+        return True

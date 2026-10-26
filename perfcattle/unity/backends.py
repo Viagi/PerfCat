@@ -237,6 +237,15 @@ class HelperBackend(object):
         rotate = self._command("start unity_{}".format(stamp), timeout=10)
         if rotate.startswith("ok") and len(rotate.split()) > 1:
             self.remote_log = rotate.split()[1]
+        elif rotate.startswith("err"):
+            # The helper could not rotate the log (main thread timeout, missing
+            # permissions). Failing here is better than recording nothing and
+            # reporting a successful empty capture.
+            raise RuntimeError(
+                "helper could not start the profiler log: {}".format(
+                    rotate[4:].strip() or rotate
+                )
+            )
         self.available = True
         self._detect_stats()
         # The in-game helper captures in managed code and has no PlayerConnection
@@ -343,8 +352,10 @@ class HelperBackend(object):
                     self._command("stop", timeout=10)
                 except OSError:
                     pass
-                import time
-                time.sleep(0.8)
+                # Poll the device file until it stops growing instead of
+                # guessing with a fixed sleep; a long capture can still be
+                # flushing when 0.8 s have passed.
+                self._wait_file_settled()
             remote = self.remote_log or posixpath.join(self.device_dir, PROFILER_FILE)
             if discard:
                 # Auto-connect closed before recording: drop the device log
@@ -368,6 +379,26 @@ class HelperBackend(object):
             self.available = False
         result["files"] = self.files
         return result
+
+    def _wait_file_settled(self, timeout=8.0, idle=0.4):
+        """Wait until the device profiler log stops growing."""
+        import time
+
+        remote = self.remote_log
+        if not remote:
+            time.sleep(idle)
+            return
+        deadline = time.monotonic() + timeout
+        last_size = -1
+        stable_since = time.monotonic()
+        while time.monotonic() < deadline:
+            size = self._device_file_size(remote)
+            if size != last_size:
+                last_size = size
+                stable_since = time.monotonic()
+            elif time.monotonic() - stable_since >= idle:
+                return
+            time.sleep(0.1)
 
     def close(self):
         self._unforward()

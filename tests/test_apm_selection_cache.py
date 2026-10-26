@@ -235,5 +235,6 @@ def test_thermal_endpoint_returns_sensor_list(monkeypatch):
     assert response.status_code == 200
     assert response.json == {
         "status": 1,
+        "available": True,
         "sensors": [{"type": "cpu-thermal", "temp": "45000"}],
     }

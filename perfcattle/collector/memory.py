@@ -296,28 +296,19 @@ class Memory(ReusableCollector):
             cached = self._cached_sampled_value(
                 "memory_detail", max_age=self.MEMORY_DETAIL_STALE_TTL_SECONDS
             )
-            used_cache = cached is not None
-            if cached is not None:
-                memory_dict = dict(cached)
-            else:
-                memory_dict = dict(
-                    java_heap=0,
-                    native_heap=0,
-                    code_pss=0,
-                    stack_pss=0,
-                    graphics_pss=0,
-                    private_pss=0,
-                    system_pss=0,
-                )
-            if used_cache:
-                logger.warning("[Memory Detail] %s, using cached value", e)
-            elif not self._process_exists(_d):
-                logger.error(
-                    "[Memory Detail] {} : No process found".format(self.pkgName)
-                )
-            else:
-                logger.exception(e)
-            if noLog is False and used_cache:
+            if cached is None:
+                # Unavailable, not zero: reporting a full set of 0 MB would
+                # look like a real (and absurd) measurement.
+                if not self._process_exists(_d):
+                    logger.error(
+                        "[Memory Detail] {} : No process found".format(self.pkgName)
+                    )
+                else:
+                    logger.warning("[Memory Detail] %s, no cached value", e)
+                return None
+            memory_dict = dict(cached)
+            logger.warning("[Memory Detail] %s, using cached value", e)
+            if noLog is False:
                 self._write_memory_detail_log(_f, memory_dict)
         return memory_dict
 

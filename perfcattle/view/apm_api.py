@@ -27,6 +27,11 @@ from perfcattle.collector.ios_perf import IOSPerformance, IOSRecoveryExhausted
 from perfcattle.collector.pk import CPU_PK, MEM_PK, Flow_PK, FileIO_PK, FPS_PK
 
 apm_api = Blueprint("apm_api", __name__)
+_MEMORY_DETAIL_KEYS = (
+    "java_heap", "native_heap", "code_pss", "stack_pss",
+    "graphics_pss", "private_pss", "system_pss",
+)
+
 d = Devices()
 f = ReportStore()
 method = Method()
@@ -326,11 +331,22 @@ def getMemoryDetail():
             processName=processName,
         )
         memory_detail = memory.getAndroidMemoryDetail()
-        result = {"status": 1, "memory_detail": memory_detail}
+        result = {
+            "status": 1,
+            "available": memory_detail is not None,
+            "memory_detail": memory_detail or {
+                key: None for key in _MEMORY_DETAIL_KEYS
+            },
+        }
     except Exception as e:
         logger.error("get memory detail data failed")
         logger.exception(e)
-        result = {"status": 1, "memory_detail": memory_detail}
+        result = {
+            "status": 1,
+            "available": False,
+            "memory_detail": {key: None for key in _MEMORY_DETAIL_KEYS},
+            "msg": str(e),
+        }
     return result
 
 
@@ -663,10 +679,16 @@ def getDisk():
         deviceId = d.getIdbyDevice(device, platform)
         disk = Disk.getObject(deviceId=deviceId, platform=platform)
         value = disk.getDisk()
-        result = {"status": 1, "used": value["used"], "free": value["free"]}
+        result = {
+            "status": 1,
+            "available": True,
+            "used": value["used"],
+            "free": value["free"],
+        }
     except Exception as e:
         logger.exception(e)
-        result = {"status": 1, "used": 0, "free": 0}
+        result = {"status": 1, "available": False, "used": None, "free": None,
+                  "msg": str(e)}
     return result
 
 
@@ -711,13 +733,15 @@ def getThermal():
     try:
         deviceId = d.getIdbyDevice(device, platform)
         thermal = ThermalSensor.getObject(deviceId=deviceId, platform=platform)
+        sensors = thermal.getThermalTemp(noLog=no_log) or []
         result = {
             "status": 1,
-            "sensors": thermal.getThermalTemp(noLog=no_log) or [],
+            "available": bool(sensors),
+            "sensors": sensors,
         }
     except Exception as e:
         logger.exception(e)
-        result = {"status": 1, "sensors": []}
+        result = {"status": 1, "available": False, "sensors": [], "msg": str(e)}
     return result
 
 

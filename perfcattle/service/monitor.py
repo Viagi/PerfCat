@@ -528,10 +528,26 @@ class AppPerformanceMonitor(ServiceConfig):
                 max_workers=len(collectors),
                 thread_name_prefix="perfcattle-collector",
             )
-            futures = [executor.submit(collector) for collector in collectors]
+            futures = {
+                executor.submit(collector): collector.__name__
+                for collector in collectors
+            }
             wait(futures)
-            for future in futures:
-                future.result()
+            # One failing collector (app killed mid-run, transient adb error)
+            # must not throw away every other metric: report what was
+            # collected and surface the failures in the log instead.
+            failures = []
+            for future, name in futures.items():
+                try:
+                    future.result()
+                except Exception as e:
+                    failures.append(name)
+                    logger.exception("%s failed: %s", name, e)
+            if failures:
+                logger.warning(
+                    "collectors failed, report still generated: %s",
+                    ", ".join(failures),
+                )
             cleanup()
             self.setPerfs(report_path=report_path)
         except KeyboardInterrupt:

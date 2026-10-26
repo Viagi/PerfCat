@@ -448,7 +448,16 @@ class UnityProtocolSession(object):
         else:
             self._raw_file = None
             self._raw_bytes = 0
+        if self._reader is not None and self._reader.is_alive():
+            # Two readers on one socket would interleave frames and corrupt
+            # the archive; refuse to start a second one.
+            raise UnityProtocolError("previous profiler reader is still running")
         self._running = True
+        # Each (re)started stream owns its own integrity state, so a stale
+        # truncation from a previous stream cannot leak into meta.json.
+        self._truncated = False
+        self._error = None
+        self._last_snapshot = None
         self._send(
             build_packet(
                 self.profile.message("profiler", "enable_capture"),
@@ -549,7 +558,12 @@ class UnityProtocolSession(object):
             self._area_thread.join(timeout=1)
             self._area_thread = None
         if self._reader:
-            self._reader.join(timeout=3)
+            # read_frame may block up to 10 s on a half-read payload, so the
+            # join must outlast it; otherwise a lingering reader would race
+            # the next stream on the same socket.
+            self._reader.join(timeout=12)
+            if self._reader.is_alive():
+                logger.warning("[Unity] profiler reader did not stop in time")
         if self._raw_file:
             try:
                 self._raw_file.flush()

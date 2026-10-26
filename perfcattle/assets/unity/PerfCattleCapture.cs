@@ -37,6 +37,8 @@ public static class PerfCattleCapture
     const int PortTries = 24;
 
     static TcpListener listener;
+
+    static int snapshotBusy;
     static Thread acceptThread;
     static string captureDir;
     static volatile bool running;
@@ -92,9 +94,23 @@ public static class PerfCattleCapture
             TcpClient client;
             try { client = listener.AcceptTcpClient(); }
             catch (Exception) { break; }
-            try { Handle(client); }
-            catch (Exception e) { Debug.LogWarning("[PerfCattle] command failed: " + e.Message); }
-            finally { try { client.Close(); } catch (Exception) { } }
+            // One command thread per client: a MemoryProfiler snapshot can take
+            // minutes and must not block stats/ping/stop on other connections.
+            TcpClient captured = client;
+            var worker = new Thread(() =>
+            {
+                try { Handle(captured); }
+                catch (Exception e) { Debug.LogWarning("[PerfCattle] command failed: " + e.Message); }
+                finally { try { captured.Close(); } catch (Exception) { } }
+            });
+            worker.IsBackground = true;
+            worker.Name = "PerfCattleCommand";
+            try { worker.Start(); }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[PerfCattle] cannot start command thread: " + e.Message);
+                try { captured.Close(); } catch (Exception) { }
+            }
         }
     }
 
@@ -120,10 +136,22 @@ public static class PerfCattleCapture
                                              + (Debug.isDebugBuild ? 1 : 0));
                             break;
                         case "start":
-                            writer.WriteLine("ok " + RotateLog(Argument(parts, "profiler")));
+                            writer.WriteLine("ok " + RotateLogOnMainThread(Argument(parts, "profiler")));
                             break;
                         case "snapshot":
-                            TakeSnapshot(Argument(parts, DateTime.Now.ToString("yyyyMMdd_HHmmss")), writer);
+                            if (Interlocked.CompareExchange(ref snapshotBusy, 1, 0) != 0)
+                            {
+                                writer.WriteLine("err snapshot_in_progress");
+                                break;
+                            }
+                            try
+                            {
+                                TakeSnapshot(Argument(parts, DateTime.Now.ToString("yyyyMMdd_HHmmss")), writer);
+                            }
+                            finally
+                            {
+                                Interlocked.Exchange(ref snapshotBusy, 0);
+                            }
                             break;
                         case "stats":
                             writer.WriteLine("ok " + PerfCattleGameStats.Snapshot);
@@ -158,6 +186,25 @@ public static class PerfCattleCapture
         Profiler.enableBinaryLog = true;
         Profiler.enabled = true;
         return path;
+    }
+
+    static string RotateLogOnMainThread(string name)
+    {
+        // Profiler state belongs to the main thread; start and stop must use
+        // the same path or the switch can race the render loop.
+        string result = null;
+        var done = new ManualResetEventSlim(false);
+        PerfCattleCaptureRunner.Enqueue(() =>
+        {
+            try { result = RotateLog(name); }
+            catch (Exception e) { result = "err " + Token(e.GetType().Name); }
+            finally { done.Set(); }
+        });
+        if (!done.Wait(3000))
+        {
+            return "err start_timeout";
+        }
+        return result;
     }
 
     static void TakeSnapshot(string name, StreamWriter writer)
