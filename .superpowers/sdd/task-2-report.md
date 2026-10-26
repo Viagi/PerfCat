@@ -29,11 +29,15 @@ pytest -q tests/test_adb_command_result.py tests/test_core_adb_client.py tests/t
 - stale TTL 过期时统一 sampler 返回 `MetricStatus.MISSING`；TTL 内缓存返回 `CACHED` 并带 `stale_age_ms`。
 - 增加严格 shell 错误穿透、legacy mode、stale missing 等边界测试。
 
-## 验证
+## Task 2 复审最终修复（2026-10-26）
 
-```text
-pytest -q tests/test_adb_command_result.py tests/test_core_adb_client.py tests/test_collection_stability.py tests/test_recording_stability.py
-18 passed
-pytest -q tests/test_collector_adb_metrics.py tests/test_collector_fps.py tests/test_device_android.py tests/test_android_device.py tests/test_metric_model.py
-43 passed
-```
+### 修复内容
+- `_wait_for_latest()` 统一通过 `_cached_result()` 返回结果；统一 sampler 直接返回已有 `MetricSample(CACHED)`，不再把缓存重新包装成 `OK`。
+- `ADB.shell()` 恢复 `strict=False` 默认，保持历史失败命令返回文本的兼容行为；需要错误传播的调用方可显式传 `strict=True`，并通过 `ADBCommandError.result.error_kind` 追踪 timeout/nonzero 等失败。
+- 兼容缺失 monotonic 时间戳时使用 `last_sample_time` 估算年龄；墙钟倒退或无法安全估算时按 stale/missing 处理，不伪装新鲜。
+- 补充 wait cached、ADB 错误 kind 穿透到 `MetricSample.error`、legacy shell 行为、TTL 过期和墙钟跳变回归测试。
+- 未修改 `perfcattle/templates/analysis.html`、`perfcattle/templates/report.html`、`.zcodeignore`。
+
+### 最终验证
+- `pytest -q tests/test_adb_command_result.py tests/test_core_adb_client.py tests/test_collection_stability.py tests/test_recording_stability.py tests/test_collector_adb_metrics.py tests/test_collector_fps.py tests/test_device_android.py tests/test_android_device.py tests/test_metric_model.py`
+- 结果：`63 passed`；保留既有 1269 个 Python/Werkzeug 弃用警告。

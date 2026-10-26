@@ -150,12 +150,12 @@ class ADB:
                 error_kind="exception",
             )
 
-    def shell(self, cmd, deviceId, timeout=30, strict=True):
-        """Return stdout while preserving command failures in strict mode.
+    def shell(self, cmd, deviceId, timeout=30, strict=False):
+        """Return stdout using the historical best-effort default.
 
-        ``strict=False`` retains the historical best-effort text adapter for
-        non-collector callers; collectors use the default strict path so ADB
-        timeout/nonzero/error_kind metadata cannot be discarded.
+        Callers that need structured failure propagation must opt into
+        ``strict=True`` (or use :meth:`shell_result`). This preserves legacy
+        callers that expect failed commands to yield partial/empty text.
         """
         result = self.shell_result(cmd, deviceId, timeout=timeout)
         if strict and not result.ok:

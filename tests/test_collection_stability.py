@@ -100,7 +100,7 @@ def test_unified_sampler_returns_failure_and_expired_cache():
     assert failed.stale_age_ms is None
 
 
-def test_get_latest_compatibly_initializes_missing_monotonic_timestamp():
+def test_get_latest_compatibly_estimates_missing_monotonic_timestamp():
     sampler = CollectorSampler(
         name="cpu", sample_func=lambda: 5, interval=0.1, stale_ttl=1.0,
         background=False, unified=True,
@@ -109,7 +109,47 @@ def test_get_latest_compatibly_initializes_missing_monotonic_timestamp():
     sampler.last_sample_monotonic = None
     latest = sampler.get_latest(max_age=1.0)
     assert latest == 5
-    assert sampler.last_sample_monotonic is not None
+    assert sampler.last_sample_monotonic is None
+
+
+def test_missing_monotonic_timestamp_is_not_fresh_after_wall_clock_jump(monkeypatch):
+    sampler = CollectorSampler(
+        name="cpu", sample_func=lambda: 5, interval=0.1, stale_ttl=1.0,
+        background=False, unified=True,
+    )
+    sampler.sample_once()
+    sampler.last_sample_monotonic = None
+    monkeypatch.setattr("perfcattle.collector.base.time.time", lambda: sampler.last_sample_time - 10)
+    assert sampler.get_latest(max_age=1.0) is None
+
+
+def test_wait_for_latest_returns_cached_sample_without_rewrapping(monkeypatch):
+    sampler = CollectorSampler(
+        name="cpu", sample_func=lambda: 5, interval=0.1, stale_ttl=1.0,
+        background=False, unified=True,
+    )
+    sampler.sample_once()
+    monkeypatch.setattr(sampler, "start", lambda: None)
+    result = sampler._wait_for_latest()
+    assert result.status is MetricStatus.CACHED
+    assert result.value == 5
+    assert result.stale_age_ms is not None
+
+
+def test_adb_error_kind_reaches_metric_sample_error():
+    from perfcattle.core.adb_client import ADBCommandError
+    from perfcattle.core.command_result import CommandResult
+
+    def sample():
+        raise ADBCommandError(CommandResult(ok=False, error_kind="timeout", stderr="adb timeout"))
+
+    sampler = CollectorSampler(
+        name="cpu", sample_func=sample, interval=0.1, stale_ttl=1.0,
+        background=False, unified=True,
+    )
+    result = sampler.sample_once()
+    assert result.status is MetricStatus.MISSING
+    assert result.error == "timeout: adb timeout"
 
 
 def test_unified_sampler_uses_missing_when_cache_ttl_expires():

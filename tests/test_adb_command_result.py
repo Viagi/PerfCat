@@ -54,7 +54,7 @@ def test_shell_strict_raises_with_structured_failure_metadata():
     failed = MagicMock(stdout=b"partial\n", stderr=b"timed out\n", returncode=1)
     with patch("perfcattle.core.adb_client.subprocess.run", return_value=failed):
         try:
-            client.shell("cat /proc/stat", "device")
+            client.shell("cat /proc/stat", "device", strict=True)
         except ADBCommandError as exc:
             assert exc.result.ok is False
             assert exc.result.error_kind == "returncode"
