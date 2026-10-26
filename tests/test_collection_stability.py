@@ -407,3 +407,66 @@ def test_background_sampler_falls_back_to_sync_sample_before_first_cache():
 
     assert sampler.get_or_sample() == 7.5
     sampler.stop()
+
+
+def test_collect_all_still_reports_when_one_collector_fails(monkeypatch):
+    """A single failing collector must not discard the whole report."""
+    events = []
+
+    class FakeFile:
+        def clear_file(self):
+            pass
+
+        def begin_session(self):
+            pass
+
+    class FakeFuture:
+        def __init__(self, name):
+            self.name = name
+
+        def result(self):
+            if self.name == "collectCpu":
+                raise RuntimeError("app died mid-run")
+            return None
+
+    class FakeExecutor:
+        instances = []
+
+        def __init__(self, max_workers, thread_name_prefix=None):
+            self.tasks = []
+            FakeExecutor.instances.append(self)
+
+        def submit(self, func):
+            self.tasks.append(func.__name__)
+            return FakeFuture(func.__name__)
+
+        def shutdown(self, wait=True, cancel_futures=False):
+            pass
+
+    monitor = AppPerformanceMonitor.__new__(AppPerformanceMonitor)
+    monitor.record = False
+    monitor.deviceId = "device-1"
+    monitor.platform = monitor_module.Platform.Android
+    monitor.collectCpu = lambda: None
+    monitor.collectMemory = lambda: None
+    monitor.collectMemoryDetail = lambda: None
+    monitor.collectBattery = lambda: None
+    monitor.collectFps = lambda: None
+    monitor.collectNetwork = lambda: None
+    monitor.collectFileIO = lambda: None
+    monitor.collectGpu = lambda: None
+    monitor.collectGpuStats = lambda: None
+    monitor.collectThermal = lambda: None
+    monitor.collectDisk = lambda: None
+    # Rename so the fake future knows which task it is.
+    monitor.collectCpu.__name__ = "collectCpu"
+    monitor.setPerfs = lambda report_path=None: events.append("set_perfs")
+    monitor.clear_collector_sessions = lambda: None
+
+    monkeypatch.setattr(monitor_module, "f", FakeFile())
+    monkeypatch.setattr(monitor_module, "ThreadPoolExecutor", FakeExecutor)
+    monkeypatch.setattr(monitor_module, "wait", lambda futures: None)
+
+    monitor.collectAll(report_path="report.html")
+
+    assert "set_perfs" in events, "a failed collector must not skip report generation"
