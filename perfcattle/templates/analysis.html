@@ -1134,7 +1134,7 @@
             <div id="chart-unity-stats"></div>
             <div class="row mt-2">
                 <div class="col-md-6">
-                    <div class="text-muted small" id="unity-drawcalls-title">Draw Calls</div>
+                    <div class="text-muted small" id="unity-drawcalls-title">Draw Calls / SetPass / Dynamic &amp; Static Batches</div>
                     <div id="chart-unity-drawcalls"></div>
                 </div>
                 <div class="col-md-6">
@@ -2027,7 +2027,7 @@
             min: 0,
             tickAmount: 4,
             forceNiceScale: true,
-            title: { text: 'Draw Calls' },
+            title: { text: 'Calls / Batches' },
             labels: {
                 formatter: function(value) { return Math.round(value).toLocaleString(); }
             }
@@ -2125,6 +2125,18 @@
                         name: 'Draw Calls',
                         color: '#FFB020',
                         data: drawCallsData
+                    }, {
+                        name: 'SetPass Calls',
+                        color: '#2FB344',
+                        data: charts['setpass_calls'] || []
+                    }, {
+                        name: 'Dynamic Batches',
+                        color: '#4299E1',
+                        data: charts['dynamic_batches'] || []
+                    }, {
+                        name: 'Static Batches',
+                        color: '#9B59B6',
+                        data: charts['static_batches'] || []
                     }]);
                 }
                 var geometrySeries = [{
@@ -2196,6 +2208,9 @@
                     'CPU: ' + show('cpu_frame_ms') + ' ms'
                     + ' | GPU: ' + show('gpu_frame_ms') + ' ms'
                     + ' | DC: ' + showInt('draw_calls')
+                    + ' | SP: ' + showInt('setpass_calls')
+                    + ' | DynB: ' + showInt('dynamic_batches')
+                    + ' | StaB: ' + showInt('static_batches')
                     + ' | Tri: ' + showK('triangles') + ' k'
                     + ' | Vert: ' + showK('vertices') + ' k'
                     + ' · ' + (lan === 'cn' ? '点击曲线选择帧' : 'click a point to select a frame')

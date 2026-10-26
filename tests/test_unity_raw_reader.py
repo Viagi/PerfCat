@@ -186,3 +186,23 @@ def test_unknown_message_does_not_break_next_block():
     snap = parser.snapshot()
     assert snap["values"]["draw_calls"] == 321
     assert snap["stats"]["bad"] == 1
+
+
+def test_batching_counters_are_mapped():
+    """Draw Call breakdown counters (SetPass / dynamic / static / instanced)
+    must be extracted from the render thread stream."""
+    from perfcattle.unity.raw_reader import RENDER_COUNTERS
+
+    expected = {
+        "Draw Calls Count": "draw_calls",
+        "SetPass Calls Count": "setpass_calls",
+        "Batches Count": "batches",
+        "Static Batches Count": "static_batches",
+        "Dynamic Batches Count": "dynamic_batches",
+        "Instanced Batches Count": "instanced_batches",
+        "Static Batched Draw Calls Count": "static_batched_draws",
+        "Dynamic Batched Draw Calls Count": "dynamic_batched_draws",
+        "Instanced Batched Draw Calls Count": "instanced_batched_draws",
+    }
+    for marker, key in expected.items():
+        assert RENDER_COUNTERS[marker][0] == key

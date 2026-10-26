@@ -549,7 +549,7 @@
                             <div class="card-header">
                                 <div class='card-title'>Unity Engine: Frame Time (ms), Draw Calls &amp; Triangles (k)</div>
                                 <div class="card-actions btn-actions">
-                                    <span class="text-muted">CPU: {{ unity_stats.get('cpu_frame_ms', '-') }} ms &nbsp; GPU: {{ unity_stats.get('gpu_frame_ms', '-') }} ms &nbsp; DC: {{ unity_stats.get('draw_calls', 0)|round|int }} &nbsp; Tri: {{ '%.1f'|format(unity_stats.get('triangles', 0)) }} k &nbsp; Vert: {{ '%.1f'|format(unity_stats.get('vertices', 0)) }} k</span>
+                                    <span class="text-muted">CPU: {{ unity_stats.get('cpu_frame_ms', '-') }} ms &nbsp; GPU: {{ unity_stats.get('gpu_frame_ms', '-') }} ms &nbsp; DC: {% if 'draw_calls' in unity_stats %}{{ unity_stats.get('draw_calls')|round|int }}{% else %}-{% endif %} &nbsp; SP: {% if 'setpass_calls' in unity_stats %}{{ unity_stats.get('setpass_calls')|round|int }}{% else %}-{% endif %} &nbsp; DynB: {% if 'dynamic_batches' in unity_stats %}{{ unity_stats.get('dynamic_batches')|round|int }}{% else %}-{% endif %} &nbsp; StaB: {% if 'static_batches' in unity_stats %}{{ unity_stats.get('static_batches')|round|int }}{% else %}-{% endif %} &nbsp; Tri: {{ '%.1f'|format(unity_stats.get('triangles', 0)) }} k &nbsp; Vert: {{ '%.1f'|format(unity_stats.get('vertices', 0)) }} k</span>
                                     <a class="btn-action cursor-pointer" onclick="screenshot('unity-stats-card','unity_stats.png')">PNG</a>
                                 </div>
                             </div>
@@ -557,7 +557,7 @@
                                 <div id="chart-unity-stats"></div>
                                 <div class="row mt-2">
                                     <div class="col-md-6">
-                                        <div class="text-muted small">Draw Calls</div>
+                                        <div class="text-muted small">Draw Calls / SetPass / Dynamic &amp; Static Batches</div>
                                         <div id="chart-unity-drawcalls"></div>
                                     </div>
                                     <div class="col-md-6">
@@ -851,7 +851,7 @@
         drawCallsOptions.chart.height = 180;
         drawCallsOptions.yaxis = [{
             min: 0,
-            title: { text: 'Draw Calls' },
+            title: { text: 'Calls / Batches' },
             labels: {
                 formatter: function(value) { return Math.round(value).toLocaleString(); }
             }
@@ -874,6 +874,18 @@
             name: 'Draw Calls',
             color: '#FFB020',
             data: {{ unity_stats_charts.get('draw_calls', []) }}
+        },{
+            name: 'SetPass Calls',
+            color: '#2FB344',
+            data: {{ unity_stats_charts.get('setpass_calls', []) }}
+        },{
+            name: 'Dynamic Batches',
+            color: '#4299E1',
+            data: {{ unity_stats_charts.get('dynamic_batches', []) }}
+        },{
+            name: 'Static Batches',
+            color: '#9B59B6',
+            data: {{ unity_stats_charts.get('static_batches', []) }}
         }]);
 
         var geometryOptions = options('line');
