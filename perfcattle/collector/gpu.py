@@ -92,7 +92,12 @@ class GPU(ReusableCollector):
             # A single reading is a valid measurement under both semantics;
             # decide the mode once the next pair arrives.
             gpu = ratio
-        elif busy <= previous[0] or total <= previous[1]:
+        elif busy == previous[0] and total == previous[1]:
+            # Counter has not advanced (GPU idle). Report the ratio for this
+            # sample without reclassifying the node's semantics.
+            gpu = ratio
+        elif busy < previous[0] or total < previous[1]:
+            # Counters went backwards: the node is a per-window value.
             self._gpu_counter_mode = "ratio"
             self._counter_semantics = "window_ratio"
             gpu = ratio

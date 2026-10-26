@@ -155,7 +155,10 @@ class GpuStats(object):
             return self._counter_result(ratio, MetricStatus.OK, None)
         if previous[0] is None or previous[1] is None:
             return self._counter_result(ratio, MetricStatus.OK, None)
-        if busy <= previous[0] or total <= previous[1]:
+        if busy == previous[0] and total == previous[1]:
+            # Idle: the counter has not advanced; keep the current semantics.
+            return self._counter_result(ratio, MetricStatus.OK, None)
+        if busy < previous[0] or total < previous[1]:
             self.counter_mode = "ratio"
             self.counter_semantics = "window_ratio"
             return self._counter_result(ratio, MetricStatus.OK, None)
