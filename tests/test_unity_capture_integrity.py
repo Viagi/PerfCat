@@ -56,3 +56,12 @@ def test_read_frame_reads_complete_frame():
 
     frame = read_frame(sock, timeout=1)
     assert frame.payload == payload
+
+
+def test_session_has_areas_attribute_by_default():
+    from perfcattle.unity.protocol import UnityProtocolSession
+
+    session = UnityProtocolSession("device", "com.example.game")
+    # Regression: begin_record referenced self.areas, which was only defined
+    # on the backend, not the session. The session must own the attribute.
+    assert session.areas is None

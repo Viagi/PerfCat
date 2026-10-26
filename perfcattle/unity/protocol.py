@@ -202,6 +202,7 @@ class UnityProtocolSession(object):
         self.deep_profiling = False
         # None 表示从未发送过 set_enabled_categories，Player 保留自己的默认值。
         self.enabled_categories = None
+        self.areas = None
         self._areas_to_apply = None
         self._area_thread = None
 
@@ -402,6 +403,7 @@ class UnityProtocolSession(object):
         normalized = self.profile.normalize_areas(areas)
         if normalized is None:
             return None
+        self.areas = normalized
         categories = self.profile.categories_for_areas(normalized)
         self.set_enabled_categories(categories)
         return categories
