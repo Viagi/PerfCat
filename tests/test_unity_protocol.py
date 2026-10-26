@@ -53,6 +53,42 @@ def test_begin_record_is_a_noop_when_already_recording():
     start.assert_not_called()
 
 
+def test_begin_record_works_without_manually_assigned_areas():
+    """Regression: the session must own ``areas``.
+
+    ``begin_record`` reads ``self.areas``; it used to be defined only on the
+    backend, so a real attach-then-record raised AttributeError after the
+    stream had already been stopped, blanking the live panel forever.
+    """
+    session = UnityProtocolSession("device", "com.example.game")
+    session._running = True
+    session.profile = FakeProfile()
+
+    with patch.object(session, "stop_profiler") as stop, patch.object(
+        session, "start_profiler"
+    ) as start:
+        session.begin_record("/tmp/profiler.raw")
+
+    stop.assert_called_once_with()
+    start.assert_called_once_with(
+        "/tmp/profiler.raw", deep_profiling=False, areas=None
+    )
+
+
+def test_set_areas_is_stored_on_the_session():
+    profile = FakeProfile()
+    profile.normalize_areas = staticmethod(lambda areas: list(areas))
+    profile.categories_for_areas = staticmethod(lambda areas: ["Scripts"])
+    profile.supports = staticmethod(lambda feature: True)
+
+    session = UnityProtocolSession("device", "com.example.game")
+    session.profile = profile
+    with patch.object(session, "_send"):
+        session.set_areas(["CPU", "GPU"])
+
+    assert session.areas == ["CPU", "GPU"]
+
+
 def test_attach_streams_without_opening_a_raw_file(tmp_path):
     session = _session()
     raw_path = tmp_path / "profiler.raw"
