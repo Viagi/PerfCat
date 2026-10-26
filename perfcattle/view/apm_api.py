@@ -166,14 +166,17 @@ def version():
         pypi = json.loads(
             requests.get(url="https://pypi.org/pypi/perfcattle/json", timeout=3).text
         )
-        version = pypi["info"]["version"]
+        latest = (pypi.get("info") or {}).get("version")
+        if not latest:
+            # Package absent from PyPI or an unexpected payload: not an error.
+            return {"status": 0, "msg": "version unavailable"}
         result = {
             "status": 1,
-            "lastest_version": version,
+            "lastest_version": latest,
             "current_version": __version__,
         }
     except Exception as e:
-        logger.exception(e)
+        logger.debug(e)
         result = {"status": 0, "msg": str(e)}
     return result
 
