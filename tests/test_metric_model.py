@@ -11,6 +11,30 @@ from perfcattle.core.metrics import (
 from perfcattle.report.log_io import LogIO
 
 
+def test_adapt_metric_sample_normalizes_invalid_status_and_value():
+    from perfcattle.collector.base import adapt_metric_sample
+
+    sample = adapt_metric_sample("cpu", value=1, status="not-a-status")
+    assert sample.status is MetricStatus.INVALID
+    assert sample.value is None
+
+
+def test_log_quality_uses_session_epoch_and_unordered_lines(tmp_report_dir):
+    import json
+    from unittest.mock import patch
+
+    scene = tmp_report_dir / "scene"
+    scene.mkdir()
+    (scene / "apm_session.json").write_text(json.dumps({
+        "date": "2025-01-02", "clock": "23:59:59", "epoch": 1735862399,
+    }))
+    (scene / "cpu.log").write_text("00:00:01=2\n23:59:59=1\n")
+    with patch("os.getcwd", return_value=str(tmp_report_dir.parent)):
+        _, _, quality = LogIO().readLogWithQuality("scene", "cpu.log")
+    assert quality.first_epoch_ms == 1735862399000
+    assert quality.last_epoch_ms == 1735862401000
+
+
 def test_zero_is_a_valid_sample():
     sample = MetricSample.ok(
         metric="gpu_util", value=0, unit="percent", source="test",

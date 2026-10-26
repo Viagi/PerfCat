@@ -107,6 +107,39 @@ class LogIO:
             delta -= 86400
         return delta
 
+    def _session_epoch(self, scene):
+        if not scene:
+            return None
+        path = os.path.join(self.report_dir, scene, self.SESSION_FILE)
+        try:
+            with open(path, "r", encoding="utf-8") as file:
+                data = json.load(file)
+        except (OSError, ValueError):
+            return None
+        if not isinstance(data, dict):
+            return None
+        try:
+            if data.get("epoch") is not None:
+                return float(data["epoch"])
+            if data.get("date") and data.get("clock"):
+                date = datetime.datetime.strptime(data["date"], "%Y-%m-%d").date()
+                clock = self._clock_seconds(data["clock"])
+                return datetime.datetime.combine(
+                    date, datetime.time(),
+                ).timestamp() + clock
+            if data.get("epoch") is not None:
+                return float(data["epoch"])
+        except (TypeError, ValueError, OverflowError, OSError):
+            return None
+        return None
+
+    def _log_epoch(self, scene, current_seconds, origin):
+        session_epoch = self._session_epoch(scene)
+        if session_epoch is not None and origin is not None:
+            delta = self._relative_seconds(current_seconds, origin)
+            return int(round((session_epoch + delta) * 1000))
+        return int(round(current_seconds * 1000))
+
     def _session_origin(self, scene):
         if not scene:
             return None
@@ -483,7 +516,7 @@ class LogIO:
             relative_time = round(
                 max(0.0, self._relative_seconds(current_seconds, origin)), 1
             )
-            epoch_ms = int(current_seconds * 1000)
+            epoch_ms = self._log_epoch(scene, current_seconds, origin)
             quality.first_epoch_ms = epoch_ms if quality.first_epoch_ms is None else min(quality.first_epoch_ms, epoch_ms)
             quality.last_epoch_ms = epoch_ms if quality.last_epoch_ms is None else max(quality.last_epoch_ms, epoch_ms)
             quality.valid += 1

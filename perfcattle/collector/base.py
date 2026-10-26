@@ -149,6 +149,9 @@ class ReusableCollector:
         stale_ttl=None,
         background=True,
         phase_offset=None,
+        unified=None,
+        unit=None,
+        source=None,
     ):
         if not hasattr(self, "_samplers"):
             self._samplers = {}
@@ -171,6 +174,9 @@ class ReusableCollector:
                     if phase_offset is None
                     else phase_offset
                 ),
+                unified=bool(unified),
+                unit=unit,
+                source=source,
             )
             self._samplers[name] = sampler
         return sampler
@@ -187,6 +193,9 @@ class ReusableCollector:
         stale_ttl=None,
         background=True,
         phase_offset=None,
+        unified=None,
+        unit=None,
+        source=None,
     ):
         sampler = self._get_sampler(
             name,
@@ -196,8 +205,12 @@ class ReusableCollector:
             background=background and getattr(
                 self, "_managed_reusable_collector", False
             ),
-            phase_offset=phase_offset,
-        )
+                phase_offset=phase_offset,
+                unified=unified,
+                unit=unit,
+                source=source,
+            )
+
         return sampler.get_or_sample()
 
     def _cached_sampled_value(self, name, max_age=None):
@@ -231,6 +244,10 @@ class CollectorSampler:
         stale_ttl=5.0,
         background=True,
         phase_offset=0.0,
+        unified=False,
+        unit=None,
+        source=None,
+        status_on_error=MetricStatus.DISCONNECTED,
     ):
         self.name = name
         self.sample_func = sample_func
@@ -238,6 +255,12 @@ class CollectorSampler:
         self.stale_ttl = max(float(stale_ttl or self.interval), self.interval)
         self.background = bool(background)
         self.phase_offset = max(float(phase_offset or 0.0), 0.0)
+        self.unified = bool(unified) if unified is not None else os.environ.get(
+            "PERFCATTLE_UNIFIED_SAMPLER", "0"
+        ).lower() in ("1", "true", "yes", "on")
+        self.unit = unit
+        self.source = source
+        self.status_on_error = status_on_error
         self.last_valid_result = None
         self.last_sample_time = None
         self.last_error = None
@@ -279,6 +302,39 @@ class CollectorSampler:
                 return None
             return copy.deepcopy(self.last_valid_result)
 
+    def _as_sample(self, value, status=MetricStatus.OK, error=None, stale_age_ms=None):
+        return adapt_metric_sample(
+            self.name, value=value, unit=self.unit, source=self.source,
+            status=status, collected_epoch_ms=int(time.time() * 1000),
+            sample_epoch_ms=(
+                int(self.last_sample_time * 1000)
+                if self.last_sample_time is not None else None
+            ), stale_age_ms=stale_age_ms, error=error,
+        )
+
+    def _cached_result(self, max_age=None):
+        cached = self.get_latest(max_age=max_age)
+        if cached is None:
+            return None
+        if not self.unified:
+            return cached
+        age_ms = max(0.0, (time.time() - self.last_sample_time) * 1000)
+        return self._as_sample(cached, MetricStatus.CACHED, stale_age_ms=age_ms)
+
+    def sample(self):
+        try:
+            cached = self._cached_result(max_age=self.stale_ttl)
+            if cached is not None:
+                return cached
+            return self.sample_once()
+        except Exception as exc:
+            cached = self._cached_result(max_age=self.stale_ttl)
+            if cached is not None:
+                return cached
+            if self.unified:
+                return self._as_sample(None, self.status_on_error, error=str(exc))
+            raise
+
     def _wait_for_latest(self):
         timeout = min(
             max(self.phase_offset + _SAMPLER_INITIAL_WAIT_SECONDS, 1.0),
@@ -300,18 +356,18 @@ class CollectorSampler:
 
     def get_or_sample(self):
         self.start()
-        cached = self.get_latest(max_age=self.stale_ttl)
+        cached = self._cached_result(max_age=self.stale_ttl)
         if cached is not None:
             return cached
         if self.background:
-            return self._wait_for_latest()
-        try:
-            return self.sample_once()
-        except Exception:
-            cached = self.get_latest(max_age=self.stale_ttl)
-            if cached is not None:
-                return cached
-            raise
+            try:
+                result = self._wait_for_latest()
+                return self._as_sample(result) if self.unified else result
+            except Exception as exc:
+                if self.unified:
+                    return self._as_sample(None, self.status_on_error, error=str(exc))
+                raise
+        return self.sample()
 
     def sample_once(self):
         if not self._sample_lock.acquire(blocking=False):
@@ -339,10 +395,15 @@ class CollectorSampler:
                 self.last_valid_result = copy.deepcopy(result)
                 self.last_sample_time = now
                 self.last_error = None
-            return copy.deepcopy(result)
+            return self._as_sample(result) if self.unified else copy.deepcopy(result)
         except Exception as exc:
             with self._lock:
                 self.last_error = exc
+            if self.unified:
+                cached = self._cached_result(max_age=self.stale_ttl)
+                if cached is not None:
+                    return cached
+                return self._as_sample(None, self.status_on_error, error=str(exc))
             raise
         finally:
             self._sample_lock.release()

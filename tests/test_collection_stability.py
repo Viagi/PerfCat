@@ -7,6 +7,7 @@ from pathlib import Path
 
 from flask import Flask
 from perfcattle.collector.base import CollectorSampler
+from perfcattle.core.metrics import MetricStatus
 from perfcattle.report import manager as report_manager_module
 from perfcattle.report.manager import ReportManager
 from perfcattle.service import monitor as monitor_module
@@ -14,6 +15,48 @@ from perfcattle.service.monitor import AppPerformanceMonitor
 from perfcattle.tools.recording import Scrcpy
 
 report_api_module = importlib.import_module("perfcattle.view.report_api")
+
+
+def test_unified_sampler_returns_metric_samples_for_success_and_cache():
+    calls = []
+
+    def sample():
+        calls.append(len(calls) + 1)
+        return calls[-1]
+
+    sampler = CollectorSampler(
+        name="cpu", sample_func=sample, interval=0.2, stale_ttl=1.0,
+        background=False, unified=True, unit="percent", source="test",
+    )
+    first = sampler.sample_once()
+    second = sampler.sample()
+    assert first.status is MetricStatus.OK
+    assert first.value == 1
+    assert second.status is MetricStatus.CACHED
+    assert second.value == 1
+    assert second.stale_age_ms is not None
+    assert calls == [1]
+
+
+def test_unified_sampler_returns_failure_and_expired_cache():
+    calls = []
+
+    def sample():
+        calls.append(1)
+        if len(calls) == 1:
+            return 7
+        raise RuntimeError("offline")
+
+    sampler = CollectorSampler(
+        name="cpu", sample_func=sample, interval=0.2, stale_ttl=0.01,
+        background=False, unified=True,
+    )
+    assert sampler.sample_once().status is MetricStatus.OK
+    time.sleep(0.22)
+    failed = sampler.sample()
+    assert failed.status is MetricStatus.DISCONNECTED
+    assert failed.value is None
+    assert failed.error == "offline"
 
 
 def test_background_sampler_staggers_and_serves_cached_value():
