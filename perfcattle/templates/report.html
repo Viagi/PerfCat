@@ -222,6 +222,21 @@
         </div>
     </div>
 </div>
+
+<div class="modal modal-blur fade" id="modal-video" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% if lan == 'cn' %}录屏回放{% else %}Recording Playback{% endif %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <video id="report-video-player" controls playsinline preload="metadata"
+                       style="width:100%; max-height:70vh; background:#000; border-radius:4px;"></video>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block js %}
@@ -233,19 +248,28 @@
     });
 
     function play(scene){
-        $.ajax({
-            url: "/apm/record/play",
-            type: "GET",
-            async: true,
-            cache: false,
-            data:{scene: scene},
-            success: function (data) {
-                if(data['status'] != 1 ){
-                    SwalFire('error', uiText('播放失败', 'Play failed !'), data['msg'], 2000);
-                }
-            }
-        });
+        var url = '/apm/video/' + encodeURIComponent(scene);
+        var modalEl = document.getElementById('modal-video');
+        var player = document.getElementById('report-video-player');
+        if (!modalEl || !player || typeof bootstrap === 'undefined') {
+            window.open(url, '_blank', 'noopener');
+            return;
+        }
+        player.src = url;
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        var playPromise = player.play();
+        if (playPromise && playPromise.catch) {
+            playPromise.catch(function() {});
+        }
     }
+
+    document.getElementById('modal-video').addEventListener('hidden.bs.modal', function () {
+        var player = document.getElementById('report-video-player');
+        if (!player) return;
+        player.pause();
+        player.removeAttribute('src');
+        player.load();
+    });
     
     function checkboxHandle(){
         try{

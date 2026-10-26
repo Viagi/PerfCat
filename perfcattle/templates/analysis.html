@@ -1531,7 +1531,6 @@
         initGpuStatsCharts()
         initUnityStatsCharts()
         initUnityCorrelationCharts()
-        bindUnityChartFrameSelection()
         initUnityHotspots()
         initUnityCaptures()
         if('{{ apm_data.thermal_flag }}' == 'True' ){
@@ -2230,51 +2229,6 @@
         });
     }
 
-    function unityChartClickAt(event, chartKey, containerSelector) {
-        var chart = window.chartInstances && window.chartInstances[chartKey];
-        if (!chart || !chart.w || !chart.w.globals) return;
-        var globals = chart.w.globals;
-        if (!globals.gridWidth) return;
-        var container = document.querySelector(containerSelector);
-        if (!container) return;
-        var rect = container.getBoundingClientRect();
-        var ratio = (event.clientX - rect.left - globals.translateX) / globals.gridWidth;
-        if (ratio < 0 || ratio > 1) return;
-        var plotTop = rect.top + globals.translateY;
-        if (event.clientY < plotTop || event.clientY > plotTop + globals.gridHeight) {
-            return;
-        }
-        var x = globals.minX + ratio * (globals.maxX - globals.minX);
-        var frame = unityStatsFrameAt(x);
-        if (frame !== null) {
-            unityStatsSelectFrame(frame, x);
-        }
-    }
-
-    // 所有 Unity 图表共用同一套选中帧逻辑：点击任意一张图都会更新热点函数帧。
-    var UNITY_FRAME_SELECT_CHARTS = [
-        ['unity_stats', '#chart-unity-stats'],
-        ['unity_drawcalls', '#chart-unity-drawcalls'],
-        ['unity_geometry', '#chart-unity-geometry'],
-        ['unity_resources', '#chart-unity-resources'],
-        ['unity_correlation', '#chart-unity-correlation']
-    ];
-
-    function bindUnityChartFrameSelection() {
-        UNITY_FRAME_SELECT_CHARTS.forEach(function(item) {
-            var chartKey = item[0];
-            var selector = item[1];
-            var element = document.querySelector(selector);
-            if (!element || element.__unityFrameSelectBound) return;
-            // Capture phase: ApexCharts' SVG/tooltip layer can swallow the
-            // bubbled click, so read the mouse position before it does.
-            element.addEventListener('click', function(event) {
-                unityChartClickAt(event, chartKey, selector);
-            }, true);
-            element.__unityFrameSelectBound = true;
-        });
-    }
-
     function unityStatsFrameAt(x) {
         var best = null;
         var bestDiff = Infinity;
@@ -2317,7 +2271,10 @@
             }, false, true);
         }
 
-        if ($('#unity-hotspots-card').length && typeof loadUnityHotspotFrame === 'function') {
+        var hotspotReady = typeof unityHotspotState !== 'undefined'
+            && unityHotspotState.frames
+            && unityHotspotState.frames.length > 0;
+        if (hotspotReady && typeof loadUnityHotspotFrame === 'function') {
             var thread = $('#unity-hotspot-thread').val()
                 || (unityHotspotState && unityHotspotState.thread)
                 || 'main';
@@ -3228,31 +3185,50 @@
             requestFrame(ratio * duration);
         };
         window.showVideoFrameAtChartTime = showFrameAtChartTime;
+    })();
 
-        const addChartClickHandler = (chartInstance) => {
-            if (!chartInstance) return;
-            const chartElement = chartInstance.el;
-            if (!chartElement || chartElement._videoSyncBound) return;
+    // 点击任意报告图表时，统一更新录屏画面和 Unity 热点帧。
+    (function initChartFrameSelection() {
+        function chartTimeAt(chart, event) {
+            var bounds = window.getChartPlotBounds(chart);
+            if (!bounds || bounds.width <= 0 || bounds.maxX <= bounds.minX) return null;
 
-            chartElement._videoSyncBound = true;
-            chartElement.addEventListener('click', function(event) {
-                const bounds = window.getChartPlotBounds(chartInstance);
-                if (!bounds || bounds.width <= 0 || bounds.maxX <= bounds.minX) return;
+            var chartRect = chart.el.getBoundingClientRect();
+            var mouseX = event.clientX - chartRect.left;
+            var relativeX = (mouseX - bounds.left) / bounds.width;
+            if (relativeX < 0 || relativeX > 1) return null;
 
-                const chartRect = chartElement.getBoundingClientRect();
-                const mouseX = event.clientX - chartRect.left;
-                const relativeX = (mouseX - bounds.left) / bounds.width;
+            return bounds.minX + relativeX * (bounds.maxX - bounds.minX);
+        }
 
-                if (relativeX < 0 || relativeX > 1) return;
+        function handleClick(chart, event) {
+            var chartTime = chartTimeAt(chart, event);
+            if (chartTime === null) return;
 
-                const chartTime = bounds.minX + relativeX * (bounds.maxX - bounds.minX);
-                showFrameAtChartTime(chartTime);
+            if (typeof window.showVideoFrameAtChartTime === 'function') {
+                window.showVideoFrameAtChartTime(chartTime);
+            }
+
+            if (typeof unityStatsFrameAt === 'function') {
+                var frame = unityStatsFrameAt(chartTime);
+                if (frame !== null && typeof unityStatsSelectFrame === 'function') {
+                    unityStatsSelectFrame(frame, chartTime);
+                }
+            }
+        }
+
+        function bindCharts() {
+            Object.keys(window.chartInstances || {}).forEach(function(key) {
+                var chart = window.chartInstances[key];
+                if (!chart || !chart.el || chart.el.__reportFrameBound) return;
+                chart.el.__reportFrameBound = true;
+                // Capture phase: ApexCharts' SVG/tooltip layer can swallow the
+                // bubbled click, so read the mouse position before it does.
+                chart.el.addEventListener('click', function(event) {
+                    handleClick(chart, event);
+                }, true);
             });
-        };
-
-        const bindCharts = () => {
-            Object.values(window.chartInstances || {}).forEach(addChartClickHandler);
-        };
+        }
 
         // 图表由各 initXxxCharts 异步创建，分几次补齐绑定。
         bindCharts();
