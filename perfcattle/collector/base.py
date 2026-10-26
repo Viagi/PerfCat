@@ -174,7 +174,7 @@ class ReusableCollector:
                     if phase_offset is None
                     else phase_offset
                 ),
-                unified=bool(unified),
+                unified=unified,
                 unit=unit,
                 source=source,
             )
@@ -371,10 +371,14 @@ class CollectorSampler:
 
     def sample_once(self):
         if not self._sample_lock.acquire(blocking=False):
-            cached = self.get_latest(max_age=self.stale_ttl)
+            cached = self._cached_result(max_age=self.stale_ttl)
             if cached is not None:
                 return cached
             if not self._sample_lock.acquire(timeout=min(self.interval, 1.0)):
+                if self.unified:
+                    return self._as_sample(
+                        None, self.status_on_error, error="sampler is busy"
+                    )
                 raise RuntimeError("{} sampler is busy".format(self.name))
         try:
             with self._lock:

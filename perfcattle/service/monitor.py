@@ -496,6 +496,7 @@ class AppPerformanceMonitor(ServiceConfig):
                 self.collectNetwork,
                 self.collectFileIO,
                 self.collectGpu,
+                self.collectGpuStats,
                 self.collectThermal,
             )
             executor = ThreadPoolExecutor(

@@ -71,3 +71,17 @@
 ### Concerns
 - 统一模式是可选配置，旧 collector 调用默认仍保持兼容的原始结果；需要逐步为明确指标传入 `unified=True` 或启用环境变量。
 - structured JSON 日志仍沿用既有图表解析路径，未改变其公开返回接口。
+
+## Task 1 复审最终修复（基于 3f123bb）
+
+### 修复内容
+- `CollectorSampler`：统一模式下采样锁忙时始终返回 `MetricSample`，缓存可用时状态为 `CACHED` 且带 `stale_age_ms`；无缓存时返回统一失败样本，不再泄漏裸值或异常。
+- `ReusableCollector._get_sampler`：保留 `unified=None` 传递，`PERFCATTLE_UNIFIED_SAMPLER` 环境变量现在真实生效。
+- `monitor.py`：恢复 `collectGpuStats` 原有采集任务及 10 个 collector 的并行契约；同步测试只更新真实任务数量。
+- `LogIO`：移除 `_session_epoch` 重复分支；普通质量路径明确使用真实 session epoch，缺少/损坏 session 文件时回退时钟毫秒；补充无 epoch、坏文件和公开质量路径说明测试。
+- `memory.py`：修正旧式 `dumpsys meminfo` 带冒号标签的解析，恢复受影响 GPU/ADB 测试中的既有内存采集契约。
+
+### 验证
+- `pytest -q tests/test_metric_model.py tests/test_report_log_io.py tests/test_collection_stability.py tests/test_recording_stability.py tests/test_collector_fps.py tests/test_collector_adb_metrics.py`：39 passed。
+- `git diff --check`：通过；仅有用户现有模板文件的 LF/CRLF 转换提示。
+- 未修改或纳入提交：`perfcattle/templates/analysis.html`、`perfcattle/templates/report.html`、`.zcodeignore`。

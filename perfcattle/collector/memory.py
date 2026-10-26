@@ -169,7 +169,7 @@ class Memory(ReusableCollector):
         """
         def row_pss(label):
             match = re.search(
-                r"^\s*" + re.escape(label) + r"\s+(\d+)", output, re.MULTILINE
+                r"^\s*" + re.escape(label) + r"\s*:?[ \t]+(\d+)", output, re.MULTILINE
             )
             return int(match.group(1)) if match else None
 

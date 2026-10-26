@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 from flask import Flask
-from perfcattle.collector.base import CollectorSampler
+from perfcattle.collector.base import CollectorSampler, ReusableCollector
 from perfcattle.core.metrics import MetricStatus
 from perfcattle.report import manager as report_manager_module
 from perfcattle.report.manager import ReportManager
@@ -36,6 +36,46 @@ def test_unified_sampler_returns_metric_samples_for_success_and_cache():
     assert second.value == 1
     assert second.stale_age_ms is not None
     assert calls == [1]
+
+
+def test_unified_sampler_busy_returns_cached_sample_with_stale_age():
+    entered = threading.Event()
+    release = threading.Event()
+    calls = []
+
+    def sample():
+        calls.append(len(calls) + 1)
+        if len(calls) == 1:
+            return 7
+        entered.set()
+        release.wait(timeout=1)
+        return 8
+
+    sampler = CollectorSampler(
+        name="cpu", sample_func=sample, interval=0.2, stale_ttl=1.0,
+        background=False, unified=True,
+    )
+    assert sampler.sample_once().status is MetricStatus.OK
+    worker = threading.Thread(target=sampler.sample_once)
+    worker.start()
+    assert entered.wait(timeout=1)
+    busy = sampler.sample_once()
+    release.set()
+    worker.join(timeout=1)
+    assert busy.status is MetricStatus.CACHED
+    assert busy.value == 7
+    assert busy.stale_age_ms is not None
+
+
+def test_reusable_collector_preserves_none_for_environment_override(monkeypatch):
+    monkeypatch.setenv("PERFCATTLE_UNIFIED_SAMPLER", "true")
+
+    class Collector(ReusableCollector):
+        pass
+
+    collector = Collector()
+    sampler = collector._get_sampler("cpu", lambda: 1, background=False)
+    assert sampler.unified is True
 
 
 def test_unified_sampler_returns_failure_and_expired_cache():
@@ -142,6 +182,7 @@ def test_collect_all_keeps_recording_in_parent_process(monkeypatch):
     monitor.collectNetwork = lambda: None
     monitor.collectFileIO = lambda: None
     monitor.collectGpu = lambda: None
+    monitor.collectGpuStats = lambda: None
     monitor.collectThermal = lambda: None
     monitor.setPerfs = lambda report_path=None: events.append(
         ("set_perfs", report_path)
@@ -154,12 +195,12 @@ def test_collect_all_keeps_recording_in_parent_process(monkeypatch):
 
     monitor.collectAll(report_path="report.html")
 
-    assert FakeExecutor.instances[0].max_workers == 9
-    assert len(FakeExecutor.instances[0].tasks) == 9
+    assert FakeExecutor.instances[0].max_workers == 10
+    assert len(FakeExecutor.instances[0].tasks) == 10
     assert "start_record" not in [
         func.__name__ for func in FakeExecutor.instances[0].tasks
     ]
-    assert ("wait", 9) in events
+    assert ("wait", 10) in events
     # The recording start must be recorded before collectors begin writing logs.
     assert events.index(("clear_file",)) < events.index(("begin_session",))
     assert events.index(("stop_record",)) < events.index(

@@ -127,8 +127,6 @@ class LogIO:
                 return datetime.datetime.combine(
                     date, datetime.time(),
                 ).timestamp() + clock
-            if data.get("epoch") is not None:
-                return float(data["epoch"])
         except (TypeError, ValueError, OverflowError, OSError):
             return None
         return None
@@ -278,12 +276,17 @@ class LogIO:
         return points
 
     def _absolute_points_with_quality(self, scene, filename):
-        """读取普通日志并返回点集与结构化质量统计。"""
+        """读取普通日志并返回点集与结构化质量统计。
+
+        Returned point timestamps remain clock seconds for legacy correlation;
+        MetricQuality epoch fields use the scene session epoch when available.
+        """
         points = []
         quality = MetricQuality()
         filepath = os.path.join(self.report_dir, scene, filename)
         if not os.path.exists(filepath):
             return points, quality
+        session_origin = self.scene_origin(scene)
         for line in self.open_file(filepath, "r"):
             quality.total += 1
             parts = line.split("=", 1)
@@ -297,12 +300,12 @@ class LogIO:
                     raise ValueError("non-finite value")
                 if value.is_integer() and not any(c in parts[1] for c in ".eE"):
                     value = int(value)
-            except (ValueError, TypeError, IndexError):
+            except (ValueError, TypeError, IndexError, OverflowError):
                 quality.invalid += 1
                 continue
             points.append((seconds, value))
             quality.valid += 1
-            epoch_ms = int(seconds * 1000)
+            epoch_ms = self._log_epoch(scene, seconds, session_origin)
             quality.first_epoch_ms = epoch_ms if quality.first_epoch_ms is None else min(quality.first_epoch_ms, epoch_ms)
             quality.last_epoch_ms = epoch_ms if quality.last_epoch_ms is None else max(quality.last_epoch_ms, epoch_ms)
         return points, quality
