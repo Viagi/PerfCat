@@ -317,10 +317,13 @@ class LogIO:
         return abs((first - second + 43200) % 86400 - 43200)
 
     @classmethod
-    def _nearest_absolute(cls, points, target):
+    def _nearest_absolute(cls, points, target, max_distance=None):
         if not points:
             return None
-        return min(points, key=lambda item: cls._clock_distance(item[0], target))[1]
+        best = min(points, key=lambda item: cls._clock_distance(item[0], target))
+        if max_distance is not None and cls._clock_distance(best[0], target) > max_distance:
+            return None
+        return best[1]
 
     def getGpuStatsLog(self, platform, scene):
         """GPU 扩展指标；带宽按同一时刻的 FPS 换算成 MB/帧。"""
@@ -340,7 +343,7 @@ class LogIO:
                     continue
                 per_frame = []
                 for point in charts[source]:
-                    fps = self._nearest_absolute(fps_points, point["t"])
+                    fps = self._nearest_absolute(fps_points, point["t"], max_distance=2.0)
                     if fps and fps > 0:
                         per_frame.append(
                             {"x": point["x"], "y": round(point["y"] / fps, 3)}

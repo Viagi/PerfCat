@@ -220,18 +220,21 @@ class Aggregator:
                 send = json_end["send"] - json_pre["send"]
                 recv = json_end["recv"] - json_pre["recv"]
                 if send >= 0 and recv >= 0:
-                    return send, recv, True
+                    return send, recv, True, True
             except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
                 pass
 
         flow_send_data = self.log_io.readLog(scene=scene, filename="upflow.log")[1]
         flow_recv_data = self.log_io.readLog(scene=scene, filename="downflow.log")[1]
-        return sum(flow_send_data), sum(flow_recv_data), bool(
-            flow_send_data or flow_recv_data
+        return (
+            sum(flow_send_data),
+            sum(flow_recv_data),
+            bool(flow_send_data),
+            bool(flow_recv_data),
         )
 
     def _network_summary_kb(self, scene):
-        send, recv, _ = self._network_summary(scene)
+        send, recv, _, _ = self._network_summary(scene)
         return send, recv
 
     def _setAndroidPerfs(self, scene):
@@ -279,13 +282,15 @@ class Aggregator:
         fps_flag = len(fpsData) > 0
         jank_flag = len(jankLogData) > 0
         if fps_flag:
-            fpsAvg = f"{int(sum(fpsData) / len(fpsData))}HZ/s"
+            fpsAvg = f"{int(sum(fpsData) / len(fpsData))}FPS"
             frameStability = self._frame_stability_index(fpsData)
-            jankAvg = self._jank_per_minute(jankData, jankLogData)
         else:
-            fpsAvg, frameStability, jankAvg = 0, 0, 0
+            fpsAvg, frameStability = 0, 0
+        # Jank is recorded independently of FPS; do not zero it out just
+        # because the fps log is empty.
+        jankAvg = self._jank_per_minute(jankData, jankLogData) if jank_flag else 0
 
-        send, recv, network_flag = self._network_summary(scene)
+        send, recv, network_send_flag, network_recv_flag = self._network_summary(scene)
         flowSend = f"{round(float(send / 1024), 2)}MB"
         flowRecv = f"{round(float(recv / 1024), 2)}MB"
 
@@ -344,8 +349,8 @@ class Aggregator:
             "jank": jank_flag,
             "battery_level": battery_level_flag,
             "battery_temp": battery_temp_flag,
-            "network_send": network_flag,
-            "network_recv": network_flag,
+            "network_send": network_send_flag,
+            "network_recv": network_recv_flag,
             "file_io": file_io_flag,
             "gpu": gpu_flag,
             "thermal": thermal_flag,
@@ -430,15 +435,16 @@ class Aggregator:
         fpsData = self._values(scene, "fps.log")
         fps_flag = len(fpsData) > 0
         if fps_flag:
-            fpsAvg = f"{int(sum(fpsData) / len(fpsData))}HZ/s"
+            fpsAvg = f"{int(sum(fpsData) / len(fpsData))}FPS"
             frameStability = self._frame_stability_index(fpsData)
         else:
             fpsAvg, frameStability = 0, 0
 
         flowSendData = self._values(scene, "upflow.log")
         flowRecvData = self._values(scene, "downflow.log")
-        network_flag = bool(flowSendData or flowRecvData)
-        if network_flag:
+        network_send_flag = bool(flowSendData)
+        network_recv_flag = bool(flowRecvData)
+        if network_send_flag or network_recv_flag:
             flowSend = f"{round(float(sum(flowSendData) / 1024), 2)}MB"
             flowRecv = f"{round(float(sum(flowRecvData) / 1024), 2)}MB"
         else:
@@ -488,8 +494,8 @@ class Aggregator:
             "battery_current": battery_current_flag,
             "battery_voltage": battery_voltage_flag,
             "battery_power": battery_power_flag,
-            "network_send": network_flag,
-            "network_recv": network_flag,
+            "network_send": network_send_flag,
+            "network_recv": network_recv_flag,
         }
         return {
             **metadata,
@@ -590,10 +596,10 @@ class Aggregator:
             "thermalCpuAvg2": thermalCpuAvg2,
             "thermalGpuAvg1": thermalGpuAvg1,
             "thermalGpuAvg2": thermalGpuAvg2,
-            "fpsAvg1": f"{int(sum(fpsData1) / len(fpsData1))}HZ/s"
+            "fpsAvg1": f"{int(sum(fpsData1) / len(fpsData1))}FPS"
             if fpsData1
             else 0,
-            "fpsAvg2": f"{int(sum(fpsData2) / len(fpsData2))}HZ/s"
+            "fpsAvg2": f"{int(sum(fpsData2) / len(fpsData2))}FPS"
             if fpsData2
             else 0,
             "frameStability1": self._frame_stability_index(fpsData1),
