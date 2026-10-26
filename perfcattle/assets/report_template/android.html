@@ -888,6 +888,16 @@
             data: {{ unity_stats_charts.get('static_batches', []) }}
         }]);
 
+        // Unity reports these as separate counters; only the ones present in
+        // the capture are appended so a missing counter never draws a fake 0.
+        {% if 'instanced_batches' in unity_stats_charts %}
+        unity_drawcalls_chart.appendSeries([{
+            name: 'Instanced Batches',
+            color: '#E8590C',
+            data: {{ unity_stats_charts.get('instanced_batches', []) }}
+        }]);
+        {% endif %}
+
         var geometryOptions = options('line');
         geometryOptions.chart.height = 180;
         geometryOptions.yaxis = [{
