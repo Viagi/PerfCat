@@ -191,6 +191,12 @@ Unity Profiler 开关打开后，实时页顶部会出现 **Unity 游戏面板**
 | Draw Calls | `Draw Calls Count` | Render Thread | 次 |
 | SetPass Calls | `SetPass Calls Count` | Render Thread | 次 |
 | Batches | `Batches Count` | Render Thread | 次 |
+| 静态合批 | `Static Batches Count` | Render Thread | 次 |
+| 动态合批 | `Dynamic Batches Count` | Render Thread | 次 |
+| 实例化合批 | `Instanced Batches Count` | Render Thread | 次 |
+| 静态合批 Draw Calls | `Static Batched Draw Calls Count` | Render Thread | 次 |
+| 动态合批 Draw Calls | `Dynamic Batched Draw Calls Count` | Render Thread | 次 |
+| 实例化合批 Draw Calls | `Instanced Batched Draw Calls Count` | Render Thread | 次 |
 | 三角面 | `Triangles Count` | Render Thread | 个（界面/报告展示为 k） |
 | 顶点数 | `Vertices Count` | Render Thread | 个（界面/报告展示为 k） |
 | GC Alloc/帧 | `GC Allocated In Frame` | Main Thread | KB |

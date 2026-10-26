@@ -1,5 +1,6 @@
 """Compare report export: summary + every report's original/Unity files."""
 import json
+import os
 import shutil
 import sys
 import zipfile
@@ -253,3 +254,26 @@ def test_compare_export_rejects_invalid_or_mismatched_scenes(tmp_path, monkeypat
     ).get_json()
     assert traversal["status"] == 0
     assert "invalid scene" in traversal["msg"]
+
+
+def test_excel_export_includes_unity_and_gpu_stats_sheets(tmp_path, monkeypatch):
+    """The Excel workbook must carry Unity / GPU stats, not only the old log list."""
+    import xlwt  # noqa: F401  (already a hard dependency of the exporter)
+
+    store = _make_store(tmp_path, monkeypatch)
+    report_dir = tmp_path / "report"
+    raw_path = _stream(tmp_path)
+    scene_dir = _write_report(report_dir, "run_a", raw_path=raw_path)
+    (scene_dir / "gpu_stats.log").write_text(
+        '10:00:00={"gpu_util":{"value":41.5,"status":"ok"},'
+        '"gpu_temp":{"value":null,"status":"missing"}}\n',
+        encoding="utf-8",
+    )
+
+    exporter = store._excel_exporter if hasattr(store, "_excel_exporter") else None
+    if exporter is None:
+        from perfcattle.report.excel_export import ExcelExporter
+        exporter = ExcelExporter(log_io=store._log_io)
+    out = exporter.export_excel(platform="Android", scene="run_a")
+    assert os.path.getsize(out) > 0
+    assert exporter.JSON_LOG_SHEETS == ("unity_stats", "gpu_stats")

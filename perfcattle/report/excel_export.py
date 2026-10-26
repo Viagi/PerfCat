@@ -3,6 +3,7 @@
 
 负责将性能日志数据导出为 Excel 文件。
 """
+import json
 import os
 import xlwt
 from perfcattle.report.log_io import LogIO
@@ -10,6 +11,8 @@ from perfcattle.report.log_io import LogIO
 
 class ExcelExporter:
     """Excel 报告导出器"""
+
+    JSON_LOG_SHEETS = ("unity_stats", "gpu_stats")
 
     def __init__(self, log_io: LogIO = None):
         """初始化导出器
@@ -58,7 +61,19 @@ class ExcelExporter:
             "upflow",
             "downflow",
             "fps",
+            "jank",
             "gpu",
+            "thermal_cpu",
+            "thermal_gpu",
+            "thermal_memory",
+            "thermal_battery",
+            "mem_java_heap",
+            "mem_native_heap",
+            "mem_code_pss",
+            "mem_stack_pss",
+            "mem_graphics_pss",
+            "mem_private_pss",
+            "mem_system_pss",
         ]
         log_file_list = (
             android_log_file_list if platform == "Android" else ios_log_file_list
@@ -81,6 +96,51 @@ class ExcelExporter:
                         col += 1
                     row += 1
                     col = 0
+        for name in self.JSON_LOG_SHEETS:
+            self._write_json_sheet(wb, scene, name)
         xls_path = os.path.join(self.report_dir, scene, f"{scene}.xls")
         wb.save(xls_path)
         return xls_path
+
+    def _write_json_sheet(self, wb, scene, name):
+        """Write a JSON-line log (unity_stats / gpu_stats) as one column per field.
+
+        Structured samples (``{"value": .., "status": ..}``) are flattened to the
+        numeric value; non-ok samples are left blank so the sheet shows a gap
+        rather than a fabricated zero.
+        """
+        path = os.path.join(self.report_dir, scene, f"{name}.log")
+        if not os.path.exists(path):
+            return
+        rows = []
+        columns = []
+        for line in self.log_io.open_file(path, "r"):
+            stamp, _, payload = line.partition("=")
+            try:
+                data = json.loads(payload)
+            except ValueError:
+                continue
+            if not isinstance(data, dict):
+                continue
+            values = {}
+            for key, value in data.items():
+                if isinstance(value, dict):
+                    status = value.get("status")
+                    value = value.get("value") if status in (None, "ok", "cached") else None
+                if value is None or isinstance(value, (dict, list, bool)):
+                    continue
+                values[key] = value
+                if key not in columns:
+                    columns.append(key)
+            rows.append((stamp.strip(), values))
+        if not columns:
+            return
+        sheet = wb.add_sheet(name)
+        sheet.write(0, 0, "Time")
+        for index, key in enumerate(columns, start=1):
+            sheet.write(0, index, key)
+        for row_index, (stamp, values) in enumerate(rows, start=1):
+            sheet.write(row_index, 0, stamp)
+            for index, key in enumerate(columns, start=1):
+                if key in values:
+                    sheet.write(row_index, index, values[key])
