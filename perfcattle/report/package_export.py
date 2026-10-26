@@ -274,7 +274,7 @@ def _has_value(value):
         return False
     if isinstance(value, str):
         text = value.strip()
-        return text not in ("", "0", "0%", "0MB", "0°C", "0HZ/s")
+        return text not in ("", "0", "0%", "0MB", "0°C", "0FPS")
     if isinstance(value, (int, float)):
         return value != 0
     return bool(value)
@@ -394,6 +394,13 @@ class ReportPackageExporter(object):
         result_json = os.path.join(scene_dir, "result.json")
         if os.path.isfile(result_json):
             members.append(result_json)
+        # Include raw APM logs and the session metadata so the bundle can be
+        # re-audited independently of the aggregate Excel/JSON summaries.
+        for name in sorted(os.listdir(scene_dir)):
+            if not os.path.isfile(os.path.join(scene_dir, name)):
+                continue
+            if name == "apm_session.json" or name.lower().endswith(".log"):
+                members.append(os.path.join(scene_dir, name))
         members.extend(json_files)
         if os.path.isfile(meta_path):
             members.append(meta_path)
@@ -454,6 +461,27 @@ class ReportPackageExporter(object):
             arcname = os.path.relpath(path, scene_dir).replace(os.sep, "/")
             entries.append((arcname, os.path.getsize(path)))
         entries.append(("EXPORT_README.txt", None))
+        entries.append(("manifest.json", None))
+
+        manifest = {
+            "format": "perfcattle-report-manifest",
+            "format_version": 1,
+            "scene": scene,
+            "generated_at": generated_at,
+            "files": [],
+        }
+        for path in collected["members"]:
+            if not os.path.isfile(path):
+                continue
+            arcname = os.path.relpath(path, scene_dir).replace(os.sep, "/")
+            file_entry = {"path": arcname, "size": os.path.getsize(path)}
+            if arcname.lower().endswith(".log"):
+                try:
+                    with open(path, "r", encoding="utf-8", errors="replace") as fp:
+                        file_entry["lines"] = sum(1 for _ in fp)
+                except OSError:
+                    pass
+            manifest["files"].append(file_entry)
 
         readme = README.format(
             scene=scene,
@@ -465,6 +493,10 @@ class ReportPackageExporter(object):
         )
 
         with zipfile.ZipFile(tmp_path, "w", zipfile.ZIP_DEFLATED) as bundle:
+            bundle.writestr(
+                "manifest.json",
+                json.dumps(manifest, ensure_ascii=False, indent=2),
+            )
             bundle.writestr("EXPORT_README.txt", readme)
             for path in collected["members"]:
                 if not os.path.isfile(path):
