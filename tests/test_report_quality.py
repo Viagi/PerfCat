@@ -40,3 +40,25 @@ class TestReportQuality:
         assert LogIO._nearest_absolute(points, 36000.0, max_distance=2.0) == 60.0
         # 10:00:05 is 5 seconds away; a 2-second gate must reject it.
         assert LogIO._nearest_absolute(points, 36005.0, max_distance=2.0) is None
+
+
+def test_structured_json_logs_are_unwrapped_and_gaps_skipped(tmp_report_dir, sample_log_file):
+    """GPU stats now writes structured samples; charts must plot the value and
+    skip non-ok samples instead of raising on dict arithmetic."""
+    scene_dir = sample_log_file
+    (scene_dir / "gpu_stats.log").write_text(
+        '10:00:00={"gpu_util":{"value":41.5,"status":"ok","unit":"percent"},'
+        '"gpu_temp":{"value":null,"status":"missing","unit":"celsius"},'
+        '"gpu_bw_read":{"value":90.2,"status":"cached","unit":"MB/s"}}\n'
+        '10:00:01={"gpu_util":{"value":38.0,"status":"ok","unit":"percent"},'
+        '"gpu_bw_read":{"value":88.0,"status":"ok","unit":"MB/s"}}\n'
+    )
+
+    with patch("os.getcwd", return_value=str(tmp_report_dir.parent)):
+        data = LogIO().getGpuStatsLog("Android", "test_scene")
+
+    assert data["avg"]["gpu_util"] == 39.75
+    assert data["avg"]["gpu_bw_read"] == 89.1
+    # A missing sample is a gap, not a zero.
+    assert "gpu_temp" not in data["avg"]
+    assert len(data["charts"]["gpu_util"]) == 2

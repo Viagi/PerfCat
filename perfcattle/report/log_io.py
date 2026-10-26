@@ -246,6 +246,21 @@ class LogIO:
                 points.append((seconds, data))
         return points
 
+    @staticmethod
+    def _structured_value(value):
+        """Unwrap ``{"value": .., "status": ..}`` metric samples.
+
+        Newer collectors (GPU stats, disk snapshots) write structured samples
+        instead of bare numbers. Only ok/cached samples carry a plottable
+        value; anything else is a gap in the series, never a fabricated zero.
+        """
+        if not isinstance(value, dict):
+            return value
+        status = value.get("status")
+        if status is not None and status not in ("ok", "cached"):
+            return None
+        return value.get("value")
+
     def read_json_lines(self, scene, filename):
         """读取 JSON 行日志，返回 (charts, values)。
 
@@ -262,8 +277,9 @@ class LogIO:
             origin = points[0][0]
         for seconds, data in points:
             x = round(max(0.0, self._relative_seconds(seconds, origin)), 1)
-            for key, value in data.items():
-                if value is None:
+            for key, raw_value in data.items():
+                value = self._structured_value(raw_value)
+                if value is None or isinstance(value, (dict, list, bool)):
                     continue
                 charts.setdefault(key, []).append(
                     {"x": x, "y": value, "t": seconds}
