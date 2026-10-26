@@ -104,12 +104,19 @@ Unity 版本或新的 Profiler 功能。
    report/apm_<时间>/apm_<时间>_export.zip
        apm_<时间>.xls                性能数据
        result.json                   报告元信息
+       manifest.json                 包内清单：文件、大小、日志样本数
+       *.log                         全部原始采集日志（cpu/mem/fps/gpu/thermal/...）
+       apm_session.json              系统与 Unity 共用的时间原点
        unity/profiler.raw            Unity Profiler 原始二进制流
        unity/profiler.json           Unity Profiler 离线 JSON（不依赖 Unity）
        unity/memory_*.snapshot       Memory Profiler 快照
        unity/meta.json               Unity 采集元信息
        EXPORT_README.txt             包内文件说明
    ```
+
+   `manifest.json` 记录了包内每个文件的路径、字节数和日志行数，因此导出包
+   可以独立于 PerfCattle 复核报告曲线与聚合结果。Unity `meta.json` 额外记录
+   `raw_complete`（原始流是否完整结束）与 `stream_error`（断流原因）。
 
    对比分析页的 **导出对比报告** 会生成一个包含对比汇总和各报告原始文件的
    ZIP（位置在当前工作目录的 `report/` 下）：
@@ -119,6 +126,8 @@ Unity 版本或新的 Profiler 功能。
        compare.xls                   对比汇总（指标为行，报告为列）
        compare.json                  对比汇总的机器可读版本
        scenes/<scene>/<scene>.xls    该报告的性能数据
+       scenes/<scene>/manifest.json  该报告的包内清单
+       scenes/<scene>/*.log          该报告的原始采集日志
        scenes/<scene>/result.json    该报告的元信息
        scenes/<scene>/unity/...      该报告的 Unity 原始文件与离线 JSON
        README.txt                    包内文件说明
@@ -126,6 +135,16 @@ Unity 版本或新的 Profiler 功能。
 
    每份报告的内容与单报告导出完全一致，因此对比包可以脱离 PerfCattle
    离线查看或二次分析。
+
+### 2.1.1 采样状态与数据完整性
+
+- 每个采样值带显式状态：`ok` / `cached` / `unsupported` /
+  `permission_denied` / `timeout` / `disconnected` / `invalid` /
+  `truncated` / `missing`。采集失败不会再被伪装成 0 或旧缓存值。
+- 数值 0 是合法值；只有 `status` 非 `ok/cached` 时才表示缺失或失败。
+- Unity Protocol 流在 socket 中途断开或 payload 截断时，`meta.json` 会标记
+  `raw_complete=false` 并写入 `stream_error`；报告与导出包据此提示数据不完整，
+  不会把截断文件当作完整采集。
 
 ### 2.2 采集中修改 Module / Deep Profiler
 
