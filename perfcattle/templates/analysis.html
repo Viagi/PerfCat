@@ -1531,6 +1531,7 @@
         initGpuStatsCharts()
         initUnityStatsCharts()
         initUnityCorrelationCharts()
+        bindUnityChartFrameSelection()
         initUnityHotspots()
         initUnityCaptures()
         if('{{ apm_data.thermal_flag }}' == 'True' ){
@@ -2019,13 +2020,6 @@
         );
         unity_stats_chart.render();
         window.chartInstances.unity_stats = unity_stats_chart;
-        var unityChartElement = document.querySelector('#chart-unity-stats');
-        if (unityChartElement && !unityChartElement.__unityStatsClickBound) {
-            // Capture phase: ApexCharts' SVG/tooltip layer can swallow the
-            // bubbled click, so read the mouse position before it does.
-            unityChartElement.addEventListener('click', unityStatsChartClick, true);
-            unityChartElement.__unityStatsClickBound = true;
-        }
 
         var drawCallsOptions = options('line');
         drawCallsOptions.chart.height = 180;
@@ -2045,11 +2039,6 @@
         );
         unity_drawcalls_chart.render();
         window.chartInstances.unity_drawcalls = unity_drawcalls_chart;
-        var drawCallsElement = document.querySelector('#chart-unity-drawcalls');
-        if (drawCallsElement && !drawCallsElement.__unityStatsClickBound) {
-            drawCallsElement.addEventListener('click', unityDrawCallsChartClick, true);
-            drawCallsElement.__unityStatsClickBound = true;
-        }
 
         var geometryOptions = options('line');
         geometryOptions.chart.height = 180;
@@ -2078,11 +2067,6 @@
         );
         unity_geometry_chart.render();
         window.chartInstances.unity_geometry = unity_geometry_chart;
-        var geometryChartElement = document.querySelector('#chart-unity-geometry');
-        if (geometryChartElement && !geometryChartElement.__unityStatsClickBound) {
-            geometryChartElement.addEventListener('click', unityGeometryChartClick, true);
-            geometryChartElement.__unityStatsClickBound = true;
-        }
 
         var resourcesOptions = options('line');
         resourcesOptions.chart.height = 200;
@@ -2248,16 +2232,28 @@
         }
     }
 
-    function unityStatsChartClick(event) {
-        unityChartClickAt(event, 'unity_stats', '#chart-unity-stats');
-    }
+    // 所有 Unity 图表共用同一套选中帧逻辑：点击任意一张图都会更新热点函数帧。
+    var UNITY_FRAME_SELECT_CHARTS = [
+        ['unity_stats', '#chart-unity-stats'],
+        ['unity_drawcalls', '#chart-unity-drawcalls'],
+        ['unity_geometry', '#chart-unity-geometry'],
+        ['unity_resources', '#chart-unity-resources'],
+        ['unity_correlation', '#chart-unity-correlation']
+    ];
 
-    function unityDrawCallsChartClick(event) {
-        unityChartClickAt(event, 'unity_drawcalls', '#chart-unity-drawcalls');
-    }
-
-    function unityGeometryChartClick(event) {
-        unityChartClickAt(event, 'unity_geometry', '#chart-unity-geometry');
+    function bindUnityChartFrameSelection() {
+        UNITY_FRAME_SELECT_CHARTS.forEach(function(item) {
+            var chartKey = item[0];
+            var selector = item[1];
+            var element = document.querySelector(selector);
+            if (!element || element.__unityFrameSelectBound) return;
+            // Capture phase: ApexCharts' SVG/tooltip layer can swallow the
+            // bubbled click, so read the mouse position before it does.
+            element.addEventListener('click', function(event) {
+                unityChartClickAt(event, chartKey, selector);
+            }, true);
+            element.__unityFrameSelectBound = true;
+        });
     }
 
     function unityStatsFrameAt(x) {
@@ -2372,7 +2368,8 @@
         thread: 'main',
         mode: 'hierarchy',
         data: null,
-        loading: false
+        loading: false,
+        pending: null
     };
 
     function unityHotspotUrl(path, params) {
@@ -2455,7 +2452,10 @@
                     requested = null;
                 }
                 var target = first.index;
-                if (!isNaN(requested)) {
+                if (unityHotspotState.frame !== null) {
+                    // 帧列表返回前用户已经点选了某一帧，保持该选择。
+                    target = unityHotspotState.frame;
+                } else if (!isNaN(requested)) {
                     for (var i = 0; i < data.frames.length; i++) {
                         if (data.frames[i].index === requested) {
                             target = requested;
@@ -2467,7 +2467,12 @@
                 $('#unity-hotspot-frame')
                     .attr('min', data.frames[0].index)
                     .attr('max', data.frames[data.frames.length - 1].index);
-                loadUnityHotspotFrame(target, 'main');
+                if (unityHotspotState.loading || unityHotspotState.data) {
+                    // 图表点击已经触发过取帧（或正在取帧），不要用默认帧覆盖。
+                    $('#unity-hotspot-frame').val(target);
+                } else {
+                    loadUnityHotspotFrame(target, 'main');
+                }
             },
             error: function() {
                 unityHotspotSetStatus('加载 Unity 帧列表失败', true);
@@ -2487,7 +2492,11 @@
         frame = parseInt(frame, 10);
         if (isNaN(frame)) return;
         thread = thread || unityHotspotState.thread || 'main';
-        if (unityHotspotState.loading) return;
+        if (unityHotspotState.loading) {
+            // 帧解析可能较慢，保留最新一次选择，避免连续点击被丢弃。
+            unityHotspotState.pending = { frame: frame, thread: thread };
+            return;
+        }
         unityHotspotState.loading = true;
         $('#unity-hotspot-load').prop('disabled', true);
         unityHotspotSetStatus('正在解析第 ' + frame + ' 帧…');
@@ -2502,6 +2511,7 @@
                 $('#unity-hotspot-load').prop('disabled', false);
                 if (!data || data.status != 1) {
                     unityHotspotSetStatus((data && data.msg) || '帧解析失败', true);
+                    flushUnityHotspotPending();
                     return;
                 }
                 unityHotspotState.data = data;
@@ -2514,13 +2524,25 @@
                     + ' ms · ' + (data.threads || []).length + ' 个线程'
                 );
                 renderUnityHotspot();
+                flushUnityHotspotPending();
             },
             error: function() {
                 unityHotspotState.loading = false;
                 $('#unity-hotspot-load').prop('disabled', false);
                 unityHotspotSetStatus('帧解析请求失败', true);
+                flushUnityHotspotPending();
             }
         });
+    }
+
+    function flushUnityHotspotPending() {
+        var next = unityHotspotState.pending;
+        unityHotspotState.pending = null;
+        if (!next) return;
+        if (next.frame === unityHotspotState.frame && next.thread === unityHotspotState.thread) {
+            return;
+        }
+        loadUnityHotspotFrame(next.frame, next.thread);
     }
 
     function updateUnityHotspotThreads(data, current) {
