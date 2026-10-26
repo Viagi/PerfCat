@@ -80,6 +80,8 @@ class UnityCapture(object):
         self._auto_options = {}
         self._auto_thread = None
         self._session_owner = None
+        self._raw_complete = None
+        self._stream_error = None
 
     # --------------------------------------------------------- helpers
 
@@ -484,6 +486,8 @@ class UnityCapture(object):
                         else backend.stop()
                     )
                     self.files = list(backend.files)
+                    self._raw_complete = result.get("raw_complete")
+                    self._stream_error = result.get("stream_error")
                 except Exception as e:
                     logger.warning("[Unity] stop failed: {}".format(e))
                     result = {"status": 0, "msg": str(e)}
@@ -535,6 +539,8 @@ class UnityCapture(object):
             "ignored_options": self.ignored_options,
             "metrics_supported": backend_status.get("metrics_supported"),
             "metrics_reason": backend_status.get("metrics_reason"),
+            "raw_complete": backend_status.get("raw_complete"),
+            "stream_error": backend_status.get("stream_error"),
             "supported_versions": self.supported_versions(),
             "supported_areas": self.supported_areas(),
             "default_areas": self.default_areas(),
@@ -762,6 +768,8 @@ class UnityCapture(object):
             "enabled_categories": self.enabled_categories,
             "ignored_options": self.ignored_options,
             "files": self.files,
+            "raw_complete": self._raw_complete,
+            "stream_error": self._stream_error,
             "note": (
                 "raw captures only; open .snapshot with Memory Profiler, "
                 "profiler.raw with a Unity profiler binary-log reader"

@@ -493,6 +493,9 @@ class ProtocolBackend(object):
             size = 0
             if self.remote_log and os.path.exists(self.remote_log):
                 size = os.path.getsize(self.remote_log)
+            result["raw_complete"] = self.session.raw_complete
+            if self.session.error:
+                result["stream_error"] = self.session.error
             if discard:
                 if self.remote_log and os.path.exists(self.remote_log):
                     try:
@@ -526,4 +529,6 @@ class ProtocolBackend(object):
             "ignored_options": [],
             "metrics_supported": True,
             "metrics_reason": None,
+            "raw_complete": self.session.raw_complete,
+            "stream_error": self.session.error,
         }

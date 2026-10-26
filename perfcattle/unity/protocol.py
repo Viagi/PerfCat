@@ -99,7 +99,9 @@ def read_frame(sock, timeout):
     while len(payload) < length:
         chunk = sock.recv(min(1 << 16, length - len(payload)))
         if not chunk:
-            break
+            # The peer closed mid-frame. Do not return a short frame, which
+            # would silently truncate profiler.raw while still looking valid.
+            raise UnityProtocolError("frame payload truncated")
         payload += chunk
     return Frame(header[4:20], payload)
 
@@ -195,6 +197,7 @@ class UnityProtocolSession(object):
         self._snap_lock = threading.Lock()
         self._snap_state = None
         self._error = None
+        self._truncated = False
         self.stats_parser = RawStatsParser()
         self.deep_profiling = False
         # None 表示从未发送过 set_enabled_categories，Player 保留自己的默认值。
@@ -527,6 +530,7 @@ class UnityProtocolSession(object):
             self._reader.join(timeout=3)
         if self._raw_file:
             try:
+                self._raw_file.flush()
                 self._raw_file.close()
             except OSError:
                 pass
@@ -598,9 +602,12 @@ class UnityProtocolSession(object):
             except (OSError, UnityProtocolError) as e:
                 if self._running:
                     self._error = str(e)
+                    self._truncated = True
                     logger.warning("[Unity] stream stopped: {}".format(e))
                 break
             if frame is None:
+                if self._running:
+                    self._truncated = True
                 break
             if frame.guid == data_guid:
                 payload = frame.payload
@@ -662,3 +669,8 @@ class UnityProtocolSession(object):
     @property
     def error(self):
         return self._error
+
+    @property
+    def raw_complete(self):
+        """True when the profiler stream ended cleanly, False when truncated."""
+        return not self._truncated
