@@ -245,6 +245,29 @@ def test_android_memory_detail_reuses_recent_meminfo_sample(monkeypatch):
     assert commands == ["dumpsys meminfo 123"]
 
 
+def test_android_fps_without_cache_raises_instead_of_fabricating_zero(monkeypatch):
+    monkeypatch.setattr(fps_module.time, "sleep", lambda _: None)
+
+    class FakeMonitor:
+        frequency = 0
+
+        def __init__(self):
+            self.collect_fps = 0
+            self.collect_jank = 0
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+    monkeypatch.setattr(fps_module, "FPSMonitor", lambda **kwargs: FakeMonitor())
+    fps = FPS("com.example", "device-1")
+
+    with pytest.raises(RuntimeError, match="no valid FPS sample"):
+        fps.getAndroidFps(noLog=True)
+
+
 def test_android_fps_reuses_last_value_when_sample_has_no_frames(monkeypatch):
     monkeypatch.setattr(fps_module.time, "sleep", lambda _: None)
 
@@ -317,9 +340,27 @@ def test_android_gpu_reuses_last_value_after_invalid_output(monkeypatch):
     assert gpu.getAndroidGpuRate() == 25
 
 
-def test_android_gpu_treats_zero_denominator_as_empty_sample(monkeypatch):
+def test_android_gpu_treats_invalid_output_as_unavailable(monkeypatch):
+    mock_adb = MagicMock()
+    mock_adb.shell.return_value = "not-a-number nope"
+    monkeypatch.setattr(gpu_module, "adb", mock_adb)
+
+    with pytest.raises(RuntimeError, match="no valid GPU sample"):
+        GPU("com.example", "device-1").getAndroidGpuRate()
+
+
+def test_android_gpu_treats_zero_denominator_as_unavailable(monkeypatch):
     mock_adb = MagicMock()
     mock_adb.shell.return_value = "0 0"
+    monkeypatch.setattr(gpu_module, "adb", mock_adb)
+
+    with pytest.raises(RuntimeError, match="no valid GPU sample"):
+        GPU("com.example", "device-1").getAndroidGpuRate()
+
+
+def test_android_gpu_accepts_zero_utilization_as_valid(monkeypatch):
+    mock_adb = MagicMock()
+    mock_adb.shell.return_value = "0 100"
     monkeypatch.setattr(gpu_module, "adb", mock_adb)
 
     assert GPU("com.example", "device-1").getAndroidGpuRate() == 0

@@ -52,3 +52,14 @@ pytest -q tests/test_adb_command_result.py tests/test_core_adb_client.py tests/t
 
 验证：
 `pytest -q tests/test_collection_stability.py tests/test_collector_adb_metrics.py tests/test_collector_fps.py tests/test_device_android.py tests/test_android_device.py` → 41 passed。
+
+## Task 2 失败零值修复（2026-10-26）
+
+- FPS 无缓存且采样失败时抛出 `CollectorUnavailableError`，不再返回 `(0, 0)`；已有缓存仍按兼容路径返回。
+- GPU 空、非法或分母为零输出且无缓存时抛出 `CollectorUnavailableError`；已有缓存仍可回退。
+- GPU 合法 `0 / 100` 仍返回数值 `0`，区分真实零值与不可用结果。
+- 新增 FPS 无缓存失败、GPU 不可用及 GPU 成功零值回归测试。
+- 扫描其余 collector 的 `0` 返回：`file_io.py` 中为基线/无增量或非 Android 合法路径，不属于失败伪装；`fps.py` 的 `return 0` 是 surface rank 评分，不是采样结果。
+
+验证：
+`pytest -q tests/test_collection_stability.py tests/test_collector_adb_metrics.py tests/test_collector_fps.py tests/test_device_android.py tests/test_android_device.py tests/test_metric_model.py` → `57 passed`；保留既有 1269 个 Python/Werkzeug 弃用警告。

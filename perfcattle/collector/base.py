@@ -10,6 +10,11 @@ from perfcattle.core.adb_client import ADB
 from perfcattle.core.metrics import MetricSample, MetricStatus, finite_number
 
 
+class CollectorUnavailableError(RuntimeError):
+    """Raised when a collector cannot produce a valid uncached sample."""
+
+
+
 def adb_shell(client, **kwargs):
     """Run a collector ADB command with structured failure propagation.
 

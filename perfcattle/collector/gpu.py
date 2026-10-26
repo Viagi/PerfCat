@@ -7,7 +7,11 @@ from logzero import logger
 
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
-from perfcattle.collector.base import ReusableCollector, adb_shell
+from perfcattle.collector.base import (
+    ReusableCollector,
+    CollectorUnavailableError,
+    adb_shell,
+)
 
 
 class GPU(ReusableCollector):
@@ -45,7 +49,7 @@ class GPU(ReusableCollector):
         if cached is not None:
             self._last_gpu = cached
             return cached
-        return 0
+        raise CollectorUnavailableError("no valid GPU sample")
 
     def _sample_android_gpu_rate(self):
         cmd = "cat /sys/class/kgsl/kgsl-3d0/gpubusy"

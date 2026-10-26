@@ -14,6 +14,7 @@ from logzero import logger
 from perfcattle.collector.base import (
     adb_shell,
     ReusableCollector,
+    CollectorUnavailableError,
     create_devices,
     create_report_store,
 )
@@ -996,6 +997,8 @@ class FPS(ReusableCollector):
                 self.last_sample_time = sample_time
             if sequence is not None:
                 self._last_sample_sequence = sequence
+        if fps <= 0:
+            raise CollectorUnavailableError("no valid FPS sample")
         return {
             "fps": fps,
             "jank": jank,
@@ -1031,7 +1034,7 @@ class FPS(ReusableCollector):
             if self._last_fps is not None:
                 fps, jank = self._last_fps
             else:
-                fps, jank = 0, 0
+                raise
             if not self._process_exists(_d):
                 logger.error("[FPS] {} : No process found".format(self.pkgName))
             elif used_cache:
