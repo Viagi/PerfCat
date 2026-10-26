@@ -377,7 +377,7 @@ class Network(ReusableCollector):
         recNum = round(float(apm_data[0]), 2)
         return sendNum, recNum
 
-    def getNetWorkData(self, wifi=True, noLog=False):
+    def getNetWorkData(self, wifi=True, noLog=False, unified=False):
         """获取上行和下行流量数据，单位：KB"""
         _f = self._get_report_store()
         sendNum, recNum = (
@@ -392,12 +392,10 @@ class Network(ReusableCollector):
             "sample_epoch_ms": int((self.last_sample_time or time.time()) * 1000),
             "error": self.fallback_reason if status is not MetricStatus.OK else None,
         }
-        if noLog is False and status is MetricStatus.OK:
-            if self.last_sample_time == self._last_logged_sample_time:
-                return sendNum, recNum
-            sample_time = self.last_sample_time or time.time()
-            apm_time = datetime.datetime.fromtimestamp(sample_time).strftime("%H:%M:%S.%f")
-            _f.add_log(os.path.join(_f.report_dir, "upflow.log"), apm_time, sendNum)
-            _f.add_log(os.path.join(_f.report_dir, "downflow.log"), apm_time, recNum)
-            self._last_logged_sample_time = self.last_sample_time
+        if unified:
+            status_value = self.last_sample["status"]
+            return {
+                "send": MetricSample("network_send", sendNum, "KB", status_value, self.last_source, self.last_scope, sample_epoch_ms=self.last_sample["sample_epoch_ms"], error=self.last_sample["error"]).to_dict(),
+                "recv": MetricSample("network_recv", recNum, "KB", status_value, self.last_source, self.last_scope, sample_epoch_ms=self.last_sample["sample_epoch_ms"], error=self.last_sample["error"]).to_dict(),
+            }
         return sendNum, recNum

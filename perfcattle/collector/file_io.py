@@ -19,7 +19,7 @@ from perfcattle.collector.base import (
 )
 from perfcattle.core.adb_client import adb
 from perfcattle.core.platform import Platform
-from perfcattle.core.metrics import MetricStatus
+from perfcattle.core.metrics import MetricStatus, MetricSample
 
 
 class FileIO(ReusableCollector):
@@ -493,7 +493,7 @@ class FileIO(ReusableCollector):
                 logger.error("[FileIO] %s : No process found", self.pkgName)
         return read_kb, write_kb
 
-    def getFileIOData(self, noLog=False):
+    def getFileIOData(self, noLog=False, unified=False):
         """获取文件读写增量数据，单位 KB。"""
         _f = self._get_report_store()
         read_kb, write_kb = self.getAndroidFileIO()
@@ -504,11 +504,9 @@ class FileIO(ReusableCollector):
             "sample_epoch_ms": int((self.last_sample_time or time.time()) * 1000),
             "error": self.fallback_reason if status is not MetricStatus.OK else None,
         }
-        if noLog is False and status is MetricStatus.OK:
-            if self.last_sample_time == self._last_logged_sample_time:
-                return read_kb, write_kb
-            apm_time = self.format_log_time(self.last_sample_time)
-            _f.add_log(os.path.join(_f.report_dir, "file_read.log"), apm_time, read_kb)
-            _f.add_log(os.path.join(_f.report_dir, "file_write.log"), apm_time, write_kb)
-            self._last_logged_sample_time = self.last_sample_time
+        if unified:
+            return {
+                "read": MetricSample("file_read", read_kb, "KB", status.value, self.last_source, self.last_scope, sample_epoch_ms=self.last_sample["sample_epoch_ms"], error=self.last_sample["error"]).to_dict(),
+                "write": MetricSample("file_write", write_kb, "KB", status.value, self.last_source, self.last_scope, sample_epoch_ms=self.last_sample["sample_epoch_ms"], error=self.last_sample["error"]).to_dict(),
+            }
         return read_kb, write_kb

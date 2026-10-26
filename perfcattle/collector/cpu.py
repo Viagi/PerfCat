@@ -294,7 +294,7 @@ class CPU(ReusableCollector):
         self._core_cpu_rate_cache[self._cache_key()] = list(coreCpuRateList)
         return list(coreCpuRateList)
 
-    def getCoreCpuRate(self, cores=0, noLog=False):
+    def getCoreCpuRate(self, cores=0, noLog=False, unified=False):
         """获取各核心 CPU 使用率"""
         _f = self._get_report_store()
         _d = self._get_devices()
@@ -408,11 +408,16 @@ class CPU(ReusableCollector):
             _f.add_log(os.path.join(_f.report_dir, "cpu_sys.log"), apm_time, sysCpuRate)
         return appCpuRate, sysCpuRate
 
-    def getCpuRate(self, noLog=False):
-        """获取进程 CPU 使用率，单位：%"""
+    def getCpuRate(self, noLog=False, unified=False):
+        """获取进程 CPU 使用率，单位：%。"""
         appCpuRate, systemCpuRate = (
             self.getAndroidCpuRate(noLog)
             if self.platform == Platform.Android
             else self.getiOSCpuRate(noLog)
         )
+        if unified:
+            return {
+                "app": MetricSample.ok("cpu_app", appCpuRate, unit="percent", source="process").to_dict(),
+                "system": MetricSample.ok("cpu_system", systemCpuRate, unit="percent", source="/proc/stat").to_dict(),
+            }
         return appCpuRate, systemCpuRate

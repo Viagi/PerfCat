@@ -1083,7 +1083,7 @@ class FPS(ReusableCollector):
         if session is not None:
             self._stop_monitor(session["monitor"])
 
-    def getiOSFps(self, noLog=False):
+    def getiOSFps(self, noLog=False, unified=False):
         """获取 iOS FPS"""
         _f = self._get_report_store()
         from perfcattle.collector.ios_perf import IOSPerformance
@@ -1092,7 +1092,9 @@ class FPS(ReusableCollector):
         if noLog is False:
             apm_time = datetime.datetime.now().strftime("%H:%M:%S.%f")
             _f.add_log(os.path.join(_f.report_dir, "fps.log"), apm_time, fps)
-        return fps, 0
+        if unified:
+            return MetricSample.ok("fps", fps, unit="fps", source="ios").to_dict() | {"jank": None}
+        return fps, None
 
     def getFPS(self, noLog=False):
         """获取 fps 和 jank；统一模式返回 MetricSample。"""

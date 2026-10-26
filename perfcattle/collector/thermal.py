@@ -318,7 +318,7 @@ class ThermalSensor(ReusableCollector):
         typeList = result.splitlines()
         return typeList
 
-    def getThermalTemp(self, noLog=True):
+    def getThermalTemp(self, noLog=True, unified=False):
         """获取温度数据"""
         try:
             temp_list = self._sampled_value(
@@ -340,7 +340,9 @@ class ThermalSensor(ReusableCollector):
             self._log_thermal_temps(temp_list)
         self.last_sample = {
             "sensors": temp_list if temp_list else None,
-            "status": MetricStatus.OK.value if temp_list else MetricStatus.MISSING.value,
+            "status": MetricStatus.CACHED.value if temp_list and self._cached_sampled_value("thermal", max_age=self.SAMPLER_STALE_TTL_SECONDS) is not None else (MetricStatus.OK.value if temp_list else MetricStatus.MISSING.value),
             "unit": "celsius", "sample_epoch_ms": int(time.time() * 1000),
         }
+        if unified:
+            return {"sensors": self.last_sample}
         return temp_list

@@ -27,6 +27,8 @@ class GPU(ReusableCollector):
         self.deviceId = deviceId
         self.platform = platform
         self._last_gpu = self._gpu_cache.get(self._cache_key())
+        self._previous_busy = None
+        self._previous_total = None
 
     @classmethod
     def _make_cache_key(cls, platform, deviceId, pkgName):
@@ -53,41 +55,43 @@ class GPU(ReusableCollector):
             return CachedSample(cached)
         raise CollectorUnavailableError("no valid GPU sample")
 
-    def _sample_android_gpu_rate(self):
-        cmd = "cat /sys/class/kgsl/kgsl-3d0/gpubusy"
-        result = adb_shell(adb, cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
+    def _sample_android_gpu_rate(self, allow_baseline=True):
+        result = adb_shell(adb, cmd="cat /sys/class/kgsl/kgsl-3d0/gpubusy", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
         parts = result.strip().split()
-        if len(parts) < 2 or not parts[0] or not parts[1]:
-            return self._fallback_gpu_value()
+        if len(parts) < 2:
+            raise CollectorUnavailableError("no valid GPU sample: invalid GPU counter")
         try:
-            numerator = int(parts[0])
-            denominator = int(parts[1])
-        except ValueError:
-            return self._fallback_gpu_value()
-        if denominator <= 0:
-            return self._fallback_gpu_value()
-        gpu = round(float(numerator / denominator) * 100, 2)
+            busy, total = int(parts[0]), int(parts[1])
+        except ValueError as exc:
+            raise CollectorUnavailableError("no valid GPU sample: invalid GPU counter") from exc
+        if busy < 0 or total <= 0 or busy > total:
+            raise CollectorUnavailableError("no valid GPU sample: invalid GPU counter")
+        if self._previous_busy is None or self._previous_total is None:
+            self._previous_busy, self._previous_total = busy, total
+            if allow_baseline:
+                return round(busy / total * 100, 2)
+            raise CollectorUnavailableError("GPU counter baseline unavailable")
+        if busy < self._previous_busy or total < self._previous_total:
+            self._previous_busy, self._previous_total = busy, total
+            raise CollectorUnavailableError("GPU counter reset or wrap")
+        busy_delta = busy - self._previous_busy
+        total_delta = total - self._previous_total
+        self._previous_busy, self._previous_total = busy, total
+        if total_delta <= 0 or busy_delta < 0 or busy_delta > total_delta:
+            raise CollectorUnavailableError("no valid GPU sample: invalid GPU counter delta")
+        gpu = round(busy_delta / total_delta * 100, 2)
         self._last_gpu = gpu
         self._gpu_cache[self._cache_key()] = gpu
         return gpu
 
-    def getAndroidGpuRate(self):
-        """获取 Android GPU 使用率"""
+    def getAndroidGpuRate(self, unified=None):
         try:
-            result = self._sampled_value(
-                "gpu",
-                self._sample_android_gpu_rate,
-                interval=self.SAMPLER_INTERVAL_SECONDS,
-                stale_ttl=self.SAMPLER_STALE_TTL_SECONDS,
-                background=True,
-            )
+            result = self._sampled_value("gpu", lambda: self._sample_android_gpu_rate(True), interval=self.SAMPLER_INTERVAL_SECONDS, stale_ttl=self.SAMPLER_STALE_TTL_SECONDS, background=True)
             if isinstance(result, MetricSample):
                 return result
             return result
         except Exception as e:
-            cached = self._cached_sampled_value(
-                "gpu", max_age=self.SAMPLER_STALE_TTL_SECONDS
-            )
+            cached = self._cached_sampled_value("gpu", max_age=self.SAMPLER_STALE_TTL_SECONDS)
             if cached is not None:
                 logger.warning("[GPU] %s, using cached value", e)
                 return cached
@@ -95,26 +99,17 @@ class GPU(ReusableCollector):
             raise
 
     def getiOSGpuRate(self):
-        """获取 iOS GPU 使用率"""
         from perfcattle.collector.ios_perf import IOSPerformance
-        apm = IOSPerformance(self.pkgName, self.deviceId)
-        gpu = apm.getPerformance(apm.gpu)
-        return gpu
+        return IOSPerformance(self.pkgName, self.deviceId).getPerformance(IOSPerformance.gpu)
 
-    def getGPU(self, noLog=False):
-        """获取 GPU 使用率"""
+    def getGPU(self, noLog=False, unified=False):
         _f = self._get_report_store()
-        gpu = (
-            self.getAndroidGpuRate()
-            if self.platform == Platform.Android
-            else self.getiOSGpuRate()
-        )
+        gpu = self.getAndroidGpuRate() if self.platform == Platform.Android else self.getiOSGpuRate()
         if noLog is False:
             apm_time = datetime.datetime.now().strftime("%H:%M:%S.%f")
             log_value = gpu.value if isinstance(gpu, MetricSample) else gpu
-            if not isinstance(gpu, MetricSample) or gpu.status in (
-                MetricStatus.OK,
-                MetricStatus.CACHED,
-            ):
+            if not isinstance(gpu, MetricSample) or gpu.status in (MetricStatus.OK, MetricStatus.CACHED):
                 _f.add_log(os.path.join(_f.report_dir, "gpu.log"), apm_time, log_value)
+        if unified:
+            return gpu.to_dict() if isinstance(gpu, MetricSample) else MetricSample.ok("gpu", gpu, unit="percent", source="kgsl_gpubusy").to_dict()
         return gpu

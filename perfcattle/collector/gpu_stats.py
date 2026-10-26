@@ -278,13 +278,14 @@ class GpuStats(object):
             if value is None and key == "gpu_util":
                 value = _parse_percentage(text)
             if value is not None:
-                data[key] = value
+                unit = "percent" if key == "gpu_util" else ("celsius" if key == "gpu_temp" else "MHz")
+                data[key] = MetricSample.ok(key, value, unit=unit, source=name, aggregation=semantics).to_dict()
         try:
-            data.update(self._gpu_memory())
+            data.update({key: MetricSample.ok(key, value, unit="MB", source="dumpsys gpu").to_dict() for key, value in self._gpu_memory().items()})
         except Exception as e:
             logger.debug(f"gpu stats: memory sampling failed: {e}")
         try:
-            data.update(self._bandwidth.sample())
+            data.update({key: MetricSample.ok(key, value, unit="MB/s", source="gpu_perfcounter").to_dict() for key, value in self._bandwidth.sample().items()})
         except Exception as e:
             logger.debug(f"gpu stats: bandwidth sampling failed: {e}")
         return data

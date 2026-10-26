@@ -10,6 +10,7 @@ from logzero import logger
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
 from perfcattle.collector.base import ReusableCollector, adb_shell
+from perfcattle.core.metrics import MetricSample, MetricStatus
 
 
 class Disk(ReusableCollector):
@@ -96,11 +97,17 @@ class Disk(ReusableCollector):
     def getiOSDisk(self):
         return tidevice.Device(udid=self.deviceId).storage_info()
 
-    def getDisk(self, noLog=False):
+    def getDisk(self, noLog=False, unified=False):
         _f = self._get_report_store()
         disk = self.getAndroidDisk() if self.platform == Platform.Android else self.getiOSDisk()
         if noLog is False:
             apm_time = datetime.datetime.now().strftime("%H:%M:%S.%f")
             _f.add_log(os.path.join(_f.report_dir, "disk_used.log"), apm_time, disk.get("used"))
             _f.add_log(os.path.join(_f.report_dir, "disk_free.log"), apm_time, disk.get("free"))
+        if unified:
+            status = disk.get("status", MetricStatus.OK.value)
+            return {
+                key: MetricSample(key, value, "KB", status, source="df", sample_epoch_ms=disk.get("sample_epoch_ms"), sample_monotonic_ns=disk.get("sample_monotonic_ns"), aggregation="snapshot").to_dict()
+                for key, value in (("disk_size", disk.get("disk_size")), ("used", disk.get("used")), ("free", disk.get("free")))
+            }
         return disk

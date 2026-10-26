@@ -11,7 +11,7 @@ from logzero import logger
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
 from perfcattle.collector.base import ReusableCollector, adb_shell
-from perfcattle.core.metrics import MetricStatus
+from perfcattle.core.metrics import MetricStatus, MetricSample
 
 
 class Memory(ReusableCollector):
@@ -329,7 +329,7 @@ class Memory(ReusableCollector):
         swapPass = 0
         return totalPass, swapPass
 
-    def getProcessMemory(self, noLog=False):
+    def getProcessMemory(self, noLog=False, unified=False):
         """获取应用内存"""
         _f = self._get_report_store()
         totalPass, swapPass = (
@@ -344,9 +344,9 @@ class Memory(ReusableCollector):
                 _f.add_log(
                     os.path.join(_f.report_dir, "mem_swap.log"), apm_time, swapPass
                 )
-        self.last_sample = {
-            "total": totalPass, "swap": swapPass, "unit": "MB",
-            "status": MetricStatus.OK if totalPass is not None else MetricStatus.MISSING,
-            "sample_epoch_ms": int(time.time() * 1000),
-        }
+        if unified:
+            return {
+                "total": MetricSample.ok("memory", totalPass, unit="MB", source="process").to_dict(),
+                "swap": MetricSample.ok("memory_swap", swapPass, unit="MB", source="process").to_dict(),
+            }
         return totalPass, swapPass

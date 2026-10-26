@@ -30,3 +30,15 @@ The review follow-up is implemented on top of commit `936c63d`.
 - Added public-path quality tests covering missing network/file I/O/thermal samples and CPU invalid deltas while preserving valid zero samples.
 
 Verification: `python -m compileall -q perfcattle`, `pytest -q` -> 156 passed. Existing Werkzeug/Python deprecation warnings remain.
+
+## Review follow-up completion
+
+Implemented the comprehensive public unified boundary on top of commit `0f97765` without modifying templates or `.zcodeignore`.
+
+- GPU main collection now treats kgsl `gpubusy` as a cumulative counter, retaining baseline/reset state and exposing invalid-baseline/reset failures instead of silently returning fabricated values; legacy numeric mode remains available.
+- CPU, memory, network, file I/O, FPS, GPU, disk, and thermal public methods accept `unified=True` and return structured serialized metric samples while preserving legacy numeric/tuple/dict behavior by default.
+- GPU stats normalizes utilization, clock, temperature, memory, and bandwidth entries to structured samples and exercises the actual `sample()` path.
+- iOS FPS reports unavailable jank as `None`; thermal cached samples use `cached`; successful zero values remain valid `ok` samples; failures preserve missing/invalid status rather than zero/empty fallbacks.
+- Added regression coverage for public unified paths, successful zeros, GPU stats integration, and iOS jank semantics.
+
+Verification: focused collector suites `36 passed`; full `pytest -q` `161 passed`; `python -m compileall -q perfcattle` passed. Existing Werkzeug/Python deprecation warnings remain.

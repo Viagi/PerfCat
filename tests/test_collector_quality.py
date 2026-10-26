@@ -13,6 +13,7 @@ from perfcattle.collector.fps import FPS
 from perfcattle.collector.thermal import ThermalSensor
 from perfcattle.collector.gpu import GPU
 from perfcattle.core.metrics import MetricSample, MetricStatus
+from perfcattle.core.platform import Platform
 
 
 def test_proc_stat_parser_handles_spaces_and_right_parenthesis():
@@ -90,3 +91,38 @@ def test_cpu_public_invalid_delta_is_not_unpackable(monkeypatch):
     cpu._last_cpu_sample = {"time": 0, "process": 1, "total": 1, "idle": 1}
     with pytest.raises(RuntimeError, match="invalid CPU delta"):
         cpu._sample_android_cpu_rate()
+
+
+def test_public_unified_boundaries_preserve_zero_and_status(monkeypatch):
+    cpu = CPU("app", "device", pid="123")
+    monkeypatch.setattr(cpu, "getAndroidCpuRate", lambda noLog=False: (0.0, 0.0))
+    cpu_sample = cpu.getCpuRate(unified=True)
+    assert cpu_sample["app"]["value"] == 0.0
+    assert cpu_sample["app"]["status"] == "ok"
+
+    memory = Memory("app", "device", pid="123")
+    monkeypatch.setattr(memory, "getAndroidMemory", lambda: (0.0, 0.0))
+    memory_sample = memory.getProcessMemory(noLog=True, unified=True)
+    assert memory_sample["total"]["value"] == 0.0
+    assert memory_sample["total"]["status"] == "ok"
+
+
+def test_gpu_stats_sample_is_structured_for_every_metric(monkeypatch):
+    stats = GpuStats("device")
+    stats._sources = {"gpu_util": ("kgsl_gpubusy", "/x", "window_ratio")}
+    monkeypatch.setattr(stats, "probe", lambda: None)
+    values = iter(["100 200", "100 300"])
+    monkeypatch.setattr("perfcattle.collector.gpu_stats._read", lambda *args: next(values))
+    monkeypatch.setattr(stats, "_gpu_memory", lambda: {"gpu_mem_total": 0.0})
+    monkeypatch.setattr(stats._bandwidth, "sample", lambda: {"gpu_read_mb": 0.0})
+    stats.sample()
+    result = stats.sample()
+    assert result["gpu_util"]["value"] == 33.33
+    assert result["gpu_mem_total"]["value"] == 0.0
+    assert result["gpu_read_mb"]["value"] == 0.0
+
+
+def test_ios_fps_jank_is_unavailable_not_zero(monkeypatch):
+    fps = FPS("app", "device", Platform.iOS, "surface")
+    monkeypatch.setattr(fps, "getiOSFps", lambda noLog=False: (60, None))
+    assert fps.getFPS(noLog=True) == (60, None)
