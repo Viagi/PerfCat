@@ -6,6 +6,7 @@ from flask import Blueprint, request, g
 from logzero import logger
 from perfcattle import __version__
 from perfcattle.core.platform import Platform
+from perfcattle.core.metrics import plottable_value
 from perfcattle.core.selection_cache import ApmSelectionCache
 from perfcattle.core.settings_cache import ApmSettingsCache
 from perfcattle.device.manager import Devices
@@ -632,7 +633,14 @@ def getGpuStats():
                 f.add_json_log(
                     os.path.join(f.report_dir, "gpu_stats.log"), apm_time, data
                 )
-            result = {"status": 1, "data": data}
+            # The chart plots numbers: unwrap the structured samples (the log
+            # keeps them) and drop non-ok ones so a gap replaces a fake zero.
+            live = {}
+            for key, sample in data.items():
+                value = plottable_value(sample)
+                if value is not None:
+                    live[key] = value
+            result = {"status": 1, "data": live}
     except Exception as e:
         logger.exception(e)
         result = {"status": 0, "msg": str(e), "data": {}}

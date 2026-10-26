@@ -116,3 +116,21 @@ def parse_metric_line(line: str) -> MetricSample | None:
         return MetricSample.from_dict(data)
     except (TypeError, ValueError, OverflowError, json.JSONDecodeError):
         return None
+
+
+def plottable_value(value: Any) -> float | int | None:
+    """Unwrap a structured sample into a number a chart can plot.
+
+    Collectors write ``{"value": .., "status": ..}`` samples. Only ok/cached
+    samples carry a plottable value; anything else becomes ``None`` so the
+    series shows a gap instead of a fabricated zero. Bare numbers pass
+    through so payloads written before the structured refactor still work.
+    """
+    if isinstance(value, dict):
+        status = value.get("status")
+        if status is not None and status not in ("ok", "cached"):
+            return None
+        value = value.get("value")
+    if value is None or isinstance(value, (dict, list, bool)):
+        return None
+    return value if finite_number(value) else None

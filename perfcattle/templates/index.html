@@ -583,6 +583,7 @@ PerfCattle - Application Performance Monitoring
     var apmRunning = false;
     var apmStartToken = 0;
     var latestFps = null;
+    var latestFpsAt = 0;
 
     var apmDurationTimer = null;
     var apmDurationDeadline = 0;
@@ -1714,9 +1715,10 @@ PerfCattle - Application Performance Monitoring
                             var mem = (d['gpu_mem_app'] !== undefined) ? d['gpu_mem_app'] : d['gpu_mem_total'];
                             var readBw = d['gpu_bw_read'];
                             var writeBw = d['gpu_bw_write'];
-                            var fps = (latestFps && latestFps > 0) ? latestFps : null;
-                            var readPerFrame = (readBw !== undefined && fps !== null) ? Math.round(readBw / fps * 100) / 100 : null;
-                            var writePerFrame = (writeBw !== undefined && fps !== null) ? Math.round(writeBw / fps * 100) / 100 : null;
+                            var fpsAge = Date.now() - latestFpsAt;
+                            var fps = (latestFps && latestFps > 0 && fpsAge <= 5000) ? latestFps : null;
+                            var readPerFrame = (typeof readBw === 'number' && fps !== null) ? Math.round(readBw / fps * 100) / 100 : null;
+                            var writePerFrame = (typeof writeBw === 'number' && fps !== null) ? Math.round(writeBw / fps * 100) / 100 : null;
                             series[0].addPoint([x, d['gpu_clock'] === undefined ? null : d['gpu_clock']], false, true);
                             series[1].addPoint([x, d['gpu_bus'] === undefined ? null : d['gpu_bus']], false, true);
                             series[2].addPoint([x, mem === undefined ? null : mem], false, true);
@@ -2254,6 +2256,7 @@ PerfCattle - Application Performance Monitoring
                             let x_fps = realtimePointTime(),
                                 y_fps = data['fps'];
                             latestFps = (y_fps && y_fps > 0) ? y_fps : null;
+                            latestFpsAt = Date.now();
                             addRealtimePoint(seriesFps, x_fps, y_fps, platform != 'Android');
                             if(platform == 'Android'){
                                 let seriesJank = fps_chart.series[1];
@@ -3102,7 +3105,10 @@ PerfCattle - Application Performance Monitoring
             case 'gpu_stats':
                 seriesFinal = seriesGpuStats;
                 legend = true;
-                yAxis = [yAxis, { opposite: true, min: 0, title: { text: 'MB/frame' } }];
+                yAxis = [
+                    Object.assign({}, yAxis, { title: { text: 'MHz / MB' } }),
+                    { opposite: true, min: 0, title: { text: 'MB/frame' } }
+                ];
                 break;
             case 'mem_android':
                 seriesFinal = seriesMem;
@@ -3367,7 +3373,10 @@ PerfCattle - Application Performance Monitoring
                 break;    
             case 'gpu_stats':
                 seriesFinal = seriesGpuStats;
-                yAxis = [yAxis, { opposite: true, min: 0, title: { text: 'MB/frame' } }];
+                yAxis = [
+                    Object.assign({}, yAxis, { title: { text: 'MHz / MB' } }),
+                    { opposite: true, min: 0, title: { text: 'MB/frame' } }
+                ];
                 legend = true;
                 break;
             case 'mem_android':

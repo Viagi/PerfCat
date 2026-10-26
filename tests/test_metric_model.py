@@ -9,6 +9,7 @@ from perfcattle.core.metrics import (
     MetricStatus,
     finite_number,
     parse_metric_line,
+    plottable_value,
 )
 from perfcattle.report.log_io import LogIO
 
@@ -132,3 +133,16 @@ def test_read_log_skips_bad_and_nonfinite_lines_with_quality(tmp_report_dir):
     assert quality.total == 4
     assert quality.valid == 2
     assert quality.invalid == 2
+
+
+def test_plottable_value_unwraps_structured_samples_and_keeps_bare_numbers():
+    assert plottable_value({"value": 12.5, "status": "ok"}) == 12.5
+    assert plottable_value({"value": 12.5, "status": "cached"}) == 12.5
+    # A non-ok sample is a gap, not a zero.
+    assert plottable_value({"value": None, "status": "missing"}) is None
+    assert plottable_value({"value": 12.5, "status": "permission_denied"}) is None
+    # Payloads written before the structured refactor are bare numbers.
+    assert plottable_value(7) == 7
+    assert plottable_value(None) is None
+    assert plottable_value(float("nan")) is None
+    assert plottable_value(True) is None

@@ -8,7 +8,7 @@ import json
 import os
 import time
 from logzero import logger
-from perfcattle.core.metrics import MetricQuality, finite_number
+from perfcattle.core.metrics import MetricQuality, finite_number, plottable_value
 from perfcattle.core.platform import Platform
 
 
@@ -295,12 +295,7 @@ class LogIO:
         instead of bare numbers. Only ok/cached samples carry a plottable
         value; anything else is a gap in the series, never a fabricated zero.
         """
-        if not isinstance(value, dict):
-            return value
-        status = value.get("status")
-        if status is not None and status not in ("ok", "cached"):
-            return None
-        return value.get("value")
+        return plottable_value(value)
 
     def read_json_lines(self, scene, filename):
         """读取 JSON 行日志，返回 (charts, values)。
