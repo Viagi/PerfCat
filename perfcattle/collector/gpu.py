@@ -9,6 +9,7 @@ from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
 from perfcattle.collector.base import (
     ReusableCollector,
+    CachedSample,
     CollectorUnavailableError,
     adb_shell,
 )
@@ -44,11 +45,11 @@ class GPU(ReusableCollector):
 
     def _fallback_gpu_value(self):
         if self._last_gpu is not None:
-            return self._last_gpu
+            return CachedSample(self._last_gpu)
         cached = self._gpu_cache.get(self._cache_key())
         if cached is not None:
             self._last_gpu = cached
-            return cached
+            return CachedSample(cached)
         raise CollectorUnavailableError("no valid GPU sample")
 
     def _sample_android_gpu_rate(self):

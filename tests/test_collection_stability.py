@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 from flask import Flask
-from perfcattle.collector.base import CollectorSampler, ReusableCollector
+from perfcattle.collector.base import CachedSample, CollectorSampler, ReusableCollector
 from perfcattle.core.metrics import MetricStatus
 from perfcattle.report import manager as report_manager_module
 from perfcattle.report.manager import ReportManager
@@ -36,6 +36,52 @@ def test_unified_sampler_returns_metric_samples_for_success_and_cache():
     assert second.value == 1
     assert second.stale_age_ms is not None
     assert calls == [1]
+
+
+def test_unified_sampler_does_not_refresh_ttl_for_cached_sample_fallback(monkeypatch):
+    clock = [100.0]
+    monkeypatch.setattr("perfcattle.collector.base.time.time", lambda: clock[0])
+    monotonic = [10.0]
+    monkeypatch.setattr("perfcattle.collector.base.time.monotonic", lambda: monotonic[0])
+    calls = []
+
+    def sample():
+        calls.append(len(calls) + 1)
+        if len(calls) == 1:
+            return 7
+        return CachedSample(7)
+
+    sampler = CollectorSampler(
+        name="gpu", sample_func=sample, interval=0.1, stale_ttl=1.0,
+        background=False, unified=True,
+    )
+    assert sampler.sample_once().status is MetricStatus.OK
+    original_wall = sampler.last_sample_time
+    original_mono = sampler.last_sample_monotonic
+    clock[0] = 100.5
+    monotonic[0] = 10.5
+    cached = sampler.sample_once()
+    assert cached.status is MetricStatus.CACHED
+    assert cached.value == 7
+    assert sampler.last_sample_time == original_wall
+    assert sampler.last_sample_monotonic == original_mono
+    assert sampler.consecutive_failures == 0
+    clock[0] = 101.1
+    monotonic[0] = 11.1
+    missing = sampler.sample()
+    assert missing.status is MetricStatus.MISSING
+    assert missing.value is None
+    assert calls == [1, 2, 3]
+
+
+def test_unified_sampler_preserves_real_zero_as_success():
+    sampler = CollectorSampler(
+        name="gpu", sample_func=lambda: 0, interval=0.1, stale_ttl=1.0,
+        background=False, unified=True,
+    )
+    result = sampler.sample_once()
+    assert result.status is MetricStatus.OK
+    assert result.value == 0
 
 
 def test_unified_sampler_busy_returns_cached_sample_with_stale_age():

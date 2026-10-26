@@ -63,3 +63,16 @@ pytest -q tests/test_adb_command_result.py tests/test_core_adb_client.py tests/t
 
 验证：
 `pytest -q tests/test_collection_stability.py tests/test_collector_adb_metrics.py tests/test_collector_fps.py tests/test_device_android.py tests/test_android_device.py tests/test_metric_model.py` → `57 passed`；保留既有 1269 个 Python/Werkzeug 弃用警告。
+
+## Task 2 最后 Important：缓存 fallback 不刷新 sampler TTL（2026-10-26）
+
+### 修复内容
+- 新增 `CachedSample` 明确标记 collector-level fallback；`CollectorSampler` 返回该结果时只包装为 `CACHED`，不更新 `last_valid_result`、`last_sample_time` 或 `last_sample_monotonic`。
+- FPS/GPU 采样失败时继续兼容已有缓存展示，但缓存年龄仍从最近一次真实成功采样计算；超过 `stale_ttl` 后统一返回 `MISSING`。
+- 保留真实零值（例如 GPU `0 / 100`）为 `OK` 成功结果，不将其误判为 unavailable/cache。
+- 未修改 templates 或 `.zcodeignore`。
+
+### 新增测试与验证
+- 覆盖真实成功后连续 cached fallback、fallback 状态、TTL 时间戳不刷新、TTL 到期最终 `MISSING`，以及真实零值成功。
+- `pytest -q tests/test_collection_stability.py -k 'cached_sample_fallback or real_zero'` → `2 passed`。
+- `pytest -q tests/test_collection_stability.py tests/test_collector_adb_metrics.py tests/test_collector_fps.py tests/test_device_android.py tests/test_android_device.py tests/test_metric_model.py` → `60 passed`；保留既有 1269 个 Python/Werkzeug 弃用警告。

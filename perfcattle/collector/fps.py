@@ -14,6 +14,7 @@ from logzero import logger
 from perfcattle.collector.base import (
     adb_shell,
     ReusableCollector,
+    CachedSample,
     CollectorUnavailableError,
     create_devices,
     create_report_store,
@@ -988,8 +989,10 @@ class FPS(ReusableCollector):
         fps, jank, sample_time, sequence = self._read_monitor_value(
             monitor, wait_for_first_sample=started and self._last_fps is None
         )
+        used_cache = False
         if fps <= 0 and self._last_fps is not None:
             fps, jank = self._last_fps
+            used_cache = True
         elif fps > 0:
             self._last_fps = (fps, jank)
             self._fps_cache[self._cache_key()] = self._last_fps
@@ -999,12 +1002,13 @@ class FPS(ReusableCollector):
                 self._last_sample_sequence = sequence
         if fps <= 0:
             raise CollectorUnavailableError("no valid FPS sample")
-        return {
+        result = {
             "fps": fps,
             "jank": jank,
             "sample_time": self.last_sample_time,
             "sequence": self._last_sample_sequence,
         }
+        return CachedSample(result) if used_cache else result
 
     def getAndroidFps(self, noLog=False):
         """获取 Android FPS，单位：HZ"""

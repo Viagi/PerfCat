@@ -14,6 +14,14 @@ class CollectorUnavailableError(RuntimeError):
     """Raised when a collector cannot produce a valid uncached sample."""
 
 
+class CachedSample:
+    """A collector-provided fallback value that must not refresh sampler TTL."""
+
+    __slots__ = ("value",)
+
+    def __init__(self, value):
+        self.value = value
+
 
 def adb_shell(client, **kwargs):
     """Run a collector ADB command with structured failure propagation.
@@ -444,14 +452,23 @@ class CollectorSampler:
                 result = self.sample_func()
             finally:
                 _SAMPLER_ADB_SEMAPHORE.release()
+            cached_result = isinstance(result, CachedSample)
+            if cached_result:
+                result = result.value
             now = time.time()
             now_monotonic = time.monotonic()
             with self._lock:
-                self.last_valid_result = copy.deepcopy(result)
-                self.last_sample_time = now
-                self.last_sample_monotonic = now_monotonic
-                self.last_error = None
-                self.consecutive_failures = 0
+                if not cached_result:
+                    self.last_valid_result = copy.deepcopy(result)
+                    self.last_sample_time = now
+                    self.last_sample_monotonic = now_monotonic
+                    self.last_error = None
+                    self.consecutive_failures = 0
+            if cached_result:
+                cached = self._cached_result(max_age=self.stale_ttl)
+                if cached is not None:
+                    return cached
+                raise CollectorUnavailableError("cached collector sample expired")
             return self._as_sample(result) if self.unified else copy.deepcopy(result)
         except Exception as exc:
             with self._lock:
