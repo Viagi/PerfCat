@@ -2,7 +2,6 @@
 """CPU 性能采集器"""
 import datetime
 import os
-import re
 import time
 
 from logzero import logger
@@ -128,6 +127,28 @@ class CPU(ReusableCollector):
             cores.append(aggregate)
         return aggregate, cores
 
+    @staticmethod
+    def _parse_process_stat(result):
+        """Parse /proc/<pid>/stat without splitting the comm field.
+
+        ``comm`` may contain whitespace and right parentheses.  The kernel
+        encloses it between the first ``(`` and the final ``)``; fields after
+        that marker therefore start at field 3 (state).
+        """
+        text = (result or "").strip()
+        start = text.find("(")
+        end = text.rfind(")")
+        if start <= 0 or end <= start:
+            raise ValueError("invalid process cpu stat output")
+        fields = text[end + 1 :].strip().split()
+        # fields[0] is state (field 3), utime/stime are fields 14/15.
+        if len(fields) <= 12:
+            raise ValueError("invalid process cpu stat output")
+        try:
+            return float(fields[11]) + float(fields[12])
+        except (TypeError, ValueError):
+            raise ValueError("invalid process cpu stat output")
+
     def getprocessCpuStat(self):
         """获取某一时刻进程的 CPU 使用量"""
         for attempt in range(2):
@@ -135,18 +156,12 @@ class CPU(ReusableCollector):
             result = adb_shell(adb,
                 cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT
             )
-            toks = re.split("\\s+", result.strip())
-            if len(toks) > 16:
-                processCpu = (
-                    float(toks[13])
-                    + float(toks[14])
-                    + float(toks[15])
-                    + float(toks[16])
-                )
-                return processCpu
-            if attempt == 0 and self._refresh_pid():
-                continue
-            raise ValueError("invalid process cpu stat output")
+            try:
+                return self._parse_process_stat(result)
+            except ValueError:
+                if attempt == 0 and self._refresh_pid():
+                    continue
+                raise
 
     def getTotalCpuStat(self):
         """获取某一时刻总 CPU 使用量"""
@@ -206,19 +221,18 @@ class CPU(ReusableCollector):
     def _calculate_cpu_rate(self, first, second):
         total_delta = second["total"] - first["total"]
         process_delta = second["process"] - first["process"]
-        if total_delta <= 0:
-            return self._last_cpu_rate if self._last_cpu_rate is not None else (0, 0)
-        if process_delta < 0:
-            raise ValueError("invalid cpu sample delta")
-        app_cpu_rate = round(float(process_delta / total_delta * 100), 2)
-        sys_cpu_rate = round(
-            float(
-                ((second["total"] - second["idle"]) - (first["total"] - first["idle"]))
-                / total_delta
-                * 100
-            ),
-            2,
-        )
+        idle_delta = second["idle"] - first["idle"]
+        busy_delta = total_delta - idle_delta
+        if (
+            total_delta <= 0
+            or process_delta < 0
+            or idle_delta < 0
+            or busy_delta < 0
+            or process_delta > total_delta
+        ):
+            return None
+        app_cpu_rate = min(100.0, max(0.0, round(float(process_delta / total_delta * 100), 2)))
+        sys_cpu_rate = min(100.0, max(0.0, round(float(busy_delta / total_delta * 100), 2)))
         return app_cpu_rate, sys_cpu_rate
 
     def _read_core_cpu_rate_sample(self):

@@ -12,6 +12,7 @@ from logzero import logger
 from perfcattle.core.adb_client import adb
 from perfcattle.collector.base import adb_shell
 from perfcattle.core.platform import Platform
+from perfcattle.core.metrics import MetricSample, MetricStatus
 from perfcattle.collector.gpu_counters import GpuBandwidth
 
 BYTES_PER_MB = 1024 * 1024
@@ -111,6 +112,38 @@ class GpuStats(object):
         self._mem_cache = {}
         self._mem_ts = 0.0
         self._bandwidth = GpuBandwidth(deviceId)
+        self.previous_busy = None
+        self.previous_total = None
+        self.counter_semantics = "window_ratio"
+
+    def _parse_counter_sample(self, text):
+        parts = (text or "").split()
+        try:
+            busy, total = int(parts[0]), int(parts[1])
+        except (IndexError, TypeError, ValueError):
+            return {"value": None, "status": MetricStatus.INVALID}
+        if busy < 0 or total <= 0 or busy > total:
+            return {"value": None, "status": MetricStatus.INVALID}
+        if self.previous_busy is not None and (
+            busy < self.previous_busy or total < self.previous_total
+        ):
+            self.previous_busy = busy
+            self.previous_total = total
+            return {"value": None, "status": MetricStatus.INVALID}
+        if self.previous_busy is None:
+            value = busy / total * 100
+        else:
+            busy_delta = busy - self.previous_busy
+            total_delta = total - self.previous_total
+            if total_delta <= 0 or busy_delta < 0 or busy_delta > total_delta:
+                self.previous_busy = busy
+                self.previous_total = total
+                return {"value": None, "status": MetricStatus.INVALID}
+            value = busy_delta / total_delta * 100
+        self.previous_busy = busy
+        self.previous_total = total
+        self.counter_semantics = "cumulative_delta"
+        return {"value": round(value, 2), "status": MetricStatus.OK}
 
     def _probe(self, sources, parser):
         for name, path in sources:

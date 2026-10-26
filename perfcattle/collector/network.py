@@ -113,6 +113,8 @@ class Network(ReusableCollector):
         return True
 
     def _network_scope(self):
+        if self._uid_stat_supported:
+            return "uid_total"
         return "package" if self._is_package_process() else "package_shared"
 
     def _network_fallback_reason(self):

@@ -501,7 +501,7 @@ class AppPerformanceMonitor(ServiceConfig):
                 if not recording_started:
                     logger.error("Start screen recording failed, continue collecting data")
 
-            collectors = (
+            collectors = [
                 self.collectCpu,
                 self.collectMemory,
                 self.collectMemoryDetail,
@@ -512,7 +512,13 @@ class AppPerformanceMonitor(ServiceConfig):
                 self.collectGpu,
                 self.collectGpuStats,
                 self.collectThermal,
-            )
+            ]
+            # Disk is a capacity snapshot, not a continuous time-series metric.
+            # Include it in Android collection while keeping its snapshot_only
+            # metadata separate from the sampled collectors.
+            if getattr(self, "platform", None) == Platform.Android:
+                collectors.append(self.collectDisk)
+            collectors = tuple(collectors)
             executor = ThreadPoolExecutor(
                 max_workers=len(collectors),
                 thread_name_prefix="perfcattle-collector",
