@@ -105,3 +105,31 @@ def test_attach_streams_without_opening_a_raw_file(tmp_path):
     assert not raw_path.exists()
     # The reader starts even without a file so the panel gets counters.
     thread.return_value.start.assert_called_once_with()
+
+
+def test_stats_snapshot_keeps_last_values_while_restarting():
+    """Rebuilding the stream must not blank the live panel."""
+    session = _session()
+    session._last_snapshot = {
+        "available": True,
+        "values": {"cpu_frame_ms": 5.0},
+        "frame": 10,
+    }
+
+    snapshot = session.stats_snapshot()
+
+    assert snapshot["available"] is True
+    assert snapshot["values"] == {"cpu_frame_ms": 5.0}
+    assert snapshot["stale"] is True
+    # The fresh parser still owns the real (empty) state.
+    assert session.stats_parser.snapshot()["available"] is False
+
+
+def test_wait_stream_idle_returns_once_data_stops():
+    import time as _time
+
+    session = _session()
+    session._stream_bytes = 100
+    started = _time.monotonic()
+    assert session._wait_stream_idle(idle_seconds=0.05, timeout=1.0) is True
+    assert _time.monotonic() - started < 0.6

@@ -198,6 +198,7 @@ class UnityProtocolSession(object):
         self._snap_state = None
         self._error = None
         self._truncated = False
+        self._last_snapshot = None
         self.stats_parser = RawStatsParser()
         self.deep_profiling = False
         # None 表示从未发送过 set_enabled_categories，Player 保留自己的默认值。
@@ -510,6 +511,25 @@ class UnityProtocolSession(object):
             areas=self.areas if areas is None else areas,
         )
 
+    def _wait_stream_idle(self, idle_seconds=0.12, timeout=0.8):
+        """Wait until the player stops pushing profiler data.
+
+        Replacing the old fixed ``sleep(0.8)`` keeps the recording start fast
+        (typically ~150 ms) while still giving the player a chance to flush the
+        final frames of the previous stream.
+        """
+        deadline = time.monotonic() + timeout
+        last_bytes = self._stream_bytes
+        idle_since = time.monotonic()
+        while time.monotonic() < deadline:
+            time.sleep(0.02)
+            if self._stream_bytes != last_bytes:
+                last_bytes = self._stream_bytes
+                idle_since = time.monotonic()
+            elif time.monotonic() - idle_since >= idle_seconds:
+                return True
+        return False
+
     def stop_profiler(self):
         if not self._running:
             return
@@ -523,7 +543,7 @@ class UnityProtocolSession(object):
             )
         except OSError:
             pass
-        time.sleep(0.8)
+        self._wait_stream_idle()
         self._running = False
         if self._area_thread:
             self._area_thread.join(timeout=1)
@@ -658,7 +678,17 @@ class UnityProtocolSession(object):
         self._unforward()
 
     def stats_snapshot(self):
-        return self.stats_parser.snapshot()
+        snapshot = self.stats_parser.snapshot()
+        if snapshot.get("available"):
+            self._last_snapshot = snapshot
+            return snapshot
+        if self._last_snapshot is not None:
+            # The stream was just restarted for recording; keep the panel on
+            # the last known values until the new stream emits its first frame.
+            stale = dict(self._last_snapshot)
+            stale["stale"] = True
+            return stale
+        return snapshot
 
     @property
     def raw_bytes(self):
