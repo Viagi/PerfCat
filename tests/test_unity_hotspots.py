@@ -128,3 +128,16 @@ def test_thread_selection(tmp_path):
     assert len(data["hierarchy"]) == 1
     assert data["hierarchy"][0]["name"] == "Render Work"
     assert data["hierarchy"][0]["total_us"] == 10000.0
+
+
+def test_incomplete_stream_is_flagged(tmp_path):
+    path = _stream(tmp_path)
+    raw = open(path, "rb").read()
+    # Drop the last block footer + a byte of its payload.
+    open(path, "wb").write(raw[:-9])
+
+    reader = HotspotReader(path)
+    info = reader.info()
+    assert info["complete"] is False
+    assert info["error"] in ("truncated block", "bad footer signature", "bad block signature")
+    assert info["frame_count"] >= 0

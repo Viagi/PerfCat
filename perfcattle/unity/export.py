@@ -131,6 +131,7 @@ def build_profiler_json(
     selected, sampled = _select_frames(all_frames, max_frames)
 
     aggregate = {}
+    aggregate_by_name = {}
     exported = []
     for item in selected:
         frame_index = item["index"]
@@ -138,17 +139,18 @@ def build_profiler_json(
         hierarchy = data.get("hierarchy") or []
         flat = _flatten(hierarchy)
         for node in flat:
-            entry = aggregate.get(node["name"])
+            entry = aggregate.get(node["path"])
             if entry is None:
                 entry = {
                     "name": node["name"],
+                    "path": node["path"],
                     "calls": 0,
                     "total_us": 0.0,
                     "self_us": 0.0,
                     "gc_bytes": 0,
                     "max_frame_total_us": 0.0,
                 }
-                aggregate[node["name"]] = entry
+                aggregate[node["path"]] = entry
             entry["calls"] += node["calls"]
             entry["total_us"] += node["total_us"]
             entry["self_us"] += node["self_us"]
@@ -157,11 +159,31 @@ def build_profiler_json(
                 entry["max_frame_total_us"], node["total_us"]
             )
 
+            name_entry = aggregate_by_name.get(node["name"])
+            if name_entry is None:
+                name_entry = {
+                    "name": node["name"],
+                    "calls": 0,
+                    "total_us": 0.0,
+                    "self_us": 0.0,
+                    "gc_bytes": 0,
+                    "max_frame_total_us": 0.0,
+                }
+                aggregate_by_name[node["name"]] = name_entry
+            name_entry["calls"] += node["calls"]
+            name_entry["total_us"] += node["total_us"]
+            name_entry["self_us"] += node["self_us"]
+            name_entry["gc_bytes"] += node["gc_bytes"]
+            name_entry["max_frame_total_us"] = max(
+                name_entry["max_frame_total_us"], node["total_us"]
+            )
+
         top = sorted(flat, key=lambda node: node["total_us"], reverse=True)
         exported.append(
             {
                 "index": frame_index,
                 "duration_us": data.get("duration_us"),
+                "duration_estimated": data.get("duration_estimated", False),
                 "main_thread_total_us": _thread_main_us(data.get("threads")),
                 "gc_bytes": _gc_total(hierarchy),
                 "threads": [
@@ -183,6 +205,16 @@ def build_profiler_json(
         reverse=True,
     )
     for item in markers:
+        item["total_us"] = round(item["total_us"], 1)
+        item["self_us"] = round(item["self_us"], 1)
+        item["max_frame_total_us"] = round(item["max_frame_total_us"], 1)
+
+    markers_by_name = sorted(
+        aggregate_by_name.values(),
+        key=lambda item: (item["total_us"], item["self_us"]),
+        reverse=True,
+    )
+    for item in markers_by_name:
         item["total_us"] = round(item["total_us"], 1)
         item["self_us"] = round(item["self_us"], 1)
         item["max_frame_total_us"] = round(item["max_frame_total_us"], 1)
@@ -242,6 +274,7 @@ def build_profiler_json(
             "max_frame_us": max(durations) if durations else None,
             "total_gc_bytes": sum(item["gc_bytes"] for item in exported),
             "markers": markers,
+            "markers_by_name": markers_by_name,
         },
         "frames": exported,
         "slow_frames": slow_details,

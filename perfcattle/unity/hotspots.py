@@ -563,6 +563,9 @@ class HotspotReader(object):
         header = None
         collector = None
         parser = None
+        complete = True
+        truncated_offset = None
+        index_error = None
         with open(self.raw_path, "rb") as fp:
             header = self._read_header(fp)
             collector = _FrameScan(header["main_thread"])
@@ -576,13 +579,22 @@ class HotspotReader(object):
                     "<IIQI", block_header
                 )
                 if signature != rr.BLOCK_SIGNATURE:
+                    complete = False
+                    truncated_offset = offset
+                    index_error = "bad block signature"
                     break
                 data = fp.read(length)
                 footer = fp.read(8)
                 if len(data) < length or len(footer) < 8:
+                    complete = False
+                    truncated_offset = offset
+                    index_error = "truncated block"
                     break
                 footer_next, footer_sig = struct.unpack("<II", footer)
                 if footer_sig != rr.FOOTER_SIGNATURE:
+                    complete = False
+                    truncated_offset = offset
+                    index_error = "bad footer signature"
                     break
                 parser.parse(thread_id, data, collector, offset)
                 offset = fp.tell()
@@ -592,13 +604,17 @@ class HotspotReader(object):
             "frames": frames,
             "samplers": collector.samplers,
             "threads": collector.threads,
+            "complete": complete,
+            "truncated_offset": truncated_offset,
+            "error": index_error,
         }
         self._frame_cache.clear()
         logger.info(
-            "[Unity] hotspot index ready: %d frames, %d markers, %d threads",
+            "[Unity] hotspot index ready: %d frames, %d markers, %d threads%s",
             len(frames),
             len(collector.samplers),
             len(collector.threads),
+            "" if complete else " (incomplete: {})".format(index_error),
         )
 
     def _ensure_index(self):
@@ -636,6 +652,9 @@ class HotspotReader(object):
             "frame_count": len(index["frames"]),
             "marker_count": len(index["samplers"]),
             "threads": threads,
+            "complete": index.get("complete", True),
+            "truncated_offset": index.get("truncated_offset"),
+            "error": index.get("error"),
         }
 
     # -------------------------------------------------------------- frame
@@ -670,6 +689,7 @@ class HotspotReader(object):
         # interval between the previous main-thread marker and marker N.
         frame_end_raw = entry["main_time"] or entry["time"]
         frame_start_raw = prev["main_time"] if prev else None
+        duration_estimated = frame_start_raw is None
         if frame_start_raw is None:
             later = [
                 item["main_time"]
@@ -680,6 +700,7 @@ class HotspotReader(object):
             frame_start_raw = frame_end_raw - max(interval, int(1000 / scale))
         if frame_start_raw >= frame_end_raw:
             frame_start_raw = frame_end_raw - int(16666 / scale)
+            duration_estimated = True
 
         start_offset = prev["offset"] if prev else header["header_end"]
         start_frame = prev["index"] if prev else -1
@@ -826,6 +847,7 @@ class HotspotReader(object):
             "frame_start": frame_start,
             "frame_end": frame_end,
             "duration_us": round((frame_end - frame_start) * scale, 1),
+            "duration_estimated": duration_estimated,
             "threads": threads,
             "timeline": timelines,
             "selected_thread": thread_key,
