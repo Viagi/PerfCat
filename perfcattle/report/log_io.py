@@ -444,8 +444,53 @@ class LogIO:
 
     def readLogWithQuality(self, scene, filename, origin=None):
         """读取日志点集、数值和 MetricQuality。"""
-        points, values = self.readLog(scene, filename, origin=origin)
-        return points, values, self._last_quality
+        return self._read_log_with_quality(scene, filename, origin=origin)
+
+    def _read_log_with_quality(self, scene, filename, origin=None):
+        log_data_list = []
+        target_data_list = []
+        quality = MetricQuality()
+        if origin is None:
+            origin = self.scene_origin(scene)
+
+        filepath = os.path.join(self.report_dir, scene, filename)
+        if not os.path.exists(filepath):
+            quality.missing = 1
+            return log_data_list, target_data_list, quality
+
+        for line in self.open_file(filepath, "r"):
+            quality.total += 1
+            parts = line.split("=", 1)
+            if len(parts) < 2:
+                quality.invalid += 1
+                continue
+
+            time_str = parts[0].strip()
+            value_str = parts[1].strip()
+            try:
+                current_seconds = self._clock_seconds(time_str)
+                value = float(value_str)
+                if not finite_number(value):
+                    raise ValueError("non-finite value")
+                if value.is_integer() and not any(c in value_str for c in ".eE"):
+                    value = int(value)
+            except (ValueError, TypeError, IndexError, OverflowError):
+                quality.invalid += 1
+                continue
+
+            if origin is None:
+                origin = current_seconds
+            relative_time = round(
+                max(0.0, self._relative_seconds(current_seconds, origin)), 1
+            )
+            epoch_ms = int(current_seconds * 1000)
+            quality.first_epoch_ms = epoch_ms if quality.first_epoch_ms is None else min(quality.first_epoch_ms, epoch_ms)
+            quality.last_epoch_ms = epoch_ms if quality.last_epoch_ms is None else max(quality.last_epoch_ms, epoch_ms)
+            quality.valid += 1
+            log_data_list.append({"x": relative_time, "y": value})
+            target_data_list.append(value)
+
+        return log_data_list, target_data_list, quality
 
     def readLog(self, scene, filename, origin=None):
         """读取 APM 日志文件数据，x 轴为相对采集起点的秒数。
@@ -463,53 +508,9 @@ class LogIO:
                 - log_data_list: [{"x": 相对时间, "y": 值}, ...]
                 - target_data_list: [值1, 值2, ...]
         """
-        log_data_list = []
-        target_data_list = []
-        quality = MetricQuality()
-        self._last_quality = quality
-        if origin is None:
-            origin = self.scene_origin(scene)
-
-        filepath = os.path.join(self.report_dir, scene, filename)
-        if not os.path.exists(filepath):
-            quality.missing = 1
-            return log_data_list, target_data_list
-
-        for line in self.open_file(filepath, "r"):
-            quality.total += 1
-            parts = line.split("=", 1)
-            if len(parts) < 2:
-                quality.invalid += 1
-                continue
-
-            time_str = parts[0].strip()
-            value_str = parts[1].strip()
-
-            try:
-                current_seconds = self._clock_seconds(time_str)
-                if origin is None:
-                    origin = current_seconds
-                relative_time = round(
-                    max(0.0, self._relative_seconds(current_seconds, origin)), 1
-                )
-            except (ValueError, IndexError, TypeError):
-                quality.invalid += 1
-                continue
-
-            try:
-                value = float(value_str)
-                if not finite_number(value):
-                    raise ValueError("non-finite value")
-                if value.is_integer() and not any(c in value_str for c in ".eE"):
-                    value = int(value)
-            except (ValueError, TypeError):
-                quality.invalid += 1
-                continue
-
-            quality.valid += 1
-            log_data_list.append({"x": relative_time, "y": value})
-            target_data_list.append(value)
-
+        log_data_list, target_data_list, _ = self._read_log_with_quality(
+            scene, filename, origin=origin
+        )
         return log_data_list, target_data_list
 
     def _points(self, scene, filename):

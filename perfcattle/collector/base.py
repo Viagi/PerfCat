@@ -6,6 +6,36 @@ import threading
 import time
 
 from logzero import logger
+from perfcattle.core.metrics import MetricSample, MetricStatus, finite_number
+
+
+def adapt_metric_sample(
+    name,
+    value=None,
+    unit=None,
+    source=None,
+    status=MetricStatus.OK,
+    **kwargs,
+):
+    """Adapt a collector result to the unified metric sample boundary."""
+    try:
+        metric_status = status if isinstance(status, MetricStatus) else MetricStatus(status)
+    except (TypeError, ValueError):
+        metric_status = MetricStatus.INVALID
+    if metric_status in (MetricStatus.OK, MetricStatus.CACHED):
+        if value is None or not finite_number(value):
+            metric_status = MetricStatus.INVALID
+            value = None
+    else:
+        value = None
+    return MetricSample(
+        metric=name,
+        value=value,
+        unit=unit,
+        source=source,
+        status=metric_status,
+        **kwargs,
+    )
 
 
 _SAMPLER_ADB_CONCURRENCY = max(

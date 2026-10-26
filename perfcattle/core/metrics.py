@@ -22,7 +22,12 @@ class MetricStatus(str, Enum):
 
 
 def finite_number(value: Any) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 @dataclass
@@ -47,11 +52,13 @@ class MetricSample:
             self.status = MetricStatus(self.status)
         if self.status not in (MetricStatus.OK, MetricStatus.CACHED):
             self.value = None
-        elif self.value is not None and not finite_number(self.value):
+        elif self.value is None or not finite_number(self.value):
             self.value = None
             self.status = MetricStatus.INVALID
         if self.status is MetricStatus.CACHED:
             self.cached = True
+        else:
+            self.cached = False
 
     @classmethod
     def ok(cls, metric, value, unit=None, source=None, scope=None,
@@ -107,5 +114,5 @@ def parse_metric_line(line: str) -> MetricSample | None:
     try:
         data = json.loads(line)
         return MetricSample.from_dict(data)
-    except (TypeError, ValueError, json.JSONDecodeError):
+    except (TypeError, ValueError, OverflowError, json.JSONDecodeError):
         return None
