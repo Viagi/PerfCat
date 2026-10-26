@@ -300,6 +300,9 @@ class CollectorSampler:
         with self._lock:
             if self.last_valid_result is None or self.last_sample_time is None:
                 return None
+            # Older sampler instances may not have the monotonic field.
+            if self.last_sample_monotonic is None:
+                self.last_sample_monotonic = time.monotonic()
             if max_age is not None and time.monotonic() - self.last_sample_monotonic > max_age:
                 return None
             return copy.deepcopy(self.last_valid_result)
@@ -323,6 +326,20 @@ class CollectorSampler:
         age_ms = max(0.0, (time.monotonic() - self.last_sample_monotonic) * 1000)
         return self._as_sample(cached, MetricStatus.CACHED, stale_age_ms=age_ms)
 
+    def _error_text(self, exc):
+        result = getattr(exc, "result", None)
+        if result is not None:
+            return "{}: {}".format(
+                result.error_kind or "adb_error",
+                result.stderr or str(exc),
+            )
+        return str(exc)
+
+    def _missing_result(self, error=None):
+        if self.unified:
+            return self._as_sample(None, MetricStatus.MISSING, error=error)
+        return None
+
     def sample(self):
         try:
             cached = self._cached_result(max_age=self.stale_ttl)
@@ -334,7 +351,7 @@ class CollectorSampler:
             if cached is not None:
                 return cached
             if self.unified:
-                return self._as_sample(None, self.status_on_error, error=str(exc))
+                return self._missing_result(error=self._error_text(exc))
             raise
 
     def _wait_for_latest(self):
@@ -342,12 +359,12 @@ class CollectorSampler:
             max(self.phase_offset + _SAMPLER_INITIAL_WAIT_SECONDS, 1.0),
             self.stale_ttl,
         )
-        deadline = time.time() + timeout
-        while time.time() < deadline:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
             cached = self.get_latest(max_age=self.stale_ttl)
             if cached is not None:
                 return cached
-            remaining = deadline - time.time()
+            remaining = deadline - time.monotonic()
             if remaining <= 0:
                 break
             time.sleep(min(remaining, 0.05))
@@ -367,7 +384,7 @@ class CollectorSampler:
                 return self._as_sample(result) if self.unified else result
             except Exception as exc:
                 if self.unified:
-                    return self._as_sample(None, self.status_on_error, error=str(exc))
+                    return self._missing_result(error=self._error_text(exc))
                 raise
         return self.sample()
 
@@ -378,9 +395,7 @@ class CollectorSampler:
                 return cached
             if not self._sample_lock.acquire(timeout=min(self.interval, 1.0)):
                 if self.unified:
-                    return self._as_sample(
-                        None, self.status_on_error, error="sampler is busy"
-                    )
+                    return self._missing_result(error="sampler is busy")
                 raise RuntimeError("{} sampler is busy".format(self.name))
         try:
             with self._lock:
@@ -413,7 +428,7 @@ class CollectorSampler:
                 cached = self._cached_result(max_age=self.stale_ttl)
                 if cached is not None:
                     return cached
-                return self._as_sample(None, self.status_on_error, error=str(exc))
+                return self._missing_result(error=self._error_text(exc))
             raise
         finally:
             self._sample_lock.release()

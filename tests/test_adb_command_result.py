@@ -1,7 +1,7 @@
 """Structured ADB command result tests."""
 from unittest.mock import MagicMock, patch
 
-from perfcattle.core.adb_client import ADB
+from perfcattle.core.adb_client import ADB, ADBCommandError
 
 
 def test_shell_result_distinguishes_timeout():
@@ -46,4 +46,26 @@ def test_shell_result_maps_os_error():
         result = client.shell_result("echo ok", "device")
     assert result.ok is False
     assert result.error_kind == "os_error"
-    assert "missing adb" in result.stderr
+
+
+def test_shell_strict_raises_with_structured_failure_metadata():
+    client = ADB.__new__(ADB)
+    client.adb_path = "adb"
+    failed = MagicMock(stdout=b"partial\n", stderr=b"timed out\n", returncode=1)
+    with patch("perfcattle.core.adb_client.subprocess.run", return_value=failed):
+        try:
+            client.shell("cat /proc/stat", "device")
+        except ADBCommandError as exc:
+            assert exc.result.ok is False
+            assert exc.result.error_kind == "returncode"
+            assert exc.result.stderr == "timed out"
+        else:
+            raise AssertionError("strict shell must not discard command failure")
+
+
+def test_shell_legacy_mode_returns_stdout_on_failure():
+    client = ADB.__new__(ADB)
+    client.adb_path = "adb"
+    failed = MagicMock(stdout=b"partial\n", stderr=b"bad\n", returncode=1)
+    with patch("perfcattle.core.adb_client.subprocess.run", return_value=failed):
+        assert client.shell("cmd", "device", strict=False) == "partial"

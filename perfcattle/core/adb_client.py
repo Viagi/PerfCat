@@ -11,6 +11,21 @@ from logzero import logger
 
 from perfcattle.core.command_result import CommandResult
 
+
+class ADBCommandError(RuntimeError):
+    """Raised when a strict shell adapter receives a failed command result."""
+
+    def __init__(self, result):
+        self.result = result
+        super().__init__(
+            "{}: {}".format(
+                result.error_kind or "adb_error",
+                result.stderr
+                or "adb shell failed (returncode={})".format(result.returncode),
+            )
+        )
+
+
 ASSETS_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "assets"
 )
@@ -135,9 +150,17 @@ class ADB:
                 error_kind="exception",
             )
 
-    def shell(self, cmd, deviceId, timeout=30):
-        """Backward-compatible text output; new callers should use shell_result."""
-        return self.shell_result(cmd, deviceId, timeout=timeout).stdout
+    def shell(self, cmd, deviceId, timeout=30, strict=True):
+        """Return stdout while preserving command failures in strict mode.
+
+        ``strict=False`` retains the historical best-effort text adapter for
+        non-collector callers; collectors use the default strict path so ADB
+        timeout/nonzero/error_kind metadata cannot be discarded.
+        """
+        result = self.shell_result(cmd, deviceId, timeout=timeout)
+        if strict and not result.ok:
+            raise ADBCommandError(result)
+        return result.stdout
 
     def tcp_shell(self, deviceId, cmd, timeout=30):
         try:

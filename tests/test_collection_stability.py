@@ -94,9 +94,42 @@ def test_unified_sampler_returns_failure_and_expired_cache():
     assert sampler.sample_once().status is MetricStatus.OK
     time.sleep(0.22)
     failed = sampler.sample()
-    assert failed.status is MetricStatus.DISCONNECTED
+    assert failed.status is MetricStatus.MISSING
     assert failed.value is None
     assert failed.error == "offline"
+    assert failed.stale_age_ms is None
+
+
+def test_get_latest_compatibly_initializes_missing_monotonic_timestamp():
+    sampler = CollectorSampler(
+        name="cpu", sample_func=lambda: 5, interval=0.1, stale_ttl=1.0,
+        background=False, unified=True,
+    )
+    sampler.sample_once()
+    sampler.last_sample_monotonic = None
+    latest = sampler.get_latest(max_age=1.0)
+    assert latest == 5
+    assert sampler.last_sample_monotonic is not None
+
+
+def test_unified_sampler_uses_missing_when_cache_ttl_expires():
+    calls = []
+
+    def sample():
+        calls.append(1)
+        if len(calls) == 1:
+            return 3
+        raise RuntimeError("offline")
+
+    sampler = CollectorSampler(
+        name="cpu", sample_func=sample, interval=0.01, stale_ttl=0.01,
+        background=False, unified=True,
+    )
+    assert sampler.sample_once().status is MetricStatus.OK
+    sampler.last_sample_monotonic -= 1.0
+    expired = sampler.sample()
+    assert expired.status is MetricStatus.MISSING
+    assert expired.value is None
 
 
 def test_background_sampler_staggers_and_serves_cached_value():
