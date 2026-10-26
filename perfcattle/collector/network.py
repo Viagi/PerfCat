@@ -10,7 +10,7 @@ from logzero import logger
 
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
-from perfcattle.collector.base import ReusableCollector, adb_shell
+from perfcattle.collector.base import ReusableCollector, adb_read_optional, adb_shell
 from perfcattle.core.metrics import MetricSample, MetricStatus
 
 
@@ -127,7 +127,7 @@ class Network(ReusableCollector):
     def _read_uid(self):
         if self._uid is not None:
             return self._uid
-        output = adb_shell(adb,
+        output = adb_read_optional(adb,
             cmd=f"cat /proc/{self.pid}/status",
             deviceId=self.deviceId,
             timeout=self.ADB_TIMEOUT,
@@ -141,8 +141,10 @@ class Network(ReusableCollector):
         return None
 
     def _read_uid_stat_counter(self, uid, filename):
+        # /proc/uid_stat disappeared in newer Android releases; a missing
+        # counter must fall through to `dumpsys netstats`, not fail the sample.
         path = PurePosixPath("/proc/uid_stat") / str(uid) / filename
-        return adb_shell(adb,
+        return adb_read_optional(adb,
             cmd=f"cat {path}",
             deviceId=self.deviceId,
             timeout=self.ADB_TIMEOUT,
@@ -196,7 +198,7 @@ class Network(ReusableCollector):
         return stats
 
     def _read_netstats_detail(self):
-        adb_shell(adb,
+        adb_read_optional(adb,
             cmd="dumpsys netstats poll",
             deviceId=self.deviceId,
             timeout=self.ADB_TIMEOUT,

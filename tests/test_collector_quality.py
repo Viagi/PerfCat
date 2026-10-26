@@ -54,7 +54,7 @@ def test_disk_df_fallback_filters_overlay_tmpfs_and_keeps_mount_metadata(monkeyp
         "tmpfs 200 30 170 15% /dev\n"
         "/dev/block/data 1000 400 600 40% /data\n",
     ])
-    monkeypatch.setattr("perfcattle.collector.disk.adb_shell", lambda *a, **k: next(outputs))
+    monkeypatch.setattr("perfcattle.collector.disk.adb_read_optional", lambda *a, **k: next(outputs))
     result = disk.getAndroidDisk()
     assert result["disk_size"] == 1000
     assert result["mount_points"] == ["/data"]
@@ -62,9 +62,15 @@ def test_disk_df_fallback_filters_overlay_tmpfs_and_keeps_mount_metadata(monkeyp
 
 
 def test_permission_failure_does_not_become_valid_zero(monkeypatch):
-    disk = Disk("device")
-    monkeypatch.setattr("perfcattle.collector.disk.adb_shell", MagicMock(side_effect=PermissionError("denied")))
-    with pytest.raises(PermissionError):
+    Disk.clear()
+    disk = Disk("device-denied")
+    # df is a probe: a denied/unreadable df yields no rows, which must surface
+    # as an unavailable disk sample rather than a fabricated zero.
+    monkeypatch.setattr(
+        "perfcattle.collector.disk.adb",
+        MagicMock(shell=MagicMock(side_effect=PermissionError("denied"))),
+    )
+    with pytest.raises(ValueError, match="invalid df output"):
         disk.getAndroidDisk()
 
 

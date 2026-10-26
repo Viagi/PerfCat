@@ -9,7 +9,7 @@ from logzero import logger
 
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
-from perfcattle.collector.base import ReusableCollector, adb_shell
+from perfcattle.collector.base import ReusableCollector, adb_read_optional, adb_shell
 from perfcattle.core.metrics import MetricSample, MetricStatus
 
 
@@ -42,13 +42,13 @@ class Disk(ReusableCollector):
 
     def setInitialDisk(self):
         _f = self._get_report_store()
-        disk_info = adb_shell(adb, cmd="df", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
+        disk_info = adb_read_optional(adb, cmd="df", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
         with open(os.path.join(_f.report_dir, "initail_disk.log"), "a+", encoding="utf-8") as file:
             file.write(disk_info)
 
     def setCurrentDisk(self):
         _f = self._get_report_store()
-        disk_info = adb_shell(adb, cmd="df", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
+        disk_info = adb_read_optional(adb, cmd="df", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
         with open(os.path.join(_f.report_dir, "current_disk.log"), "a+", encoding="utf-8") as file:
             file.write(disk_info)
 
@@ -70,10 +70,10 @@ class Disk(ReusableCollector):
         return rows
 
     def getAndroidDisk(self):
-        disk_info = adb_shell(adb, cmd="df -k /data", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
+        disk_info = adb_read_optional(adb, cmd="df -k /data", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
         rows = self._parse_df(disk_info)
         if not rows:
-            disk_info = adb_shell(adb, cmd="df -k", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
+            disk_info = adb_read_optional(adb, cmd="df -k", deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
             rows = self._parse_df(disk_info)
         if not rows:
             if self._last_disk is not None:

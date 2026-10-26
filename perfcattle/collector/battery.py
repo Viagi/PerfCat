@@ -9,7 +9,7 @@ from logzero import logger
 
 from perfcattle.core.platform import Platform
 from perfcattle.core.adb_client import adb
-from perfcattle.collector.base import ReusableCollector, adb_shell
+from perfcattle.collector.base import ReusableCollector, adb_read_optional, adb_shell
 from perfcattle.tools.http_utils import Method
 
 
@@ -126,4 +126,4 @@ class Battery(ReusableCollector):
     def recoverBattery(self):
         """重置手机充电状态"""
         cmd = "dumpsys battery reset"
-        adb_shell(adb, cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)
+        adb_read_optional(adb, cmd=cmd, deviceId=self.deviceId, timeout=self.ADB_TIMEOUT)

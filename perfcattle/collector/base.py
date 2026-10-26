@@ -34,6 +34,23 @@ def adb_shell(client, **kwargs):
     return client.shell(**kwargs)
 
 
+def adb_read_optional(client, **kwargs):
+    """Best-effort read used for probing optional sources.
+
+    Collector code probes many device nodes and commands whose absence is
+    normal, not an error: ``/proc/uid_stat`` was removed in modern Android,
+    most ``/sys`` GPU nodes are unreadable without root, and
+    ``dumpsys ... | grep`` exits non-zero when nothing matches. Those probes
+    must yield an empty string so the existing fallback chain still runs;
+    required reads keep using ``adb_shell`` and raise a structured failure.
+    """
+    try:
+        return adb_shell(client, **kwargs)
+    except Exception as exc:
+        logger.debug("optional adb read failed: %s", exc)
+        return ""
+
+
 def adapt_metric_sample(
     name,
     value=None,

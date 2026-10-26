@@ -13,6 +13,7 @@ import time
 from logzero import logger
 
 from perfcattle.collector.base import (
+    adb_read_optional,
     adb_shell,
     ReusableCollector,
     CachedSample,
@@ -134,7 +135,7 @@ class SurfaceStatsCollector(object):
         return line
 
     def _get_surfaceflinger_surfaces(self):
-        result = adb_shell(adb,
+        result = adb_read_optional(adb,
             cmd="dumpsys SurfaceFlinger --list",
             deviceId=self.device,
             timeout=self.ADB_TIMEOUT,
@@ -231,8 +232,8 @@ class SurfaceStatsCollector(object):
             )
         else:
             cmd = "dumpsys SurfaceFlinger --latency"
-        results = adb_shell(adb, cmd=cmd, deviceId=self.device, timeout=self.ADB_TIMEOUT)
-        return results.replace("\r\n", "\n").splitlines()
+        results = adb_read_optional(adb, cmd=cmd, deviceId=self.device, timeout=self.ADB_TIMEOUT)
+        return (results or "").replace("\r\n", "\n").splitlines()
 
     def _valid_latency_lines(self, lines):
         if not lines:
@@ -337,7 +338,7 @@ class SurfaceStatsCollector(object):
             "dumpsys window windows",
             "dumpsys activity activities",
         ):
-            dumpsys_result = adb_shell(adb,
+            dumpsys_result = adb_read_optional(adb,
                 cmd=cmd, deviceId=self.device, timeout=self.ADB_TIMEOUT
             )
             focus_activity = self._parse_focus_activity(dumpsys_result)
@@ -567,21 +568,22 @@ class SurfaceStatsCollector(object):
                 cmd = "dumpsys SurfaceFlinger --latency-clear {}".format(
                     shlex.quote(surface_name)
                 )
-            results = adb_shell(adb,
+            results = adb_read_optional(adb,
                 cmd=cmd, deviceId=self.device, timeout=self.ADB_TIMEOUT
             )
             success = success and len(results) == 0
         return success
 
     def get_sdk_version(self):
-        sdk_version = int(
-            adb_shell(adb,
-                cmd="getprop ro.build.version.sdk",
-                deviceId=self.device,
-                timeout=self.ADB_TIMEOUT,
-            )
+        raw = adb_read_optional(adb,
+            cmd="getprop ro.build.version.sdk",
+            deviceId=self.device,
+            timeout=self.ADB_TIMEOUT,
         )
-        return sdk_version
+        try:
+            return int(str(raw).strip())
+        except (TypeError, ValueError):
+            return 0
 
     def _get_surfaceflinger_frame_data(self):
         """返回已收集的 SurfaceFlinger 帧时间数据。
@@ -601,7 +603,7 @@ class SurfaceStatsCollector(object):
             if not self._valid_latency_lines(results):
                 return (None, None)
             refresh_period = int(results[0].strip()) / nanoseconds_per_second
-            results = adb_shell(adb,
+            results = adb_read_optional(adb,
                 cmd="dumpsys gfxinfo %s framestats" % self.package_name,
                 deviceId=self.device,
                 timeout=self.ADB_TIMEOUT,
@@ -669,7 +671,7 @@ class SurfaceStatsCollector(object):
         """
         cur_surface = None
         timestamp = datetime.datetime.now()
-        ret = adb_shell(adb,
+        ret = adb_read_optional(adb,
             cmd="service call SurfaceFlinger 1013",
             deviceId=self.device,
             timeout=self.ADB_TIMEOUT,

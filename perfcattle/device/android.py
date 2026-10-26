@@ -9,7 +9,7 @@ import threading
 import time
 from logzero import logger
 from perfcattle.core.adb_client import adb
-from perfcattle.collector.base import adb_shell
+from perfcattle.collector.base import adb_read_optional, adb_shell
 from perfcattle.core.platform import Platform
 
 
@@ -238,13 +238,13 @@ class AndroidDevice:
 
     def getSdkVersion(self, deviceId):
         """获取 Android SDK 版本"""
-        version = adb_shell(adb, cmd="getprop ro.build.version.sdk", deviceId=deviceId)
+        version = adb_read_optional(adb, cmd="getprop ro.build.version.sdk", deviceId=deviceId)
         return version
 
     def getCpuCores(self, deviceId):
         """获取 Android CPU 核心数"""
         cmd = "cat /sys/devices/system/cpu/online"
-        result = adb_shell(adb, cmd=cmd, deviceId=deviceId)
+        result = adb_read_optional(adb, cmd=cmd, deviceId=deviceId)
         try:
             nums = int(result.split("-")[1]) + 1
         except (IndexError, ValueError, AttributeError):
@@ -308,7 +308,7 @@ class AndroidDevice:
         processList = []
         seen_pids = set()
         try:
-            pidof_output = adb_shell(adb,
+            pidof_output = adb_read_optional(adb,
                 cmd=f"pidof {shlex.quote(pkgName)}", deviceId=deviceId, timeout=5
             )
             self._parse_pidof_output(pidof_output, pkgName, processList, seen_pids)
@@ -318,7 +318,7 @@ class AndroidDevice:
                     # pidof is unavailable on a few Android builds; a single
                     # ps call is still far cheaper than the full fallback chain.
                     try:
-                        ps_output = adb_shell(adb,
+                        ps_output = adb_read_optional(adb,
                             cmd="ps -A -o PID,NAME",
                             deviceId=deviceId,
                             timeout=3,
@@ -341,11 +341,11 @@ class AndroidDevice:
                 return processList
 
             for ps_cmd in ("ps -A -o PID,NAME", "ps -ef", "ps"):
-                ps_output = adb_shell(adb, cmd=ps_cmd, deviceId=deviceId, timeout=10)
+                ps_output = adb_read_optional(adb, cmd=ps_cmd, deviceId=deviceId, timeout=10)
                 self._parse_ps_output(ps_output, pkgName, processList, seen_pids)
 
             if not processList:
-                cmdline_output = adb_shell(adb,
+                cmdline_output = adb_read_optional(adb,
                     cmd=(
                         "for p in /proc/[0-9]*; do "
                         "pid=${p##*/}; "
@@ -470,7 +470,7 @@ class AndroidDevice:
             "dumpsys window displays",
             "dumpsys activity activities",
         ):
-            result = adb_shell(adb, cmd=cmd, deviceId=deviceId, timeout=10)
+            result = adb_read_optional(adb, cmd=cmd, deviceId=deviceId, timeout=10)
             activity = self._parse_current_activity(result)
             if activity:
                 return activity
@@ -513,7 +513,7 @@ class AndroidDevice:
         raise Exception(detail or "No launcher activity found for this package")
 
     def _resolve_launcher_activity(self, deviceId, pkgName):
-        output = adb_shell(adb,
+        output = adb_read_optional(adb,
             cmd=f"cmd package resolve-activity --brief {pkgName}",
             deviceId=deviceId,
             timeout=10,
