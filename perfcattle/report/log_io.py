@@ -120,7 +120,8 @@ class LogIO:
             return None
         try:
             if data.get("epoch") is not None:
-                return float(data["epoch"])
+                epoch = float(data["epoch"])
+                return epoch if finite_number(epoch) else None
             if data.get("date") and data.get("clock"):
                 date = datetime.datetime.strptime(data["date"], "%Y-%m-%d").date()
                 clock = self._clock_seconds(data["clock"])

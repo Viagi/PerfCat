@@ -85,3 +85,17 @@
 - `pytest -q tests/test_metric_model.py tests/test_report_log_io.py tests/test_collection_stability.py tests/test_recording_stability.py tests/test_collector_fps.py tests/test_collector_adb_metrics.py`：39 passed。
 - `git diff --check`：通过；仅有用户现有模板文件的 LF/CRLF 转换提示。
 - 未修改或纳入提交：`perfcattle/templates/analysis.html`、`perfcattle/templates/report.html`、`.zcodeignore`。
+
+## Task 1 最终验收修复（2026-10-26）
+
+### 修复内容
+- `LogIO._session_epoch` 现在使用 `finite_number` 校验解析后的 epoch；NaN、Infinity 和 -Infinity 均视为损坏 session，质量统计路径稳定回退到日志时钟毫秒。
+- 增加 NaN/Infinity epoch 回退回归测试；保留已有 unified sampler busy 缓存行为测试。
+
+### 验证
+- `pytest -q tests/test_metric_model.py tests/test_report_log_io.py tests/test_collection_stability.py tests/test_recording_stability.py tests/test_collector_adb_metrics.py`：40 passed（1269 个既有依赖弃用警告）。
+- `git diff --check`：通过；仅有用户现有模板文件的 LF/CRLF 转换提示。
+
+### Concerns
+- 测试环境仍产生 Werkzeug/Python 3.13 相关弃用警告；本次未修改依赖或模板。
+- 用户已有的 `perfcattle/templates/analysis.html`、`perfcattle/templates/report.html` 和未跟踪 `.zcodeignore` 保持不变，不纳入提交。

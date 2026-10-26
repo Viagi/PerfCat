@@ -1,6 +1,8 @@
 import math
 from unittest.mock import patch
 
+import pytest
+
 from perfcattle.core.metrics import (
     MetricQuality,
     MetricSample,
@@ -53,6 +55,22 @@ def test_log_quality_bad_session_file_falls_back_to_clock_epoch(tmp_report_dir):
     with patch("os.getcwd", return_value=str(tmp_report_dir.parent)):
         _, _, quality = LogIO().readLogWithQuality("scene", "cpu.log")
     assert quality.first_epoch_ms == 36000000
+
+
+@pytest.mark.parametrize("epoch", ["NaN", "Infinity", "-Infinity"])
+def test_log_quality_nonfinite_session_epoch_falls_back_to_clock_epoch(
+    tmp_report_dir, epoch
+):
+    import json
+
+    scene = tmp_report_dir / "scene"
+    scene.mkdir()
+    (scene / "apm_session.json").write_text(json.dumps({"epoch": epoch}))
+    (scene / "cpu.log").write_text("10:00:00=1\n")
+    with patch("os.getcwd", return_value=str(tmp_report_dir.parent)):
+        _, _, quality = LogIO().readLogWithQuality("scene", "cpu.log")
+    assert quality.first_epoch_ms == 36000000
+    assert quality.last_epoch_ms == 36000000
 
 
 def test_zero_is_a_valid_sample():
