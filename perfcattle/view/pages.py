@@ -6,6 +6,9 @@ from flask import request
 from logzero import logger
 from perfcattle.device.manager import Devices
 from perfcattle.report.manager import ReportStore
+from perfcattle.report.metric_catalog import EXTRA_SECTIONS
+from perfcattle.report.metric_catalog import GPU_METRICS
+from perfcattle.report.metric_catalog import UNITY_METRICS
 from perfcattle.tools.http_utils import Method
 
 page = Blueprint("page", __name__)
@@ -140,6 +143,77 @@ def analysis_pk():
 
 COMPARE_SCENE_LIMIT = 6
 
+# 已采集的 Unity/GPU 指标只在 metric_catalog 登记一次；对比页从这里取
+# 需要补充展示的部分（page_extra=True），摘要行与曲线卡片自动生成。
+COMPARE_EXTRA_UNITY_METRICS = tuple(
+    metric for metric in UNITY_METRICS if metric[5]
+)
+COMPARE_EXTRA_GPU_METRICS = tuple(metric for metric in GPU_METRICS if metric[5])
+
+
+def _compare_extra_value(value, decimals):
+    if decimals == 0:
+        return str(int(round(value)))
+    return ("{0:." + str(decimals) + "f}").format(value)
+
+
+def _compare_extra_metrics(unity_avg_list, gpu_avg_list, lan):
+    """Build summary rows and chart definitions for the supplemental metrics."""
+    metrics = []
+    specs = [(spec, "unity_stats") for spec in COMPARE_EXTRA_UNITY_METRICS]
+    specs += [(spec, "gpu_stats") for spec in COMPARE_EXTRA_GPU_METRICS]
+    for (key, cn_label, en_label, group, decimals, page_extra, chart, unit), target in specs:
+        averages = unity_avg_list if target == "unity_stats" else gpu_avg_list
+        cells = []
+        for avg in averages:
+            value = (avg or {}).get(key)
+            if value is None:
+                cells.append("-")
+            else:
+                cells.append(_compare_extra_value(value, decimals))
+        if not any(cell != "-" for cell in cells):
+            continue
+        label = cn_label if lan == "cn" else en_label
+        if lan == "cn" and unit:
+            label = "{} ({})".format(label, unit)
+        prefix = "gpu" if target == "gpu_stats" else "unity"
+        slug = key.replace("_", "-")
+        metrics.append(
+            {
+                "key": key,
+                "label": label,
+                "title": label,
+                "group": group,
+                "target": target,
+                "path": "charts." + key,
+                "chart": chart,
+                "chart_id": "chart-{}-{}".format(prefix, slug),
+                "card_class": "{}-{}-card".format(prefix, slug),
+                "loading_id": "{}_{}_loading".format(prefix, key),
+                "image": "{}_{}.png".format(prefix, key),
+                "opts": (
+                    {"integer": True}
+                    if decimals == 0
+                    else {"decimals": decimals, "unit": unit}
+                ),
+                "cells": cells,
+                "show": True,
+            }
+        )
+    return metrics
+
+
+def _compare_extra_groups(metrics, lan):
+    groups = []
+    for group, cn_title, en_title in EXTRA_SECTIONS:
+        items = [metric for metric in metrics if metric["group"] == group]
+        if not items:
+            continue
+        groups.append(
+            {"title": cn_title if lan == "cn" else en_title, "metrics": items}
+        )
+    return groups
+
 
 def _compare_scene_names():
     """Read requested compare scenes from the URL (new and legacy formats)."""
@@ -208,7 +282,6 @@ def analysis_compare():
         platform = meta_platform
 
     apm_data_list = []
-    unity_data_list = []
     valid_scenes = []
     for scene in scenes:
         try:
@@ -225,14 +298,35 @@ def analysis_compare():
         apm_data_list.append(data)
 
     scenes = valid_scenes
+    unity_data_list = []
+    gpu_stats_list = []
     for scene in scenes:
         try:
             unity_data_list.append(f.getUnityStatsLog(platform, scene))
         except Exception as e:
             logger.exception(e)
             unity_data_list.append({})
+        try:
+            gpu_stats_list.append(f.getGpuStatsLog(platform, scene))
+        except Exception as e:
+            logger.exception(e)
+            gpu_stats_list.append({})
 
     show_unity = any(item.get("charts") for item in unity_data_list)
+    unity_avg_list = [item.get("avg") or {} for item in unity_data_list]
+    gpu_avg_list = [item.get("avg") or {} for item in gpu_stats_list]
+    compare_extra_metrics = _compare_extra_metrics(unity_avg_list, gpu_avg_list, lan)
+    compare_extra_groups = _compare_extra_groups(compare_extra_metrics, lan)
+    compare_extra_charts = [
+        metric for metric in compare_extra_metrics if metric["chart"]
+    ]
+    # 内存类曲线紧跟在系统内存图后面，避免用户以为没有 Mono/Native。
+    compare_extra_memory_charts = [
+        metric for metric in compare_extra_charts if metric["group"] == "memory"
+    ]
+    compare_extra_other_charts = [
+        metric for metric in compare_extra_charts if metric["group"] != "memory"
+    ]
     cpu_cores = 0
     if platform == "Android":
         for scene in scenes:

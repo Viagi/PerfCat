@@ -37,6 +37,8 @@ from logzero import logger
 
 from perfcattle.core.platform import Platform
 from perfcattle.report.excel_export import ExcelExporter
+from perfcattle.report.metric_catalog import GPU_METRICS as GPU_CATALOG
+from perfcattle.report.metric_catalog import UNITY_METRICS as UNITY_CATALOG
 from perfcattle.unity.export import (
     DEFAULT_MAX_FRAMES,
     DEFAULT_SLOW_FRAMES,
@@ -240,26 +242,16 @@ SUMMARY_METRICS = (
     ),
 )
 
-UNITY_METRICS = (
-    ("cpu_frame_ms", "CPU Frame (ms)"),
-    ("gpu_frame_ms", "GPU Frame (ms)"),
-    ("draw_calls", "Draw Calls"),
-    ("setpass_calls", "SetPass Calls"),
-    ("batches", "Batches"),
-    ("static_batches", "Static Batches"),
-    ("dynamic_batches", "Dynamic Batches"),
-    ("instanced_batches", "Instanced Batches"),
-    ("triangles", "Triangles (k)"),
-    ("vertices", "Vertices (k)"),
-    ("render_textures", "Render Textures (Count)"),
-    ("render_textures_mb", "Render Textures (MB)"),
-    ("render_textures_changes", "Render Textures Changes"),
-    ("used_buffers", "Used Buffers (Count)"),
-    ("used_buffers_mb", "Used Buffers (MB)"),
-    ("vertex_upload", "Vertex Uploads (Count)"),
-    ("vertex_upload_kb", "Vertex Upload (KB)"),
-    ("index_upload", "Index Uploads (Count)"),
-    ("index_upload_kb", "Index Upload (KB)"),
+# 指标清单与对比页共用 metric_catalog，采集端新增计数器时只登记一次。
+UNITY_METRICS = tuple(
+    (key, en)
+    for key, cn, en, group, decimals, page_extra, chart, unit in UNITY_CATALOG
+)
+
+# gpu_stats.log 里的扩展计数（频率/温度/显存/带宽），与 gpu.log 的占用率互补。
+GPU_STATS_METRICS = tuple(
+    (key, en)
+    for key, cn, en, group, decimals, page_extra, chart, unit in GPU_CATALOG
 )
 
 
@@ -602,8 +594,17 @@ class ComparePackageExporter(object):
             warnings.append("{} unity stats: {}".format(scene, e))
             return {"avg": {}, "charts": {}}
 
+    def _gpu_summary(self, scene, platform, warnings):
+        try:
+            data = self.log_io.getGpuStatsLog(platform, scene)
+            return data.get("avg", {})
+        except Exception as e:
+            logger.exception(e)
+            warnings.append("{} gpu stats: {}".format(scene, e))
+            return {}
+
     @staticmethod
-    def _metric_rows(scenes, summaries, unity_summaries):
+    def _metric_rows(scenes, summaries, unity_summaries, gpu_summaries):
         rows = []
         for section, metrics in SUMMARY_METRICS:
             for key, label in metrics:
@@ -623,6 +624,14 @@ class ComparePackageExporter(object):
                 values[scene] = average.get(key) if key in average else None
             if any(value is not None for value in values.values()):
                 rows.append({"section": "Unity", "label": label, "values": values})
+
+        for key, label in GPU_STATS_METRICS:
+            values = {}
+            for scene in scenes:
+                average = gpu_summaries.get(scene, {})
+                values[scene] = average.get(key) if key in average else None
+            if any(value is not None for value in values.values()):
+                rows.append({"section": "GPU Stats", "label": label, "values": values})
         return rows
 
     @staticmethod
@@ -687,11 +696,13 @@ class ComparePackageExporter(object):
         warnings = []
         summaries = {}
         unity_summaries = {}
+        gpu_summaries = {}
         for scene in scenes:
             summaries[scene] = self._scene_summary(scene, platform, warnings)
             unity_summaries[scene] = self._unity_summary(scene, platform, warnings)
+            gpu_summaries[scene] = self._gpu_summary(scene, platform, warnings)
 
-        rows = self._metric_rows(scenes, summaries, unity_summaries)
+        rows = self._metric_rows(scenes, summaries, unity_summaries, gpu_summaries)
         generated_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         temp_dir = tempfile.mkdtemp(prefix="perfcattle-compare-")
@@ -712,6 +723,7 @@ class ComparePackageExporter(object):
                         "metadata": meta,
                         "summary": summaries.get(scene, {}),
                         "unity": unity_summaries.get(scene, {}),
+                        "gpu_stats": gpu_summaries.get(scene, {}),
                     }
                     for scene, meta in zip(scenes, metas)
                 ],

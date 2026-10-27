@@ -876,6 +876,174 @@
             </div>
         </div>
         {% endif %}
+        {% if summary_flags.get('unity_cpu_total', false) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-indigo text-white avatar">TOT</span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} Unity 总帧耗时 {% else %} Unity Total Frame {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ apm_data.unityCpuTotal }} ms
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('unity_render_frame', false) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-indigo text-white avatar">RND</span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} Unity 渲染线程 {% else %} Unity Render Thread {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ apm_data.unityRenderFrame }} ms
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('unity_setpass_calls', false) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-indigo text-white avatar">SP</span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                SetPass Calls
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ apm_data.unitySetPassCalls|round|int }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('unity_batches', false) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-indigo text-white avatar">BAT</span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                Batches
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ apm_data.unityBatches|round|int }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('unity_gc_alloc', false) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-indigo text-white avatar">GC</span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} GC Alloc/帧 {% else %} GC Alloc/Frame {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ '%.2f'|format(apm_data.unityGcAlloc) }} KB
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('unity_memory', false) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-indigo text-white avatar">MEM</span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} Unity 已用内存 {% else %} Unity Memory {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ '%.1f'|format(apm_data.unityMemory) }} MB
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('unity_gc_memory', false) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-indigo text-white avatar">MONO</span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} Mono / GC 内存 {% else %} Mono / GC Memory {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ '%.1f'|format(apm_data.unityGcMemory) }} MB
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if summary_flags.get('unity_native_memory', false) %}
+        <div class="col-sm-6 col-lg-2">
+            <div class="card card-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <span class="bg-indigo text-white avatar">NAT</span>
+                        </div>
+                        <div class="col">
+                            <div class="font-weight-medium">
+                                {% if lan == 'cn' %} Native 内存 {% else %} Native Memory {% endif %}
+                            </div>
+                            <div class="text-muted">
+                                Avg: {{ '%.1f'|format(apm_data.unityNativeMemory) }} MB
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% if platform == 'Android' %}
@@ -1126,8 +1294,9 @@
     <div class="card unity-stats-card mt-3" id="unity-stats-card" style="display: none;">
         <div class="card-header">
             <div class='card-title'>{% if lan == 'cn' %} Unity 引擎指标 {% else %} Unity Engine Metrics {% endif %}</div>
-            <div class="card-actions btn-actions">
+            <div class="card-actions btn-actions flex-column align-items-end">
                 <span class="text-muted" id="unity-stats-summary"></span>
+                <span class="text-muted" id="unity-memory-summary"></span>
             </div>
         </div>
         <div class="card-body">
@@ -2007,6 +2176,10 @@
         unityStatsOptions.yaxis = [{
             min: 0,
             title: { text: 'ms' }
+        }, {
+            min: 0,
+            opposite: true,
+            title: { text: 'KB' }
         }];
         unityStatsOptions.stroke = { width: 2, lineCap: 'round', curve: 'straight' };
         unityStatsOptions.markers = {
@@ -2109,6 +2282,16 @@
                 }, {
                     name: 'GPU Frame (ms)',
                     data: charts['gpu_frame_ms'] || []
+                }, {
+                    name: 'Render Thread (ms)',
+                    data: charts['render_frame_ms'] || []
+                }, {
+                    name: 'CPU Total (ms)',
+                    data: charts['cpu_total_ms'] || []
+                }, {
+                    name: 'GC Alloc (KB)',
+                    yAxis: 1,
+                    data: charts['gc_alloc_kb'] || []
                 }];
                 var hasData = series.some(function(item){ return item.data.length > 0; });
                 if(hasData){
@@ -2140,6 +2323,10 @@
                         name: 'Instanced Batches',
                         color: '#E8590C',
                         data: charts['instanced_batches'] || []
+                    }, {
+                        name: 'Shadow Casters',
+                        color: '#62748E',
+                        data: charts['shadow_casters'] || []
                     }]);
                 }
                 var geometrySeries = [{
@@ -2209,14 +2396,25 @@
                 };
                 $('#unity-stats-summary').text(
                     'CPU: ' + show('cpu_frame_ms') + ' ms'
+                    + ' | RT: ' + show('render_frame_ms') + ' ms'
+                    + ' | Total: ' + show('cpu_total_ms') + ' ms'
                     + ' | GPU: ' + show('gpu_frame_ms') + ' ms'
                     + ' | DC: ' + showInt('draw_calls')
                     + ' | SP: ' + showInt('setpass_calls')
+                    + ' | Batches: ' + showInt('batches')
                     + ' | DynB: ' + showInt('dynamic_batches')
                     + ' | StaB: ' + showInt('static_batches')
+                    + ' | InstB: ' + showInt('instanced_batches')
+                    + ' | Shadow: ' + showInt('shadow_casters')
                     + ' | Tri: ' + showK('triangles') + ' k'
                     + ' | Vert: ' + showK('vertices') + ' k'
                     + ' · ' + (lan === 'cn' ? '点击曲线选择帧' : 'click a point to select a frame')
+                );
+                $('#unity-memory-summary').text(
+                    'GC Alloc: ' + show('gc_alloc_kb') + ' KB'
+                    + ' | Unity: ' + show('used_memory_mb') + ' MB'
+                    + ' | Mono/GC: ' + show('gc_used_memory_mb') + ' MB'
+                    + ' | Native: ' + show('native_memory_mb') + ' MB'
                 );
                 $('#unity-resources-summary').text(
                     'RT: ' + showPair('render_textures', 'render_textures_mb', 'MB')
@@ -2778,6 +2976,40 @@
         var mem_chart = new ApexCharts(document.querySelector("#chart-mem"), options('line'));
         mem_chart.render();
         window.chartInstances.mem = mem_chart;
+        var renderMemory = function (data, unity) {
+            var seriesList = [];
+            if(platform == 'Android'){
+                seriesList = [{
+                    name: lan == 'cn' ? '总内存' : 'total',
+                    color: '#206BC4',
+                    data: data['memTotalData']
+                },{
+                    name: lan == 'cn' ? '交换内存' : 'swap',
+                    color: '#D63939',
+                    data: data['memSwapData']
+                }];
+            }else{
+                seriesList = [{
+                    name: lan == 'cn' ? '总内存' : 'total',
+                    color: '#206BC4',
+                    data: data['memTotalData']
+                }];
+            }
+            var unityCharts = (unity && unity['charts']) || {};
+            [{
+                key: 'used_memory_mb', name: 'Unity Heap', color: '#8B5CF6'
+            },{
+                key: 'native_memory_mb', name: 'Unity Native', color: '#F59F00'
+            },{
+                key: 'gc_used_memory_mb', name: 'Unity Mono/GC', color: '#2FB344'
+            }].forEach(function (item) {
+                var points = unityCharts[item.key] || [];
+                if(points.length > 0){
+                    seriesList.push({name: item.name, color: item.color, data: points});
+                }
+            });
+            updateChartSeries(mem_chart, '.mem-card', seriesList)
+        };
         $.ajax({
             url: '/apm/log',
             type: "GET",
@@ -2797,22 +3029,24 @@
                 $('#mem_refresh_logo').show()
             },
             success: function (data) {
-                var seriesList = [];
-                if(platform == 'Android'){
-                    seriesList = [{
-                        name: lan == 'cn' ? '总内存' : 'total',
-                        data: data['memTotalData']
-                    },{
-                        name: lan == 'cn' ? '交换内存' : 'swap',
-                        data: data['memSwapData']
-                    }];
-                }else{
-                    seriesList = [{
-                        name: lan == 'cn' ? '总内存' : 'total',
-                        data: data['memTotalData']
-                    }];
-                }
-                updateChartSeries(mem_chart, '.mem-card', seriesList)
+                // Unity 的内存计数器与系统内存共用场景原点，可以画在同一张图里。
+                $.ajax({
+                    url: '/apm/log',
+                    type: "GET",
+                    async: true,
+                    cache: false,
+                    data:{
+                        scene:'{{ scene }}',
+                        target:'unity_stats',
+                        platform:platform
+                    },
+                    success: function (unity) {
+                        renderMemory(data || {}, unity || {})
+                    },
+                    error: function () {
+                        renderMemory(data || {}, {})
+                    }
+                });
             }
         });
     }

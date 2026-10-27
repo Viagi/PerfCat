@@ -88,9 +88,21 @@ class TestAggregator:
             scene_dir = tmp_report_dir / "test_scene"
             (scene_dir / "unity_stats.log").write_text(
                 '10:00:00={"cpu_frame_ms":16.7,"gpu_frame_ms":12.5,'
-                '"draw_calls":300,"triangles":230000,"vertices":231000,"frame":1}\n'
+                '"render_frame_ms":7.1,"cpu_total_ms":25.0,'
+                '"draw_calls":300,"setpass_calls":40,"batches":120,'
+                '"static_batches":80,"dynamic_batches":20,'
+                '"instanced_batches":20,"shadow_casters":12,'
+                '"triangles":230000,"vertices":231000,'
+                '"gc_alloc_kb":10.0,"used_memory_mb":900.0,'
+                '"gc_used_memory_mb":120.0,"frame":1}\n'
                 '10:00:01={"cpu_frame_ms":17.1,"gpu_frame_ms":12.9,'
-                '"draw_calls":320,"triangles":231000,"vertices":232000,"frame":2}\n'
+                '"render_frame_ms":7.5,"cpu_total_ms":25.4,'
+                '"draw_calls":320,"setpass_calls":42,"batches":124,'
+                '"static_batches":82,"dynamic_batches":21,'
+                '"instanced_batches":21,"shadow_casters":14,'
+                '"triangles":231000,"vertices":232000,'
+                '"gc_alloc_kb":12.0,"used_memory_mb":910.0,'
+                '"gc_used_memory_mb":124.0,"frame":2}\n'
             )
 
             result = agg._setAndroidPerfs("test_scene")
@@ -98,12 +110,25 @@ class TestAggregator:
             assert result["unity_flag"] is True
             assert result["unityCpuFrame"] == 16.9
             assert result["unityGpuFrame"] == 12.7
+            assert result["unityRenderFrame"] == 7.3
+            assert result["unityCpuTotal"] == 25.2
             assert result["unityDrawCalls"] == 310.0
+            assert result["unitySetPassCalls"] == 41.0
+            assert result["unityBatches"] == 122.0
+            assert result["unityShadowCasters"] == 13.0
             # 三角面 / 顶点统一换算为 k
             assert result["unityTriangles"] == 230.5
             assert result["unityVertices"] == 231.5
+            assert result["unityGcAlloc"] == 11.0
+            assert result["unityMemory"] == 905.0
+            assert result["unityGcMemory"] == 122.0
+            # native = Total Used Memory - GC Used Memory
+            assert result["unityNativeMemory"] == 783.0
             assert result["summary_flags"]["unity_cpu_frame"] is True
             assert result["summary_flags"]["unity_gpu_frame"] is True
             assert result["summary_flags"]["unity_draw_calls"] is True
             assert result["summary_flags"]["unity_triangles"] is True
             assert result["summary_flags"]["unity_vertices"] is True
+            assert result["summary_flags"]["unity_setpass_calls"] is True
+            assert result["summary_flags"]["unity_gc_alloc"] is True
+            assert result["summary_flags"]["unity_native_memory"] is True

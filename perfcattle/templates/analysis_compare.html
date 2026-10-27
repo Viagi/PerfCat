@@ -267,7 +267,7 @@
     ~ (('%.1f'|format(avg.get('index_upload_kb'))) ~ ' KB' if 'index_upload_kb' in avg else '-')
 ) %}
 {% endfor %}
-{% set show_summary = show_cpu_app or show_cpu_system or show_mem_total or show_mem_peak or show_mem_swap or show_fps or show_frame_stability or show_jank or show_battery_level or show_battery_temp or show_battery_current or show_battery_voltage or show_battery_power or show_network_recv or show_network_send or show_file_io or show_gpu or show_thermal_cpu_avg or show_thermal_gpu_avg or unity_show_cpu_frame or unity_show_gpu_frame or unity_show_draw_calls or unity_show_triangles or unity_show_vertices or unity_show_render_textures or unity_show_render_textures_changes or unity_show_used_buffers or unity_show_vertex_upload or unity_show_index_upload %}
+{% set show_summary = show_cpu_app or show_cpu_system or show_mem_total or show_mem_peak or show_mem_swap or show_fps or show_frame_stability or show_jank or show_battery_level or show_battery_temp or show_battery_current or show_battery_voltage or show_battery_power or show_network_recv or show_network_send or show_file_io or show_gpu or show_thermal_cpu_avg or show_thermal_gpu_avg or unity_show_cpu_frame or unity_show_gpu_frame or unity_show_draw_calls or unity_show_triangles or unity_show_vertices or unity_show_render_textures or unity_show_render_textures_changes or unity_show_used_buffers or unity_show_vertex_upload or unity_show_index_upload or compare_extra_metrics %}
 {% if show_summary %}
 <div class="col-12 mb-3">
     <div class="card">
@@ -322,6 +322,9 @@
                         {'label': 'VB 上传/帧' if lan == 'cn' else 'VB Upload/Frame', 'show': unity_show_vertex_upload, 'cells': unity_vertex_upload_values},
                         {'label': 'IB 上传/帧' if lan == 'cn' else 'IB Upload/Frame', 'show': unity_show_index_upload, 'cells': unity_index_upload_values},
                     ], scenes) }}
+                    {% for group in compare_extra_groups %}
+                    {{ compare_summary_section(group.title, group.metrics, scenes) }}
+                    {% endfor %}
                 </tbody>
                 <tfoot></tfoot>
           </table>
@@ -347,6 +350,9 @@
     {% if show_mem_swap %}
     {{ chart_card('mem-swap-card', '内存 (MB)：交换内存' if lan == 'cn' else 'Memory (MB) : Swap Usage', 'chart-mem-swap', 'mem_swap_loading', 'mem_swap.png') }}
     {% endif %}
+    {% for metric in compare_extra_memory_charts %}
+    {{ chart_card(metric.card_class, metric.title, metric.chart_id, metric.loading_id, metric.image) }}
+    {% endfor %}
     {% if show_mem_detail %}
     {% set mem_detail_metrics = [('java_heap', 'Java Heap'), ('native_heap', 'Native Heap'), ('code_pss', 'Code PSS'), ('stack_pss', 'Stack PSS'), ('graphics_pss', 'Graphics PSS'), ('private_pss', 'Private PSS'), ('system_pss', 'System PSS')] %}
     {% for key, label in mem_detail_metrics %}
@@ -426,6 +432,9 @@
     {% if unity_show_index_upload_kb %}
     {{ chart_card('unity-index-upload-card', 'Unity IB 上传 (KB/帧)' if lan == 'cn' else 'Unity IB Upload (KB/frame)', 'chart-unity-index-upload', 'unity_index_upload_loading', 'unity_index_upload.png') }}
     {% endif %}
+    {% for metric in compare_extra_other_charts %}
+    {{ chart_card(metric.card_class, metric.title, metric.chart_id, metric.loading_id, metric.image) }}
+    {% endfor %}
 </div>
 {% else %}
 <div class="empty mt-5">
@@ -486,6 +495,9 @@
         initCompareChart('chart-unity-used-buffers', 'unity_used_buffers_loading', 'unity_stats', 'charts.used_buffers_mb', {unit: 'MB', decimals: 1});
         initCompareChart('chart-unity-vertex-upload', 'unity_vertex_upload_loading', 'unity_stats', 'charts.vertex_upload_kb', {unit: 'KB', decimals: 1});
         initCompareChart('chart-unity-index-upload', 'unity_index_upload_loading', 'unity_stats', 'charts.index_upload_kb', {unit: 'KB', decimals: 1});
+        {% for metric in compare_extra_charts %}
+        initCompareChart('{{ metric.chart_id }}', '{{ metric.loading_id }}', '{{ metric.target }}', '{{ metric.path }}', {{ metric.opts|tojson }});
+        {% endfor %}
     });
 
     function exportCompareReport(){

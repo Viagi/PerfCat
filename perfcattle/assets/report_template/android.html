@@ -423,6 +423,142 @@
                                 </div>
                             </div>
                             {% endif %}
+                            {% if 'cpu_total_ms' in unity_stats %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-indigo text-white avatar">TOT</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Unity Total Frame</div>
+                                                <div class="text-muted">Avg: {{ unity_stats.get('cpu_total_ms') }} ms</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if 'render_frame_ms' in unity_stats %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-indigo text-white avatar">RND</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Unity Render Thread</div>
+                                                <div class="text-muted">Avg: {{ unity_stats.get('render_frame_ms') }} ms</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if 'setpass_calls' in unity_stats %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-indigo text-white avatar">SP</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">SetPass Calls</div>
+                                                <div class="text-muted">Avg: {{ unity_stats.get('setpass_calls')|round|int }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if 'batches' in unity_stats %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-indigo text-white avatar">BAT</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Batches</div>
+                                                <div class="text-muted">Avg: {{ unity_stats.get('batches')|round|int }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if 'gc_alloc_kb' in unity_stats %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-indigo text-white avatar">GC</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">GC Alloc/Frame</div>
+                                                <div class="text-muted">Avg: {{ '%.2f'|format(unity_stats.get('gc_alloc_kb')) }} KB</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if 'used_memory_mb' in unity_stats %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-indigo text-white avatar">MEM</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Unity Memory</div>
+                                                <div class="text-muted">Avg: {{ '%.1f'|format(unity_stats.get('used_memory_mb')) }} MB</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if 'gc_used_memory_mb' in unity_stats %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-indigo text-white avatar">MONO</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Mono / GC Memory</div>
+                                                <div class="text-muted">Avg: {{ '%.1f'|format(unity_stats.get('gc_used_memory_mb')) }} MB</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if 'native_memory_mb' in unity_stats %}
+                            <div class="col-sm-6 col-lg-2">
+                                <div class="card card-sm">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-auto">
+                                                <span class="bg-indigo text-white avatar">NAT</span>
+                                            </div>
+                                            <div class="col">
+                                                <div class="font-weight-medium">Native Memory</div>
+                                                <div class="text-muted">Avg: {{ '%.1f'|format(unity_stats.get('native_memory_mb')) }} MB</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="col-12">
@@ -442,6 +578,11 @@
                         <div class="card memory-card mb-3">
                             <div class="card-header">
                                 <div class='card-title'>Memory Usage (MB)</div>
+                                <span class="text-muted">
+                                    {% if 'used_memory_mb' in unity_stats %}Unity Heap: {{ '%.1f'|format(unity_stats.get('used_memory_mb')) }} MB{% endif %}
+                                    {% if 'native_memory_mb' in unity_stats %} &nbsp; Native: {{ '%.1f'|format(unity_stats.get('native_memory_mb')) }} MB{% endif %}
+                                    {% if 'gc_used_memory_mb' in unity_stats %} &nbsp; Mono: {{ '%.1f'|format(unity_stats.get('gc_used_memory_mb')) }} MB{% endif %}
+                                </span>
                                 <div class="card-actions btn-actions">
                                     <a class="btn-action cursor-pointer"  onclick="screenshot('memory-card','memery.png')">
                                         <svg t="1646303797379" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5790" width="2000" height="2000"><path d="M897.856 842.56c14.464-6.72 18.624-20.48 9.28-30.848l-241.216-263.296a25.792 25.792 0 0 0-7.68-5.888c-14.016-7.296-33.6-5.184-43.776 4.8l-241.152 233.088-103.808-70.528a30.912 30.912 0 0 0-3.52-1.92c-14.08-7.36-33.664-4.992-43.776 4.864l-101.056 97.728a18.368 18.368 0 0 0-6.08 13.952c0.512 12.288 14.848 22.016 32.128 21.696h732.8a40.768 40.768 0 0 0 17.856-3.648zM259.84 399.68a78.464 78.464 0 0 0 117.504 67.84 78.272 78.272 0 0 0 0-135.744A78.208 78.208 0 0 0 259.84 399.68" p-id="5791"></path><path d="M864.832 872.256H159.232a83.84 83.84 0 0 1-83.776-83.776V235.52a83.84 83.84 0 0 1 83.776-83.776h705.536a83.84 83.84 0 0 1 83.776 83.776v552.96a83.84 83.84 0 0 1-83.712 83.776zM159.232 183.744a51.84 51.84 0 0 0-51.776 51.776v552.96a51.84 51.84 0 0 0 51.776 51.776h705.536a51.84 51.84 0 0 0 51.776-51.776V235.52a51.84 51.84 0 0 0-51.776-51.776H159.232z" p-id="5792"></path></svg>
@@ -547,9 +688,15 @@
                         </div>
                         <div class="card unity-stats-card mb-3" id="unity-stats-card" style="display: none;">
                             <div class="card-header">
-                                <div class='card-title'>Unity Engine: Frame Time (ms), Draw Calls &amp; Triangles (k)</div>
+                                <div class='card-title'>Unity Engine: Frame / Draw Calls / Batches / GC &amp; Memory</div>
                                 <div class="card-actions btn-actions">
-                                    <span class="text-muted">CPU: {{ unity_stats.get('cpu_frame_ms', '-') }} ms &nbsp; GPU: {{ unity_stats.get('gpu_frame_ms', '-') }} ms &nbsp; DC: {% if 'draw_calls' in unity_stats %}{{ unity_stats.get('draw_calls')|round|int }}{% else %}-{% endif %} &nbsp; SP: {% if 'setpass_calls' in unity_stats %}{{ unity_stats.get('setpass_calls')|round|int }}{% else %}-{% endif %} &nbsp; DynB: {% if 'dynamic_batches' in unity_stats %}{{ unity_stats.get('dynamic_batches')|round|int }}{% else %}-{% endif %} &nbsp; StaB: {% if 'static_batches' in unity_stats %}{{ unity_stats.get('static_batches')|round|int }}{% else %}-{% endif %} &nbsp; Tri: {{ '%.1f'|format(unity_stats.get('triangles', 0)) }} k &nbsp; Vert: {{ '%.1f'|format(unity_stats.get('vertices', 0)) }} k</span>
+                                    <span class="text-muted">
+                                        CPU: {{ unity_stats.get('cpu_frame_ms', '-') }} ms &nbsp; RT: {{ unity_stats.get('render_frame_ms', '-') }} ms &nbsp; Total: {{ unity_stats.get('cpu_total_ms', '-') }} ms &nbsp; GPU: {{ unity_stats.get('gpu_frame_ms', '-') }} ms
+                                        <br>
+                                        DC: {{ (unity_stats.get('draw_calls')|round|int) if 'draw_calls' in unity_stats else '-' }} &nbsp; SP: {{ (unity_stats.get('setpass_calls')|round|int) if 'setpass_calls' in unity_stats else '-' }} &nbsp; Batches: {{ (unity_stats.get('batches')|round|int) if 'batches' in unity_stats else '-' }} &nbsp; DynB: {{ (unity_stats.get('dynamic_batches')|round|int) if 'dynamic_batches' in unity_stats else '-' }} &nbsp; StaB: {{ (unity_stats.get('static_batches')|round|int) if 'static_batches' in unity_stats else '-' }} &nbsp; InstB: {{ (unity_stats.get('instanced_batches')|round|int) if 'instanced_batches' in unity_stats else '-' }} &nbsp; Shadow: {{ (unity_stats.get('shadow_casters')|round|int) if 'shadow_casters' in unity_stats else '-' }}
+                                        <br>
+                                        Tri: {{ '%.1f'|format(unity_stats.get('triangles', 0)) }} k &nbsp; Vert: {{ '%.1f'|format(unity_stats.get('vertices', 0)) }} k &nbsp; GC Alloc: {{ unity_stats.get('gc_alloc_kb', '-') }} KB &nbsp; Unity: {{ '%.1f'|format(unity_stats.get('used_memory_mb', 0)) }} MB &nbsp; Mono/GC: {{ '%.1f'|format(unity_stats.get('gc_used_memory_mb', 0)) }} MB &nbsp; Native: {{ '%.1f'|format(unity_stats.get('native_memory_mb', 0)) }} MB
+                                    </span>
                                     <a class="btn-action cursor-pointer" onclick="screenshot('unity-stats-card','unity_stats.png')">PNG</a>
                                 </div>
                             </div>
@@ -820,6 +967,10 @@
         unityStatsOptions.yaxis = [{
             min: 0,
             title: { text: 'ms' }
+        }, {
+            min: 0,
+            opposite: true,
+            title: { text: 'KB' }
         }];
         unityStatsOptions.stroke = { width: 2, lineCap: 'round', curve: 'straight' };
         unityStatsOptions.markers = { size: 3, strokeWidth: 0, hover: { size: 6 } };
@@ -830,7 +981,8 @@
                     var name = (opts && opts.w && opts.w.globals && opts.w.globals.seriesNames)
                         ? (opts.w.globals.seriesNames[opts.seriesIndex] || '')
                         : '';
-                    if (name.indexOf('Frame') >= 0) return value.toFixed(2) + ' ms';
+                    if (name.indexOf('(ms)') >= 0) return value.toFixed(2) + ' ms';
+                    if (name.indexOf('(KB)') >= 0) return value.toFixed(2) + ' KB';
                     return Math.round(value).toLocaleString();
                 }
             }
@@ -845,6 +997,16 @@
         },{
             name: 'GPU Frame (ms)',
             data: {{ unity_stats_charts.get('gpu_frame_ms', []) }}
+        },{
+            name: 'Render Thread (ms)',
+            data: {{ unity_stats_charts.get('render_frame_ms', []) }}
+        },{
+            name: 'CPU Total (ms)',
+            data: {{ unity_stats_charts.get('cpu_total_ms', []) }}
+        },{
+            name: 'GC Alloc (KB)',
+            yAxis: 1,
+            data: {{ unity_stats_charts.get('gc_alloc_kb', []) }}
         }]);
 
         var drawCallsOptions = options('line');
@@ -895,6 +1057,13 @@
             name: 'Instanced Batches',
             color: '#E8590C',
             data: {{ unity_stats_charts.get('instanced_batches', []) }}
+        }]);
+        {% endif %}
+        {% if 'shadow_casters' in unity_stats_charts %}
+        unity_drawcalls_chart.appendSeries([{
+            name: 'Shadow Casters',
+            color: '#62748E',
+            data: {{ unity_stats_charts.get('shadow_casters', []) }}
         }]);
         {% endif %}
 
@@ -985,13 +1154,37 @@
     function initMemoryCharts(){
         var mem_chart = new ApexCharts(document.querySelector("#chart-mem"), options('line'));
         mem_chart.render();
-        updateChartSeries(mem_chart, '.memory-card', [{
+        var seriesList = [{
             name: 'total',
-            data: {{ mem_charts.memTotalData }}
+            color: '#206BC4',
+            data: {{ mem_charts.get('memTotalData', []) }}
         },{
             name: 'swap',
-            data: {{ mem_charts.memSwapData }}
-        }])
+            color: '#D63939',
+            data: {{ mem_charts.get('memSwapData', []) }}
+        }];
+        {% if 'used_memory_mb' in unity_stats_charts %}
+        seriesList.push({
+            name: 'Unity Heap',
+            color: '#8B5CF6',
+            data: {{ unity_stats_charts.get('used_memory_mb', []) }}
+        });
+        {% endif %}
+        {% if 'native_memory_mb' in unity_stats_charts %}
+        seriesList.push({
+            name: 'Unity Native',
+            color: '#F59F00',
+            data: {{ unity_stats_charts.get('native_memory_mb', []) }}
+        });
+        {% endif %}
+        {% if 'gc_used_memory_mb' in unity_stats_charts %}
+        seriesList.push({
+            name: 'Unity Mono/GC',
+            color: '#2FB344',
+            data: {{ unity_stats_charts.get('gc_used_memory_mb', []) }}
+        });
+        {% endif %}
+        updateChartSeries(mem_chart, '.memory-card', seriesList)
     }
     
     function initMemoryDetailCharts(){

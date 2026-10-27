@@ -214,6 +214,19 @@ Unity Profiler 开关打开后，实时页顶部会出现 **Unity 游戏面板**
 分析页、对比页和导出报告中统一按 **k（千）** 展示，保留 1 位小数；
 原始日志与 `/apm/unity/stats` 仍返回完整计数。
 
+报告与分析页的 **Memory Usage (MB)** 曲线会叠加 Unity 侧内存：
+
+| 曲线 | 来源 | 说明 |
+| --- | --- | --- |
+| Unity Heap | `used_memory_mb`（`Total Used Memory`） | Unity 统计的总已用内存 |
+| Native | `native_memory_mb`（派生） | Total Used Memory − GC Used Memory |
+| Mono | `gc_used_memory_mb`（`GC Used Memory`） | 托管堆（Mono / IL2CPP GC）已用量 |
+
+`native_memory_mb` 不是新增的采集项：它由同一条 `unity_stats.log` 样本里的
+`used_memory_mb` 和 `gc_used_memory_mb` 逐点相减得到，两个计数器都在时才出一个
+点，因此旧报告重新导出也能直接看到这三条曲线；没有 Unity 采集或字段缺失时曲线
+不显示，不会画成 0。
+
 渲染资源类计数器同样以“数量 / 内存”成对采集并写入 `unity_stats.log`：
 `render_textures` + `render_textures_mb`、`render_textures_changes`、
 `used_buffers` + `used_buffers_mb`、`vertex_upload` + `vertex_upload_kb`、
@@ -222,6 +235,38 @@ Unity Profiler 开关打开后，实时页顶部会出现 **Unity 游戏面板**
 KB 双坐标轴）；对比页新增对应汇总行和 Render Textures / Used Buffers /
 VB 上传 / IB 上传四张对比曲线；对比导出的 `compare.xls/json` 同时保留
 数量与内存值。
+
+**对比报告的字段覆盖**
+
+对比页与对比导出现在覆盖 `unity_stats.log`、`gpu_stats.log` 里的全部已采集
+计数器，不再只挑其中一部分：
+
+- Unity：CPU/GPU/渲染线程/总耗时、Draw Calls、SetPass Calls、Batches、
+  Static/Dynamic/Instanced Batches、三种合批 Draw Calls、Shadow Casters、
+  三角面/顶点、GC Alloc、Unity/GC/Native 内存，以及渲染资源与上传类计数器。
+  其中 **Mono 内存** 就是 Unity 的 `GC Used Memory`（`gc_used_memory_mb`，
+  托管堆已用量），对比页/导出中显示为 “Mono / GC 已用内存”；Native 则是
+  `Total Used Memory − GC Used Memory` 的派生值。
+- GPU：占用率之外，补充温度、频率、总线、应用/总显存、读/写带宽（MB/帧）。
+- 对比页的补充指标按“Unity 帧耗时 / Unity 批处理 / Unity 内存 / GC /
+  GPU 扩展”分组给出摘要行和曲线；`compare.xls` 的 `Unity`、`GPU Stats`
+  两张表与页面同源。
+- 指标目录集中在 `perfcattle/report/metric_catalog.py`。采集端新增计数器时
+  只在该文件登记一次，对比页和对比导出自动生效；没采集到的指标不会生成
+  0 值行。
+
+**分析页与导出 HTML**
+
+单报告分析页和导出的 `report.html` 也补齐了同样的字段，不再只有 CPU/GPU
+帧耗时和 Draw Calls：
+
+- 顶部 KPI 卡片：Unity 总帧耗时、渲染线程、SetPass Calls、Batches、
+  GC Alloc/帧、Unity 已用内存、Mono/GC 内存、Native 内存。
+- Unity 引擎卡片：汇总行补充渲染线程、CPU 总耗时、Batches、Shadow Casters、
+  GC Alloc 与三项内存；帧耗时曲线增加渲染线程 / CPU 总耗时（ms 轴）和
+  GC Alloc（KB 轴），Draw Calls 曲线增加 Shadow Casters。
+- 导出的 HTML 使用与在线分析页相同的字段和曲线；没有采集到的指标卡片和
+  曲线都不会出现。
 
 **时间对齐与报告**
 

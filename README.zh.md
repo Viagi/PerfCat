@@ -142,7 +142,7 @@ target in ['cpu','memory','memory_detail','network','fps','battery','gpu']
 
   - 🌱2-devices: 使用两台不同的设备测试同一个app。
   - 🌱2-apps: 使用两台配置相同的设备测试两个不同的app。
-* **多报告对比:** 在测试报告页勾选 2–6 份同 App、同平台的正常报告即可进入对比页；摘要表按场景展开，多指标图表拆成独立曲线表，每个场景一条曲线。
+* **多报告对比:** 在测试报告页勾选 2–6 份同 App、同平台的正常报告即可进入对比页；摘要表按场景展开，多指标图表拆成独立曲线表，每个场景一条曲线。对比页与对比导出覆盖 Unity/GPU 的全部已采集计数器（批处理、渲染线程、GC、Unity/GC/Native 内存、GPU 频率/温度/显存/带宽等），指标清单集中在 `perfcattle/report/metric_catalog.py`，新增采集项只登记一次。
 * **API收集性能数据:** 支持python、API收集性能数据，帮助用户轻松集成在CI/CD流程。
 * **Unity 采集:** 在 APM 会话中同时录制 Unity Profiler / MemoryProfiler 原始数据；优先使用工程内脚本，未集成时自动回退到 PlayerConnection 协议（已验证 Unity 2022.3，无需改游戏）。原始文件归档在 `report/<scene>/unity/`，测试报告页导出时会与性能数据、离线 JSON 一起打包。
 * **Unity Profiler 离线 JSON:** 导出报告时自动把 `profiler.raw` 转成 JSON（帧耗时、线程耗时、热点 marker、GC 分配、最慢帧调用树），无 Unity 环境也能分析。

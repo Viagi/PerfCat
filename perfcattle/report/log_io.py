@@ -410,11 +410,31 @@ class LogIO:
             charts[key] = [{"x": p["x"], "y": p["y"]} for p in charts[key]]
         return {"status": 1, "avg": avg, "charts": charts}
 
+    @staticmethod
+    def _chart_difference(charts, left_key, right_key):
+        """按相同时间点把两条曲线相减；任一侧缺失时跳过该点。"""
+        right = {point["x"]: point["y"] for point in charts.get(right_key) or []}
+        points = []
+        for point in charts.get(left_key) or []:
+            other = right.get(point["x"])
+            if other is None:
+                continue
+            points.append({"x": point["x"], "y": round(point["y"] - other, 2)})
+        return points
+
     def getUnityStatsLog(self, platform, scene):
         """Unity 侧实时计数器（帧耗时 / Draw Calls / 三角面 / 顶点数等）。"""
         charts, values = self.read_json_lines(scene, "unity_stats.log")
         # frame 只用于“指标曲线 -> 热点帧号”的映射，不参与平均值
         values.pop("frame", None)
+        # Unity 的 Total Used Memory 包含托管堆，减去 GC Used Memory 就是
+        # native 侧的内存；两个计数器来自同一条样本，缺失时该点留空。
+        native = self._chart_difference(
+            charts, "used_memory_mb", "gc_used_memory_mb"
+        )
+        if native:
+            charts["native_memory_mb"] = native
+            values["native_memory_mb"] = [point["y"] for point in native]
         avg = {
             key: round(sum(items) / len(items), 2)
             for key, items in values.items()

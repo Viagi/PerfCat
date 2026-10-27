@@ -313,10 +313,37 @@ class Aggregator:
         unity_avg = self.log_io.getUnityStatsLog("Android", scene)["avg"]
         unity_keys = {
             "unity_cpu_frame": ("cpu_frame_ms", "unityCpuFrame"),
+            "unity_render_frame": ("render_frame_ms", "unityRenderFrame"),
+            "unity_cpu_total": ("cpu_total_ms", "unityCpuTotal"),
             "unity_gpu_frame": ("gpu_frame_ms", "unityGpuFrame"),
             "unity_draw_calls": ("draw_calls", "unityDrawCalls"),
+            "unity_setpass_calls": ("setpass_calls", "unitySetPassCalls"),
+            "unity_batches": ("batches", "unityBatches"),
+            "unity_static_batches": ("static_batches", "unityStaticBatches"),
+            "unity_dynamic_batches": ("dynamic_batches", "unityDynamicBatches"),
+            "unity_instanced_batches": (
+                "instanced_batches",
+                "unityInstancedBatches",
+            ),
+            "unity_static_batched_draws": (
+                "static_batched_draws",
+                "unityStaticBatchedDraws",
+            ),
+            "unity_dynamic_batched_draws": (
+                "dynamic_batched_draws",
+                "unityDynamicBatchedDraws",
+            ),
+            "unity_instanced_batched_draws": (
+                "instanced_batched_draws",
+                "unityInstancedBatchedDraws",
+            ),
+            "unity_shadow_casters": ("shadow_casters", "unityShadowCasters"),
             "unity_triangles": ("triangles", "unityTriangles"),
             "unity_vertices": ("vertices", "unityVertices"),
+            "unity_gc_alloc": ("gc_alloc_kb", "unityGcAlloc"),
+            "unity_memory": ("used_memory_mb", "unityMemory"),
+            "unity_gc_memory": ("gc_used_memory_mb", "unityGcMemory"),
+            "unity_native_memory": ("native_memory_mb", "unityNativeMemory"),
         }
         unity_flags = {
             flag: source in unity_avg for flag, (source, _) in unity_keys.items()

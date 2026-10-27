@@ -48,13 +48,27 @@ def _write_report(
         )
     if unity_stats:
         (scene_dir / "unity_stats.log").write_text(
-            '10:00:00={"cpu_frame_ms": 5.2, "gpu_frame_ms": 3.1, '
-            '"draw_calls": 120, "triangles": 50000, "vertices": 70000, '
+            '10:00:00={"cpu_frame_ms": 5.2, "render_frame_ms": 2.5, '
+            '"cpu_total_ms": 8.4, "gpu_frame_ms": 3.1, '
+            '"draw_calls": 120, "setpass_calls": 40, "batches": 130, '
+            '"static_batches": 90, "dynamic_batches": 20, '
+            '"instanced_batches": 20, "static_batched_draws": 90, '
+            '"dynamic_batched_draws": 20, "instanced_batched_draws": 10, '
+            '"shadow_casters": 30, '
+            '"triangles": 50000, "vertices": 70000, '
+            '"gc_alloc_kb": 12.5, "used_memory_mb": 900.0, '
+            '"gc_used_memory_mb": 120.0, '
             '"render_textures": 55, "render_textures_mb": 48.1, '
             '"render_textures_changes": 12, "used_buffers": 1356, '
             '"used_buffers_mb": 50.9, "vertex_upload": 16, '
             '"vertex_upload_kb": 140.7, "index_upload": 16, '
             '"index_upload_kb": 9.6}\n',
+            encoding="utf-8",
+        )
+        (scene_dir / "gpu_stats.log").write_text(
+            '10:00:00={"gpu_temp": 55.0, "gpu_clock": 300, "gpu_bus": 250, '
+            '"gpu_mem_app": 600.0, "gpu_mem_total": 800.0, '
+            '"gpu_bw_read": 240.0, "gpu_bw_write": 60.0}\n',
             encoding="utf-8",
         )
     if raw_path:
@@ -135,6 +149,59 @@ def test_compare_export_bundles_every_report(tmp_path, monkeypatch):
         assert metrics[("Unity", "Index Upload (KB)")]["values"] == {
             "run_a": 9.6,
             "run_b": 9.6,
+        }
+        # Every counter written to unity_stats.log reaches the comparison,
+        # including the ones the compare page did not surface before.
+        assert metrics[("Unity", "Render Thread (ms)")]["values"] == {
+            "run_a": 2.5,
+            "run_b": 2.5,
+        }
+        assert metrics[("Unity", "CPU Total (ms)")]["values"] == {
+            "run_a": 8.4,
+            "run_b": 8.4,
+        }
+        assert metrics[("Unity", "SetPass Calls")]["values"] == {
+            "run_a": 40,
+            "run_b": 40,
+        }
+        assert metrics[("Unity", "Static Batched Draw Calls")]["values"] == {
+            "run_a": 90,
+            "run_b": 90,
+        }
+        assert metrics[("Unity", "Shadow Casters")]["values"] == {
+            "run_a": 30,
+            "run_b": 30,
+        }
+        assert metrics[("Unity", "GC Alloc (KB/frame)")]["values"] == {
+            "run_a": 12.5,
+            "run_b": 12.5,
+        }
+        assert metrics[("Unity", "Unity Memory (MB)")]["values"] == {
+            "run_a": 900.0,
+            "run_b": 900.0,
+        }
+        # Mono/IL2CPP 托管堆：Unity 的 GC Used Memory
+        assert metrics[("Unity", "Mono / GC Memory (MB)")]["values"] == {
+            "run_a": 120.0,
+            "run_b": 120.0,
+        }
+        # native = Total Used Memory - GC Used Memory
+        assert metrics[("Unity", "Native Memory (MB)")]["values"] == {
+            "run_a": 780.0,
+            "run_b": 780.0,
+        }
+        assert metrics[("GPU Stats", "Temperature (C)")]["values"] == {
+            "run_a": 55.0,
+            "run_b": 55.0,
+        }
+        assert metrics[("GPU Stats", "Clock (MHz)")]["values"] == {
+            "run_a": 300,
+            "run_b": 300,
+        }
+        # gpu_stats.log bandwidth is converted to MB/frame with the FPS log.
+        assert metrics[("GPU Stats", "Read (MB/frame)")]["values"] == {
+            "run_a": 4.0,
+            "run_b": 4.0,
         }
         # Missing metrics are not exported as misleading zero rows.
         assert ("Battery", "Current") not in metrics
