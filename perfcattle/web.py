@@ -18,9 +18,12 @@ from perfcattle.view.report_api import report_api
 from perfcattle.view.tools_api import tools_api
 from perfcattle.view.ios_dependencies_api import ios_dependencies_api
 from perfcattle.view.unity_api import unity_api
+from perfcattle.view.pages import DEFAULT_LAN, DEFAULT_PLATFORM
+from perfcattle.view.pages import SUPPORTED_LANS, SUPPORTED_PLATFORMS
 from perfcattle.view.pages import page
 from perfcattle import __version__
 from perfcattle.core.logging_config import STARTUP_LOG_ATTR, setup_runtime_logging
+from perfcattle.core.settings_cache import ApmSettingsCache
 
 
 STARTUP_LOG_EXTRA = {STARTUP_LOG_ATTR: True}
@@ -137,6 +140,18 @@ def open_browser(url: str):
                 os.close(saved_fd)
 
 
+def startup_url(host: str, port: int) -> str:
+    """启动时打开的地址：沿用上次的语言和平台选择。"""
+    settings = ApmSettingsCache.load()
+    lan = settings.get("language")
+    platform = settings.get("platform")
+    if lan not in SUPPORTED_LANS:
+        lan = DEFAULT_LAN
+    if platform not in SUPPORTED_PLATFORMS:
+        platform = DEFAULT_PLATFORM
+    return "http://{}:{}/?platform={}&lan={}".format(host, port, platform, lan)
+
+
 def open_url(host: str, port: int):
     f = Figlet(font="slant", width=300)
     logger.info(
@@ -146,11 +161,10 @@ def open_url(host: str, port: int):
     # Wait for server ready
     while status(host, port):
         time.sleep(0.5)
-    open_browser("http://{}:{}/?platform=Android&lan=cn".format(host, port))
+    url = startup_url(host, port)
+    open_browser(url)
     logger.info(
-        "Running on http://{}:{}/?platform=Android&lan=cn (Press CTRL+C to quit)".format(
-            host, port
-        ),
+        "Running on {} (Press CTRL+C to quit)".format(url),
         extra=STARTUP_LOG_EXTRA,
     )
 

@@ -130,6 +130,8 @@ def test_apm_settings_endpoint_persists_to_local_file(tmp_path):
         response = app.test_client().get(
             "/apm/settings",
             query_string={
+                "language": "en",
+                "platform": "iOS",
                 "cpuWarning": "80",
                 "duration": "15",
                 "perfcattle_host": "127.0.0.1:6006",
@@ -150,6 +152,8 @@ def test_apm_settings_endpoint_persists_to_local_file(tmp_path):
         assert response.json["status"] == 1
         settings = json.loads(cache_path.read_text(encoding="utf-8"))
         assert settings["cpuWarning"] == "80"
+        assert settings["language"] == "en"
+        assert settings["platform"] == "iOS"
         assert settings["duration"] == "15"
         assert settings["perfcattle_host"] == "127.0.0.1:6006"
         assert settings["defaultPackageName"] == "com.tencent.mm"
@@ -159,6 +163,21 @@ def test_apm_settings_endpoint_persists_to_local_file(tmp_path):
         assert settings["collectRecordScreen"] == "1"
         assert settings["collectThermal"] == "1"
         assert "Set-Cookie" not in response.headers
+
+
+def test_apm_settings_endpoint_skips_nan_values(tmp_path):
+    cache_path = tmp_path / "apm_settings.json"
+    app = Flask(__name__)
+    app.register_blueprint(apm_api)
+
+    with patch.object(ApmSettingsCache, "CACHE_PATH", str(cache_path)):
+        client = app.test_client()
+        client.get("/apm/settings", query_string={"cpuWarning": "NaN"})
+        client.get("/apm/settings", query_string={"memWarning": "60"})
+
+        settings = json.loads(cache_path.read_text(encoding="utf-8"))
+        assert settings["cpuWarning"] == 0
+        assert settings["memWarning"] == "60"
 
 
 def test_file_io_endpoints_default_to_normal_model(monkeypatch):

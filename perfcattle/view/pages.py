@@ -4,6 +4,7 @@ from flask import Blueprint
 from flask import render_template
 from flask import request
 from logzero import logger
+from perfcattle.core.settings_cache import ApmSettingsCache
 from perfcattle.device.manager import Devices
 from perfcattle.report.manager import ReportStore
 from perfcattle.report.metric_catalog import EXTRA_SECTIONS
@@ -18,12 +19,30 @@ f = ReportStore()
 
 DEFAULT_LAN = "cn"
 SUPPORTED_LANS = ("cn", "en")
+DEFAULT_PLATFORM = "Android"
+SUPPORTED_PLATFORMS = ("Android", "iOS")
+
+
+def _remembered(key, allowed, default):
+    """URL 没有显式指定时，沿用上次保存在本地的选择。"""
+    cached = ApmSettingsCache.load().get(key)
+    return cached if cached in allowed else default
 
 
 def _page_lan():
-    """页面语言：未指定或非法时默认中文。"""
+    """页面语言：URL 显式指定优先，其次是缓存的选择，最后中文。"""
     lan = request.args.get("lan")
-    return lan if lan in SUPPORTED_LANS else DEFAULT_LAN
+    return lan if lan in SUPPORTED_LANS else _remembered(
+        "language", SUPPORTED_LANS, DEFAULT_LAN
+    )
+
+
+def _page_platform():
+    """采集平台：URL 显式指定优先，其次是缓存的选择，最后 Android。"""
+    platform = request.args.get("platform")
+    return platform if platform in SUPPORTED_PLATFORMS else _remembered(
+        "platform", SUPPORTED_PLATFORMS, DEFAULT_PLATFORM
+    )
 
 
 @page.app_errorhandler(404)
@@ -42,7 +61,7 @@ def page_500(e):
 
 @page.route("/")
 def index():
-    platform = request.args.get("platform")
+    platform = _page_platform()
     lan = _page_lan()
     settings = m._settings(request)
     return render_template("index.html", **locals())
@@ -51,6 +70,7 @@ def index():
 @page.route("/pk")
 def pk():
     lan = _page_lan()
+    platform = _page_platform()
     model = request.args.get("model")
     settings = m._settings(request)
     return render_template("pk.html", **locals())

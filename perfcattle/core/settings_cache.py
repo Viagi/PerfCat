@@ -5,8 +5,13 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import threading
 
 from logzero import logger
+
+# Flask 的请求线程可能同时写入（例如切换语言与勾选指标），
+# 串行化「读-改-写」，避免后一次保存覆盖前一次。
+_SAVE_LOCK = threading.Lock()
 
 
 class ApmSettingsCache:
@@ -15,6 +20,8 @@ class ApmSettingsCache:
     CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".perfcattle")
     CACHE_PATH = os.path.join(CONFIG_DIR, "apm_settings.json")
     DEFAULTS = {
+        "language": "cn",
+        "platform": "Android",
         "cpuWarning": 0,
         "memWarning": 0,
         "fpsWarning": 0,
@@ -71,16 +78,17 @@ class ApmSettingsCache:
 
     @classmethod
     def save(cls, values):
-        settings = cls.load()
-        if values:
-            for key in cls.DEFAULTS:
-                try:
-                    value = values.get(key)
-                except AttributeError:
-                    value = values[key] if key in values else None
-                if value is not None:
-                    settings[key] = value
-        cls.save_all(settings)
+        with _SAVE_LOCK:
+            settings = cls.load()
+            if values:
+                for key in cls.DEFAULTS:
+                    try:
+                        value = values.get(key)
+                    except AttributeError:
+                        value = values[key] if key in values else None
+                    if value is not None and str(value).strip().upper() != "NAN":
+                        settings[key] = value
+            cls.save_all(settings)
         return settings
 
     @classmethod
