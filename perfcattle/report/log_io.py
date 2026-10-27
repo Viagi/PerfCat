@@ -6,10 +6,12 @@
 import datetime
 import json
 import os
+import statistics
 import time
 from logzero import logger
 from perfcattle.core.metrics import MetricQuality, finite_number, plottable_value
 from perfcattle.core.platform import Platform
+from perfcattle.unity import frame_counters
 
 
 class LogIO:
@@ -422,8 +424,22 @@ class LogIO:
             points.append({"x": point["x"], "y": round(point["y"] - other, 2)})
         return points
 
-    def getUnityStatsLog(self, platform, scene):
-        """Unity 侧实时计数器（帧耗时 / Draw Calls / 三角面 / 顶点数等）。"""
+    def getUnityStatsLog(self, platform, scene, wait=0):
+        """Unity 侧实时计数器（帧耗时 / Draw Calls / 三角面 / 顶点数等）。
+
+        归档的 ``profiler.raw`` 是逐帧的，优先用它出图（降采样后仍保留每桶
+        的最慢/最快帧）；1 秒一条的 ``unity_stats.log`` 只在逐帧缓存还没
+        生成时兜底，避免打开报告被解析阻塞。``wait`` 为等待缓存的秒数，
+        页面请求传 0（不阻塞），导出可以传几十秒。
+        """
+        payload, state = self._unity_frame_counters(scene, wait)
+        if payload and payload.get("series") and payload.get("frames"):
+            result = self._unity_stats_from_frames(scene, payload)
+            result["frame_counters"] = "ready"
+            return result
+        if payload is not None:
+            # raw 里没有计数器（例如只开了帧数据），仍然用 1 秒日志兜底。
+            state = "no_counters"
         charts, values = self.read_json_lines(scene, "unity_stats.log")
         # frame 只用于“指标曲线 -> 热点帧号”的映射，不参与平均值
         values.pop("frame", None)
@@ -454,7 +470,151 @@ class LogIO:
                 ]
             else:
                 charts[key] = [{"x": p["x"], "y": p["y"]} for p in charts[key]]
-        return {"status": 1, "avg": avg, "charts": charts}
+        return {
+            "status": 1,
+            "avg": avg,
+            "charts": charts,
+            "frame_counters": state,
+        }
+
+    def _unity_frame_counters(self, scene, wait=0):
+        """返回 (逐帧缓存, 状态)。缺失时触发后台生成，不阻塞调用方。"""
+        unity_dir = os.path.join(self.report_dir, scene, "unity")
+        try:
+            return frame_counters.ensure(unity_dir, wait=wait)
+        except Exception as e:
+            logger.warning("Unity frame counters unavailable: %s", e)
+            return None, "failed"
+
+    def _unity_stats_from_frames(self, scene, payload):
+        frames = payload.get("frames") or []
+        if not frames:
+            return {
+                "status": 1,
+                "avg": {},
+                "charts": {},
+                "frame_counters": "ready",
+            }
+        times = payload.get("times") or []
+        origin = self.scene_origin(scene)
+        anchor = self._unity_time_anchor(scene, payload)
+        frame_index = {frame: index for index, frame in enumerate(frames)}
+
+        def x_of(frame):
+            index = frame_index.get(frame)
+            if index is None:
+                return None
+            seconds = anchor + times[index]
+            if origin is None:
+                return round(seconds - anchor, 1)
+            return round(max(0.0, self._relative_seconds(seconds, origin)), 1)
+
+        charted = frame_counters.chart_frames(payload)
+        series = frame_counters.downsample(payload, charted)
+        charts = {}
+        for key, samples in series.items():
+            points = []
+            for frame, value in samples:
+                x = x_of(frame)
+                if x is None:
+                    continue
+                if key in self.GEOMETRY_KEYS:
+                    value = round(value * self.GEOMETRY_SCALE, 1)
+                points.append({"x": x, "y": value})
+            if points:
+                charts[key] = points
+        frame_points = []
+        for frame in charted:
+            x = x_of(frame)
+            if x is not None:
+                frame_points.append({"x": x, "y": frame})
+        charts["frame"] = frame_points
+
+        native_values = self._add_native_memory(charts, series, x_of)
+
+        stats = frame_counters.frame_stats(payload)
+        avg = {}
+        for key, item in stats["counters"].items():
+            if not item:
+                continue
+            value = item["avg"]
+            if key in self.GEOMETRY_KEYS:
+                value = round(value * self.GEOMETRY_SCALE, 1)
+            avg[key] = value
+        if native_values:
+            avg["native_memory_mb"] = round(
+                sum(native_values) / float(len(native_values)), 2
+            )
+        return {
+            "status": 1,
+            "avg": avg,
+            "charts": charts,
+            "peaks": self._scaled_stats(stats),
+            "frame_count": len(frames),
+            "unity_complete": payload.get("complete", True),
+            "frame_counters": "ready",
+        }
+
+    def _add_native_memory(self, charts, series, x_of):
+        """按帧把 Total Used Memory 减去 GC Used Memory，得到 native 内存。"""
+        used = {frame: value for frame, value in series.get("used_memory_mb") or []}
+        gc = {frame: value for frame, value in series.get("gc_used_memory_mb") or []}
+        values = []
+        points = []
+        for frame in sorted(set(used) & set(gc)):
+            native = round(used[frame] - gc[frame], 2)
+            values.append(native)
+            x = x_of(frame)
+            if x is not None:
+                points.append({"x": x, "y": native})
+        if points:
+            charts["native_memory_mb"] = points
+        return values
+
+    def _scaled_stats(self, stats):
+        """几何计数器在报告里统一换算为 k，峰值统计保持一致。"""
+        result = {"counters": {}, "hitches": dict(stats.get("hitches") or {})}
+        for key, item in (stats.get("counters") or {}).items():
+            if not item:
+                continue
+            scaled = dict(item)
+            if key in self.GEOMETRY_KEYS:
+                for field in ("avg", "min", "max", "p50", "p95", "p99"):
+                    if scaled.get(field) is not None:
+                        scaled[field] = round(scaled[field] * self.GEOMETRY_SCALE, 1)
+            result["counters"][key] = scaled
+        result["hitch"] = result["hitches"].get("cpu_frame_ms") or result["hitches"].get(
+            "gpu_frame_ms"
+        )
+        return result
+
+    def _unity_time_anchor(self, scene, payload):
+        """逐帧时间轴的当日秒数原点。
+
+        首选和 ``unity_stats.log`` 的 (frame, 时间) 对齐：日志里的 frame 就是
+        raw 的帧号，中位数偏移可以消掉"连接→开始录制"之间的几秒空档。
+        """
+        times = payload.get("times") or []
+        frame_index = {
+            frame: index for index, frame in enumerate(payload.get("frames") or [])
+        }
+        deltas = []
+        for seconds, data in self._json_points(scene, "unity_stats.log"):
+            frame = data.get("frame")
+            if frame is None:
+                continue
+            index = frame_index.get(int(frame))
+            if index is None or index >= len(times):
+                continue
+            deltas.append(seconds - times[index])
+        if deltas:
+            return statistics.median(deltas)
+        started_at = payload.get("started_at") or ""
+        clock = started_at.split(" ")[-1]
+        try:
+            return self._clock_seconds(clock)
+        except (ValueError, IndexError):
+            return 0.0
 
     def getUnityStatsLogCompare(self, platform, scene1, scene2):
         """Unity 侧实时计数器的双场景对比数据。"""

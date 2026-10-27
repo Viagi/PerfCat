@@ -284,7 +284,8 @@ VB 上传 / IB 上传四张对比曲线；对比导出的 `compare.xls/json` 同
 - 报告和分析页新增 Unity 指标卡片，以及「系统 CPU 与 Unity 指标对照」卡片；
   后者把 CPU 应用/整机占用率与 Draw Calls / 三角面放在同一个时间轴，方便
   定位「CPU 90% 时对应多少 DC/三角面」。
-- 1 秒级对齐；Unity 流本身是逐帧数据，报告按秒采样后不再保留每一帧。
+- 报告不再只按秒采样：归档的 `unity/profiler.raw` 里每个计数器本来就是逐帧的
+  （1 帧 1 个样本），报告优先用它出图并做峰值统计，详见 2.5。
 
 注意事项：
 
@@ -294,7 +295,26 @@ VB 上传 / IB 上传四张对比曲线；对比导出的 `compare.xls/json` 同
   不影响后续数据；解析统计在 `/apm/unity/stats` 的 `stats` 字段中。
 - 原始 profiler 数据仍按原有方式归档在 `unity/profiler.raw`。
 
-### 2.5 报告中的 Unity 热点函数
+### 2.5 报告中的逐帧计数器与峰值统计
+
+`unity_stats.log` 每秒只记录“当时最新的一帧”，短时尖峰很容易被整段错过。
+归档的 `unity/profiler.raw` 里每个计数器都是逐帧的，报告因此优先解析它：
+
+- 首次打开报告时在后台把整条 raw 流扫一遍（约 100 MB/s，324 MB 约 3 秒），
+  结果缓存到 `unity/frame_counters.json`（约 300–400 KB）。缓存按 raw 的
+  `size` + `mtime` 校验，重新采集才会失效，不会每次打开都重新解析。
+- 缓存缺失时页面照常打开，先用 1 秒日志兜底，并在生成完成后自动补一次。
+  导出（Excel / ZIP）会等待最多 30 秒，保证导出与分析页口径一致。
+- 缓存生成失败或采集中断都不影响报告：解析只读 raw，缓存原子写入
+  （`.tmp` + `os.replace`），截断的数据会在页面上标注“采集不完整”。
+- 图表按桶保留最慢 / 最快帧做降采样（每条例线最多 1200 点），尖峰仍可见；
+  平均值改为逐帧加权，并新增 `peaks`：`max` / `p50` / `p95` / `p99`、
+  `low1_ms` / `low1_fps`（1% low）、`low01_*`（0.1% low），以及
+  `hitch`（单帧耗时超过两倍中位数的帧数、占比和前 10 个最差帧）。
+- 时间轴仍以 `apm_session.json` 为共同原点：先用 `unity_stats.log` 的
+  `(frame, 时间)` 中位数偏移对齐 raw 的帧时间，再换算成相对秒数。
+
+### 2.6 报告中的 Unity 热点函数
 
 分析页的 **Unity 热点函数** 卡片直接读取报告归档的
 `unity/profiler.raw`，不需要游戏内脚本，也不需要 Protocol 连接：
@@ -1004,7 +1024,7 @@ meta.json 正确记录 deep_profiling / areas / enabled_categories
 | 快照依赖包 | 需要 `com.unity.memoryprofiler` |
 | 数据量 | Deep Profiler 会产生非常大的文件，注意磁盘 |
 | 游戏面板 Protocol 解析版本 | 目前支持 Unity 2022.2+ 的 raw stream；旧版本需补充解析分支 |
-| 游戏面板精度 | 报告按 1 秒采样；Unity 原始流本身是逐帧数据 |
+| 游戏面板精度 | 报告优先用 `profiler.raw` 逐帧解析（缓存 `unity/frame_counters.json`）；raw 缺失时退回 1 秒采样 |
 | 游戏面板依赖可用计数器 | 不同 Unity 版本/构建配置下部分计数器可能缺失 |
 
 ### 10.2 常见问题

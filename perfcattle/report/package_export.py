@@ -46,6 +46,7 @@ from perfcattle.unity.export import (
     cached_profiler_json,
     write_profiler_json,
 )
+from perfcattle.unity.frame_counters import CACHE_FILE as UNITY_FRAME_CACHE
 
 BINARY_EXTENSIONS = {".raw", ".snapshot", ".mp4", ".data"}
 
@@ -401,6 +402,11 @@ class ReportPackageExporter(object):
         members.extend(json_files)
         if os.path.isfile(meta_path):
             members.append(meta_path)
+        # 逐帧计数器缓存只占几百 KB，带上后离线也能复现峰值/卡顿统计，
+        # 不必再解析整条 raw 流。
+        frame_cache = os.path.join(unity_dir, UNITY_FRAME_CACHE)
+        if os.path.isfile(frame_cache):
+            members.append(frame_cache)
         members.extend(raw_files)
         members.extend(snapshots)
         members = self._dedupe(members)
@@ -584,10 +590,14 @@ class ComparePackageExporter(object):
 
     def _unity_summary(self, scene, platform, warnings):
         try:
-            data = self.log_io.getUnityStatsLog(platform, scene)
+            # 导出是显式操作，可以等逐帧缓存生成完，避免 Excel 用 1 秒采样
+            # 的数据而分析页用逐帧数据。
+            data = self.log_io.getUnityStatsLog(platform, scene, wait=30)
             return {
                 "avg": data.get("avg", {}),
                 "charts": data.get("charts", {}),
+                "peaks": data.get("peaks", {}),
+                "frame_count": data.get("frame_count"),
             }
         except Exception as e:
             logger.exception(e)

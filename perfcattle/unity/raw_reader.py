@@ -210,7 +210,15 @@ class RawStatsParser(object):
         self._latest = {}
         self._latest_markers = {}
         self._latest_frame = None
+        self._latest_frame_time = None
         self._latest_sample_time = None
+        self._thread_frames = {}
+        self._timer_num = 1
+        self._timer_den = 1
+        # Optional ``on_sample(key, value, frame, sample_time)`` hook. The live
+        # panel only needs the newest value, but the offline per-frame scan
+        # needs every sample; keeping the hook here avoids a second parser.
+        self.on_sample = None
         self._last_update = None
         self._last_error = None
         self._blocks = 0
@@ -264,6 +272,8 @@ class RawStatsParser(object):
         self.version = version
         self.unity_version = ".".join(str(item) for item in unity_version[:3])
         self.align_enabled = bool(align)
+        self._timer_num = num
+        self._timer_den = den
         self._header_done = True
         self._buffer = self._buffer[offset:]
         logger.info(
@@ -385,8 +395,11 @@ class RawStatsParser(object):
                     if pos + 12 > size:
                         raise _Incomplete()
                     frame_index = unpack_from("<I", data, pos)[0]
+                    frame_time = unpack_from("<Q", data, pos + 4)[0]
                     pos += 12
                     self._latest_frame = frame_index
+                    self._latest_frame_time = frame_time
+                    self._thread_frames[thread_id] = (frame_index, frame_time)
                     self._frames += 1
                 elif message_type == MSG_THREAD_INFO:
                     pos = self._read_thread_info(data, pos)
@@ -617,7 +630,7 @@ class RawStatsParser(object):
         if value is not None:
             name = self._samplers.get(sampler_id)
             if name:
-                self._store_counter(name, value, sample_time)
+                self._store_counter(name, value, sample_time, thread_id)
         return pos
 
     def _read_metadata_value(self, data, pos, meta_type):
@@ -669,7 +682,7 @@ class RawStatsParser(object):
 
     # ---------------------------------------------------------- counter
 
-    def _store_counter(self, name, value, sample_time):
+    def _store_counter(self, name, value, sample_time, thread_id=None):
         mapping = COUNTER_NAMES.get(name)
         if not mapping:
             return
@@ -687,6 +700,12 @@ class RawStatsParser(object):
         if sample_time is not None:
             self._latest_sample_time = sample_time
         self._last_update = time.time()
+        hook = self.on_sample
+        if hook is not None:
+            frame, frame_time = self._thread_frames.get(
+                thread_id, (self._latest_frame, self._latest_frame_time)
+            )
+            hook(key, number, frame, frame_time, sample_time)
 
     # --------------------------------------------------------- snapshot
 

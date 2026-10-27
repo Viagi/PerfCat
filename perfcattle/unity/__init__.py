@@ -7,6 +7,7 @@
 - ``protocol``  PlayerConnection 线协议与帧收发
 - ``backends``  helper / protocol 两种传输后端
 - ``manager``   会话、暂存目录、meta 与报告归档
+- ``frame_counters`` profiler.raw 的逐帧计数器解析与缓存（峰值 / 1% low）
 - ``export``    profiler.raw 的离线 JSON 导出（不依赖 Unity）
 
 技术文档：docs/UNITY_CAPTURE.md

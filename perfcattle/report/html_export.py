@@ -238,6 +238,9 @@ class HtmlExporter:
                 gpu_stats_charts=summary.get("gpu_stats_charts", {}),
                 unity_stats=summary.get("unity_stats", {}),
                 unity_stats_charts=summary.get("unity_stats_charts", {}),
+                unity_stats_peaks=summary.get("unity_stats_peaks") or {},
+                unity_frame_count=summary.get("unity_frame_count"),
+                unity_complete=summary.get("unity_complete", True),
                 unity_correlation_charts=summary.get(
                     "unity_correlation_charts", {}
                 ),

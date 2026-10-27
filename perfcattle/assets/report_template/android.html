@@ -348,7 +348,20 @@
                                             </div>
                                             <div class="col">
                                                 <div class="font-weight-medium">Unity CPU Frame</div>
-                                                <div class="text-muted">Avg: {{ unity_stats.get('cpu_frame_ms') }} ms</div>
+                                                <div class="text-muted">Avg: {{ unity_stats.get('cpu_frame_ms') }} ms{% if unity_frame_count %} · {{ unity_frame_count }} frames{% endif %}</div>
+                                                {% set cpu_peak = unity_stats_peaks.get('counters', {}).get('cpu_frame_ms', {}) %}
+                                                {% if cpu_peak %}
+                                                <div class="text-muted">Peak: {{ cpu_peak.get('max') }} ms · P99: {{ cpu_peak.get('p99') }} ms</div>
+                                                {% endif %}
+                                                {% if cpu_peak and cpu_peak.get('low1_fps') is not none %}
+                                                <div class="text-muted">1% Low: {{ cpu_peak.get('low1_fps') }} fps</div>
+                                                {% endif %}
+                                                {% if unity_stats_peaks.get('hitch') %}
+                                                <div class="text-muted">Hitches: {{ unity_stats_peaks['hitch'].get('count') }} ({{ '%.2f'|format(unity_stats_peaks['hitch'].get('ratio', 0) * 100) }}%)</div>
+                                                {% endif %}
+                                                {% if unity_complete is defined and not unity_complete %}
+                                                <div class="text-muted" style="color: #d63939 !important;">Capture incomplete: tail frames missing</div>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </div>

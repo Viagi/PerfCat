@@ -2261,6 +2261,12 @@
         );
         unity_resources_chart.render();
         window.chartInstances.unity_resources = unity_resources_chart;
+        loadUnityStatsData(0);
+    }
+
+    // 逐帧计数器首次访问时在后台生成；生成完成后自动补一次，避免用户看到
+    // 1 秒采样的兜底曲线就以为没有逐帧数据。
+    function loadUnityStatsData(retryCount){
         $.ajax({
             url: '/apm/log',
             type: "GET",
@@ -2275,6 +2281,7 @@
                 if(!data || data['status'] != 1){ return }
                 var charts = data['charts'] || {};
                 var avg = data['avg'] || {};
+                var peaks = data['peaks'] || {};
                 unityStatsFramePoints = charts['frame'] || [];
                 var series = [{
                     name: 'CPU Frame (ms)',
@@ -2394,6 +2401,7 @@
                         ? '-' : Number(size).toFixed(1) + ' ' + unit;
                     return countText + ' / ' + sizeText;
                 };
+                var peakLine = unityPeaksText(peaks, data['unity_complete']);
                 $('#unity-stats-summary').text(
                     'CPU: ' + show('cpu_frame_ms') + ' ms'
                     + ' | RT: ' + show('render_frame_ms') + ' ms'
@@ -2408,6 +2416,7 @@
                     + ' | Shadow: ' + showInt('shadow_casters')
                     + ' | Tri: ' + showK('triangles') + ' k'
                     + ' | Vert: ' + showK('vertices') + ' k'
+                    + peakLine
                     + ' · ' + (lan === 'cn' ? '点击曲线选择帧' : 'click a point to select a frame')
                 );
                 $('#unity-memory-summary').text(
@@ -2423,8 +2432,32 @@
                     + ' | VB: ' + showPair('vertex_upload', 'vertex_upload_kb', 'KB')
                     + ' | IB: ' + showPair('index_upload', 'index_upload_kb', 'KB')
                 );
+                if(data['frame_counters'] === 'building' && retryCount < 5){
+                    setTimeout(function(){ loadUnityStatsData(retryCount + 1); }, 4000);
+                }
             }
         });
+    }
+
+    function unityPeaksText(peaks, complete){
+        var parts = [];
+        var counter = (peaks && peaks.counters && peaks.counters.cpu_frame_ms) || null;
+        if(counter && counter.max !== undefined && counter.max !== null){
+            parts.push((lan === 'cn' ? '峰值: ' : 'Peak: ') + counter.max + ' ms');
+        }
+        if(counter && counter.low1_fps !== undefined && counter.low1_fps !== null){
+            parts.push('1% low: ' + counter.low1_fps + ' fps');
+        }
+        var hitch = peaks && peaks.hitch;
+        if(hitch && hitch.count !== undefined){
+            var ratio = (Number(hitch.ratio || 0) * 100).toFixed(2);
+            parts.push((lan === 'cn' ? '卡顿帧: ' : 'Hitches: ') + hitch.count + ' (' + ratio + '%)');
+        }
+        var text = parts.length ? ' | ' + parts.join(' | ') : '';
+        if(complete === false){
+            text += ' | ' + (lan === 'cn' ? '采集不完整，尾部帧缺失' : 'capture incomplete');
+        }
+        return text;
     }
 
     function unityStatsFrameAt(x) {
