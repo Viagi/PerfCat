@@ -110,6 +110,16 @@ def test_frame_stats_expose_peaks_and_low_fps(tmp_path):
     assert hitch["worst"][0]["frame"] == 4
 
 
+def test_chart_frames_keeps_every_frame_under_cap():
+    frames = list(range(1, 3001))
+    payload = {
+        "frames": frames,
+        "times": [index * 0.033 for index in range(len(frames))],
+        "series": {"cpu_frame_ms": [[frame, 10.0 + (frame % 5)] for frame in frames]},
+    }
+    assert fc.chart_frames(payload) == frames
+
+
 def test_chart_frames_cap_and_keep_peak():
     frames = list(range(1, 5001))
     values = [[frame, 10.0 + (frame % 7)] for frame in frames]

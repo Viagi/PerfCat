@@ -3656,6 +3656,10 @@ PerfCattle - Application Performance Monitoring
     var unityRecording = false;
     var unitySnapshotRunning = false;
     var unity_chart = null;
+    // 录制开始后把时间轴锚定在开始时刻，曲线才会从左往右长；预置的空值
+    // 只用于占位，不能决定窗口范围。
+    var UNITY_CHART_WINDOW_MS = 60 * 1000;
+    var unityChartAnchor = null;
 
     var unityMetricDefs = [
         {key:'cpu_frame_ms', cn:'CPU 帧耗时', en:'CPU Frame', unit:'ms', decimals:2},
@@ -3800,6 +3804,24 @@ PerfCattle - Application Performance Monitoring
         return number === null ? null : number / 1000;
     }
 
+    // Unity 曲线的 series 用空值占位，rangeSelector 默认的 1 分钟窗口左边
+    // 全是空的，新点只会在右边缘出现。录制开始后把轴固定成
+    // [开始时刻, 开始 + 1 分钟]，曲线就从左往右长；超过 1 分钟后再让窗口
+    // 跟着最新点滑动。用户手动选了范围（selected != 0）就不再干预。
+    function applyUnityChartWindow(x){
+        if(!unity_chart || unityChartAnchor === null){
+            return;
+        }
+        var selector = unity_chart.rangeSelector;
+        if(selector && selector.selected !== 0){
+            return;
+        }
+        var end = Math.max(unityChartAnchor + UNITY_CHART_WINDOW_MS, x);
+        try {
+            unity_chart.xAxis[0].setExtremes(end - UNITY_CHART_WINDOW_MS, end);
+        } catch(e) {}
+    }
+
     function unityHandleStats(data){
         var panel = $('#unity-panel');
         if(panel.length === 0){
@@ -3821,11 +3843,15 @@ PerfCattle - Application Performance Monitoring
                     unity_chart.reflow();
                 }
                 var x = realtimePointTime();
+                if(unityChartAnchor === null){
+                    unityChartAnchor = x;
+                }
                 addRealtimePoint(unity_chart.series[0], x, unityNumber(values.cpu_frame_ms), false);
                 addRealtimePoint(unity_chart.series[1], x, unityNumber(values.gpu_frame_ms), false);
                 addRealtimePoint(unity_chart.series[2], x, unityNumber(values.draw_calls), false);
                 addRealtimePoint(unity_chart.series[3], x, unityGeometryK(values.triangles), false);
                 addRealtimePoint(unity_chart.series[4], x, unityGeometryK(values.vertices), true);
+                applyUnityChartWindow(x);
             }else{
                 // 连接阶段只刷新面板数字，曲线要等 Start 后才开始记录。
                 $('#unity_frames').hide();
@@ -3919,6 +3945,7 @@ PerfCattle - Application Performance Monitoring
         $('#unity-panel-mode').text('--').removeClass('bg-blue bg-warning').addClass('bg-secondary');
         if(recording){
             unityRecording = true;
+            unityChartAnchor = null;
             $('#unity_frames').show();
             if(unity_chart){
                 try { unity_chart.destroy(); } catch(e) {}

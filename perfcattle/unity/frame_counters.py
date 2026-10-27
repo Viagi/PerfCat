@@ -26,8 +26,9 @@ META_FILE = "meta.json"
 CACHE_FILE = "frame_counters.json"
 
 CHUNK_BYTES = 4 * 1024 * 1024
-# 报告图表最多保留的点数；更高密度只在统计里生效，避免前端被点压垮。
-MAX_CHART_POINTS = 1200
+# 报告图表默认给全部帧：峰值/谷值和"点哪一帧看热点"都依赖完整序列。
+# 只有超长采集（> 2 万帧）才按桶降到这个上限，避免前端被几十万点压死。
+MAX_CHART_POINTS = 20000
 
 # 这些计数器的单位是 ms，额外给出 1% low / 0.1% low（换算成 fps）。
 FRAME_TIME_KEYS = ("cpu_frame_ms", "render_frame_ms", "cpu_total_ms", "gpu_frame_ms")
@@ -418,10 +419,11 @@ def _hitch_summary(payload, key):
 
 
 def chart_frames(payload, max_points=MAX_CHART_POINTS):
-    """选出用于画图的帧号，保留每个桶的最小/最大值。
+    """返回用于画图的帧号。
 
-    峰值统计走全量序列，这里只决定图表显示多少点；保留每桶的 min/max
-    可以让尖峰在曲线上仍然可见，而不是被均值抹平。
+    默认原样返回全部帧（报告要能看到每一帧的波峰波谷，也要能点中任意一帧
+    看热点函数）；只有超过 ``max_points`` 的超长采集才按桶降采样，并保留
+    每桶的最慢/最快帧，尖峰仍然可见。
     """
     frames = payload.get("frames") or []
     if not frames:

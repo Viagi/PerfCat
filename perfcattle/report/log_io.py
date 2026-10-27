@@ -506,8 +506,10 @@ class LogIO:
                 return None
             seconds = anchor + times[index]
             if origin is None:
-                return round(seconds - anchor, 1)
-            return round(max(0.0, self._relative_seconds(seconds, origin)), 1)
+                return round(seconds - anchor, 3)
+            # 逐帧数据要保留毫秒精度：按 0.1 秒取整会让同一时刻的多帧挤在
+            # 一个 x 上，点曲线时就选不准是哪一帧。
+            return round(max(0.0, self._relative_seconds(seconds, origin)), 3)
 
         charted = frame_counters.chart_frames(payload)
         series = frame_counters.downsample(payload, charted)
