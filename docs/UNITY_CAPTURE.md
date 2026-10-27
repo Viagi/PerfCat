@@ -254,6 +254,10 @@ VB 上传 / IB 上传四张对比曲线；对比导出的 `compare.xls/json` 同
 - 指标目录集中在 `perfcattle/report/metric_catalog.py`。采集端新增计数器时
   只在该文件登记一次，对比页和对比导出自动生效；没采集到的指标不会生成
   0 值行。
+- 对比页的「导出 HTML」生成自包含的 `compare_<app>_<time>.html`：摘要表与
+  所有曲线数据在导出时内嵌，离线用浏览器打开即可查看，字段与对比页相同；
+  曲线按“系统指标 / Unity 帧耗时 / Unity 批处理 / Unity 几何 / Unity 内存 /
+  GC / Unity 渲染资源 / GPU 扩展”分组，空数据的分组不会出现。
 
 **分析页与导出 HTML**
 

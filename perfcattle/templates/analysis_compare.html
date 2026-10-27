@@ -56,6 +56,10 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" /><path d="M12 4l0 12" /></svg>
             {% if lan == 'cn' %} 导出对比报告 {% else %} Export Comparison {% endif %}
         </a>
+        <a onclick="exportCompareHtml()" class="btn">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /><path d="M9 13l6 0" /><path d="M9 17l6 0" /></svg>
+            {% if lan == 'cn' %} 导出 HTML {% else %} Export HTML {% endif %}
+        </a>
         {% endif %}
         <a download="compare.png" onclick="screenshot('sceen-body','compare.png')" class="btn">
             <svg t="1681980127752" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="11730" width="50" height="50"><path d="M957.31 368.25L903.1 732.12c-6 40.19-33.93 71.32-69.35 82.48a96.61 96.61 0 0 1-44.19 3.26L213.21 727c-39.51-6.23-70-35.53-80.55-72.54l90.55-64.06L363.29 702l193.4-234.78L847.8 681.67V394c0-56.57-44.59-102.43-99.6-102.43H177.34l6.73-45.17c8.33-55.92 59.16-94.3 113.53-85.73l576.35 90.83c54.37 8.56 91.69 60.83 83.36 116.75z" fill="#C5E3FF" p-id="11731"></path><path d="M804.86 831.57a110.71 110.71 0 0 1-17.24-1.36l-576.35-90.83c-42.89-6.76-78.46-38.74-90.62-81.47a12.5 12.5 0 0 1 4.8-13.62L216 580.22a12.5 12.5 0 0 1 15 0.43l130.45 103.9L547 459.27a12.5 12.5 0 0 1 17.06-2.12L835.3 656.93V394c0-49.59-39.07-89.93-87.1-89.93H177.34A12.5 12.5 0 0 1 165 289.71l6.73-45.17a114.5 114.5 0 0 1 45.56-76.09 109.35 109.35 0 0 1 82.29-20.14l576.35 90.83c61 9.62 103.11 68.37 93.78 131L915.46 734A115.87 115.87 0 0 1 889 792.38a112.1 112.1 0 0 1-51.45 34.14 108.3 108.3 0 0 1-32.69 5.05zM147.47 659.32c11.42 29.21 37.19 50.55 67.69 55.36l576.35 90.83a83.72 83.72 0 0 0 38.49-2.84c31.84-10 55.68-38.44 60.74-72.4l54.21-363.87c7.31-49.07-25.41-95.08-72.95-102.58L295.65 173a84.54 84.54 0 0 0-63.6 15.6 89.67 89.67 0 0 0-35.62 59.63l-4.59 30.82h556.37c61.81 0 112.1 51.56 112.1 114.93v287.69a12.5 12.5 0 0 1-19.91 10.06L558.81 484.3 372.93 709.93a12.5 12.5 0 0 1-17.44 1.83L222.77 606z" fill="#3D9FF9" p-id="11732"></path><path d="M748.21 877H165.12C103.31 877 53 825.48 53 762.11V394c0-63.37 50.29-114.93 112.1-114.93h583.11c61.81 0 112.1 51.56 112.1 114.93v368.11C860.3 825.48 810 877 748.21 877zM165.13 304c-48 0-87.1 40.34-87.1 89.93v368.18C78 811.7 117.1 852 165.12 852h583.09c48 0 87.1-40.34 87.1-89.93V394c0-49.59-39.07-89.93-87.1-89.93z" fill="#3D9FF9" p-id="11733"></path><path d="M748.21 877H165.12C103.31 877 53 825.48 53 762.11V702a12.5 12.5 0 0 1 5.28-10.2L216 580.22a12.5 12.5 0 0 1 15 0.43l130.45 103.9L547 459.27a12.5 12.5 0 0 1 17.06-2.12L855.22 671.6a12.5 12.5 0 0 1 5.09 10.06v80.44a117 117 0 0 1-15.75 58.77 114.17 114.17 0 0 1-40.07 40.64A109.94 109.94 0 0 1 748.21 877zM78 708.46v53.65C78 811.7 117.1 852 165.12 852h583.09c30.88 0 58.82-16.35 74.74-43.73a92 92 0 0 0 12.36-46.21V688l-276.5-203.7-185.88 225.63a12.5 12.5 0 0 1-17.44 1.83L222.77 606z" fill="#3D9FF9" p-id="11734"></path><path d="M847.8 681.67v80.44a104.16 104.16 0 0 1-14.05 52.49c-17.39 29.91-49.19 49.94-85.54 49.94H165.12c-55 0-99.6-45.86-99.6-102.43V702l67.14-47.5 90.55-64.06L363.29 702l193.4-234.78z" fill="#C5E3FF" p-id="11735"></path><path d="M748.21 877H165.12C103.31 877 53 825.48 53 762.11V702a12.5 12.5 0 0 1 5.28-10.2L216 580.22a12.5 12.5 0 0 1 15 0.43l130.45 103.9L547 459.27a12.5 12.5 0 0 1 17.06-2.12L855.22 671.6a12.5 12.5 0 0 1 5.09 10.06v80.44a117 117 0 0 1-15.75 58.77 114.17 114.17 0 0 1-40.07 40.64A109.94 109.94 0 0 1 748.21 877zM78 708.46v53.65C78 811.7 117.1 852 165.12 852h583.09c30.88 0 58.82-16.35 74.74-43.73a92 92 0 0 0 12.36-46.21V688l-276.5-203.7-185.88 225.63a12.5 12.5 0 0 1-17.44 1.83L222.77 606z" fill="#3D9FF9" p-id="11736"></path><path d="M226.91 418.1m-69.43 0a69.43 69.43 0 1 0 138.86 0 69.43 69.43 0 1 0-138.86 0Z" fill="#C5E3FF" p-id="11737"></path><path d="M226.91 500a81.93 81.93 0 1 1 81.93-81.93A82 82 0 0 1 226.91 500z m0-138.86a56.93 56.93 0 1 0 56.93 56.93 57 57 0 0 0-56.93-56.9z" fill="#3D9FF9" p-id="11738"></path></svg>
@@ -530,6 +534,41 @@
                     detail += '\n' + uiText('部分 Unity 文件未导出：', 'Some Unity files were not exported: ')
                         + data['warnings'].join('; ');
                 }
+                SwalFire('success', uiText('导出成功', 'Export success'), detail, 6000);
+            },
+            error: function (xhr) {
+                SwalFire('error', uiText('导出失败', 'Export failed'), xhr.responseText || '', 4000);
+            }
+        });
+    }
+
+    function exportCompareHtml(){
+        if (!Array.isArray(compareScenes) || compareScenes.length < 2) {
+            SwalFire('error', uiText('导出失败', 'Export failed'), uiText('至少需要 2 份报告', 'Select at least 2 reports'), 3000);
+            return;
+        }
+        $.ajax({
+            url: '/apm/export/html/compare',
+            type: 'GET',
+            async: true,
+            cache: false,
+            traditional: true,
+            data: {
+                scenes: compareScenes,
+                platform: platform,
+                lan: lan
+            },
+            beforeSend: function () {
+                SwalLoading(uiText('正在生成对比 HTML', 'Generating comparison HTML'), compareScenes.join(', '));
+            },
+            success: function (data) {
+                if (!data || data['status'] != 1) {
+                    SwalFire('error', uiText('导出失败', 'Export failed'), (data && data['msg']) || '', 4000);
+                    return;
+                }
+                var detail = data['path'] || '';
+                detail += '\n' + uiText('摘要表与曲线已内嵌，直接用浏览器打开即可离线查看。',
+                    'Summary tables and charts are embedded; open the file in a browser offline.');
                 SwalFire('success', uiText('导出成功', 'Export success'), detail, 6000);
             },
             error: function (xhr) {

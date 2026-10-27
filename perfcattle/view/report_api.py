@@ -314,6 +314,21 @@ def exportCompareReport():
     return result
 
 
+@report_api.route("/apm/export/html/compare", methods=["post", "get"])
+def exportCompareHtml():
+    """Generate a self-contained comparison HTML (charts embedded)."""
+    scenes = _request_scenes()
+    platform = request.values.get("platform")
+    lan = request.values.get("lan")
+    try:
+        path = f.make_compare_html(platform, scenes, lan=lan)
+        result = {"status": 1, "msg": "success", "path": path}
+    except Exception as e:
+        logger.exception(e)
+        result = {"status": 0, "msg": str(e)}
+    return result
+
+
 @report_api.route("/apm/export/html/android", methods=["post", "get"])
 def exportAndroidHtml():
     scene = method._request(request, "scene")

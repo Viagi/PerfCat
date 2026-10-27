@@ -99,6 +99,10 @@ def test_compare_page_renders_multiple_scenes(tmp_path, monkeypatch):
     # The comparison export entry point is available for multi-scene pages.
     assert "exportCompareReport" in body
     assert "导出对比报告" in body
+    # HTML export entry point (self-contained offline report).
+    assert "exportCompareHtml" in body
+    assert "导出 HTML" in body
+    assert "/apm/export/html/compare" in body
 
 
 def _write_unity_logs(scene_dir):

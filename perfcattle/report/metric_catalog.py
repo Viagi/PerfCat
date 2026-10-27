@@ -58,6 +58,8 @@ GPU_METRICS = (
 EXTRA_SECTIONS = (
     ("frame", "Unity 帧耗时", "Unity Frame"),
     ("batching", "Unity 批处理", "Unity Batching"),
+    ("geometry", "Unity 几何", "Unity Geometry"),
     ("memory", "Unity 内存 / GC", "Unity Memory / GC"),
+    ("resources", "Unity 渲染资源", "Unity Render Resources"),
     ("gpu", "GPU 扩展", "GPU Details"),
 )

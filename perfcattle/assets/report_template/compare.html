@@ -1,0 +1,234 @@
+<!doctype html>
+<!--
+* PerfCattle - real-time collection tool for Android/iOS performance data.
+* @Author Rafa Chen
+* Copyright PerfCattle
+-->
+<html lang="{{ 'zh-CN' if lang == 'cn' else 'en' }}">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+    <title>PerfCattle - {{ title }}</title>
+    <link rel="icon" href="https://cdn.nlark.com/yuque/0/2024/png/153412/1715849982577-44b84a9c-e4d8-46b0-acae-dc46eb2ad2c9.png?x-oss-process=image%2Fformat%2Cwebp">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
+    <style>
+        .compare-scene-meta dt {
+            font-weight: 600;
+        }
+        .compare-scene-meta dd {
+            margin-bottom: .25rem;
+            word-break: break-word;
+        }
+        @media print {
+            .card {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body class="layout-boxed">
+<div class="page">
+    <div class="page-wrapper">
+        <div class="page-body">
+            <div class="container-xl">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h2 class="mb-1">{{ title }}</h2>
+                        <div class="text-muted mb-3">{{ app }} · {{ platform }}</div>
+                        <div class="row">
+                            <div class="col-sm-6 col-lg-3">
+                                <div class="subheader">App</div>
+                                <div class="font-weight-medium">{{ app }}</div>
+                            </div>
+                            <div class="col-sm-6 col-lg-3">
+                                <div class="subheader">Platform</div>
+                                <div class="font-weight-medium">{{ platform }}</div>
+                            </div>
+                            <div class="col-sm-6 col-lg-3">
+                                <div class="subheader">{{ '对比报告' if lang == 'cn' else 'Reports' }}</div>
+                                <div class="font-weight-medium">{{ scenes|length }} · {{ scenes|join(', ') }}</div>
+                            </div>
+                            <div class="col-sm-6 col-lg-3">
+                                <div class="subheader">{{ '生成时间' if lang == 'cn' else 'Generated' }}</div>
+                                <div class="font-weight-medium">{{ generated_at }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row row-cards mb-3">
+                    {% for item in scene_meta %}
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="card">
+                            <div class="card-body compare-scene-meta">
+                                <div class="h3 mb-2">{{ item.scene }}</div>
+                                <dl class="mb-0">
+                                    <dt>{{ '设备' if lang == 'cn' else 'Device' }}</dt>
+                                    <dd>{{ item.device }}</dd>
+                                    <dt>{{ '开始时间' if lang == 'cn' else 'Recorded at' }}</dt>
+                                    <dd>{{ item.ctime }}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if summary_sections %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <div class="card-title">{{ '指标汇总' if lang == 'cn' else 'Metrics Summary' }}</div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-vcenter card-table">
+                            <thead>
+                                <tr>
+                                    <th>{{ '指标' if lang == 'cn' else 'Metric' }}</th>
+                                    {% for item in scene_meta %}
+                                    <th>{{ item.scene }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for section in summary_sections %}
+                                <tr class="bg-light">
+                                    <th colspan="{{ scene_meta|length + 1 }}">{{ section.title }}</th>
+                                </tr>
+                                {% for metric in section.metrics %}
+                                <tr>
+                                    <td>{{ metric.label }}</td>
+                                    {% for cell in metric.cells %}
+                                    <td>{{ cell }}</td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% for group in chart_groups %}
+                <h3 class="mt-4 mb-2">{{ group.title }}</h3>
+                <div class="row row-cards">
+                    {% for chart in group.charts %}
+                    <div class="col-12 col-xl-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">{{ chart.title }}</div>
+                            </div>
+                            <div class="card-body">
+                                <div id="{{ chart.id }}"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+
+                {% if not summary_sections and not chart_groups %}
+                <div class="empty">
+                    <p class="empty-title">{{ '所选报告没有可对比的数据' if lang == 'cn' else 'No comparable data in the selected reports' }}</p>
+                </div>
+                {% endif %}
+
+                {% if warnings %}
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <div class="card-title">{{ '生成提示' if lang == 'cn' else 'Warnings' }}</div>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            {% for item in warnings %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+    // 曲线数据在导出时已经内嵌，离线打开即可渲染，无需请求 PerfCattle 服务。
+    const compareChartGroups = {{ chart_groups|tojson }};
+
+    function compareFormatValue(value, opts) {
+        if (value === null || value === undefined || !isFinite(value)) {
+            return '';
+        }
+        if (opts.integer) {
+            return Math.round(value).toLocaleString();
+        }
+        if (opts.decimals !== undefined) {
+            return Number(value).toFixed(opts.decimals);
+        }
+        return String(Math.round(value * 100) / 100);
+    }
+
+    function compareFormatSeconds(seconds) {
+        const total = Math.max(0, Math.round(Number(seconds) || 0));
+        return Math.floor(total / 60) + ':' + String(total % 60).padStart(2, '0');
+    }
+
+    function compareChartOptions(spec) {
+        const opts = spec.opts || {};
+        const unit = opts.unit ? ' ' + opts.unit : '';
+        return {
+            chart: {
+                type: 'line',
+                height: 260,
+                fontFamily: 'inherit',
+                toolbar: { show: false },
+                animations: { enabled: false }
+            },
+            series: spec.series,
+            stroke: { width: 2, curve: 'smooth' },
+            dataLabels: { enabled: false },
+            legend: { position: 'top', horizontalAlign: 'left', fontSize: '12px' },
+            grid: { strokeDashArray: 4 },
+            xaxis: {
+                type: 'numeric',
+                tickAmount: 6,
+                labels: { formatter: compareFormatSeconds }
+            },
+            yaxis: {
+                labels: {
+                    formatter: function (value) {
+                        return compareFormatValue(value, opts);
+                    }
+                }
+            },
+            tooltip: {
+                shared: true,
+                x: { formatter: compareFormatSeconds },
+                y: {
+                    formatter: function (value) {
+                        return compareFormatValue(value, opts) + unit;
+                    }
+                }
+            }
+        };
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof ApexCharts === 'undefined') {
+            return;
+        }
+        compareChartGroups.forEach(function (group) {
+            (group.charts || []).forEach(function (spec) {
+                const element = document.getElementById(spec.id);
+                if (!element) {
+                    return;
+                }
+                new ApexCharts(element, compareChartOptions(spec)).render();
+            });
+        });
+    });
+</script>
+</body>
+</html>

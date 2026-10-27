@@ -147,6 +147,7 @@ target in ['cpu','memory','memory_detail','network','fps','battery','gpu']
 * **Unity 采集:** 在 APM 会话中同时录制 Unity Profiler / MemoryProfiler 原始数据；优先使用工程内脚本，未集成时自动回退到 PlayerConnection 协议（已验证 Unity 2022.3，无需改游戏）。原始文件归档在 `report/<scene>/unity/`，测试报告页导出时会与性能数据、离线 JSON 一起打包。
 * **Unity Profiler 离线 JSON:** 导出报告时自动把 `profiler.raw` 转成 JSON（帧耗时、线程耗时、热点 marker、GC 分配、最慢帧调用树），无 Unity 环境也能分析。
 * **对比报告导出:** 对比页可导出 ZIP，内含 `compare.xls` / `compare.json` 对比汇总，以及每份报告的原始 Excel、元信息、Unity Profiler 离线 JSON、`.raw` / `.snapshot` 二进制文件。
+* **对比报告 HTML 导出:** 对比页的「导出 HTML」生成一份自包含的 `compare_<app>_<time>.html`，摘要表与全部曲线数据内嵌在文件里，用浏览器直接打开即可离线查看，不需要运行 PerfCattle；字段与对比页/导出包一致。
 * **Deep Profiler / Profiler Modules:** 像 Unity Profiler 一样勾选要采集的 Module，并支持 Deep Profiler 开关；协议模式下可在采集中热切换（Deep Profiler 需构建时开启 Deep Profiling Support）。
 * **Unity 游戏面板:** Protocol 模式直接解析原始 Profiler 流（Unity 2022.2+），也可选用工程内脚本；显示 CPU/GPU 帧耗时、Draw Calls、SetPass Calls、Batches、三角面、顶点数、GC Alloc、已用内存，以及 Render Textures、Used Buffers、顶点/索引缓冲上传（数量 + 内存），并与系统 CPU 按同一时间轴写入报告和对比分析。
 * **Unity 热点函数:** 在报告分析页按帧查看 Timeline（按线程的采样色块）、Hierarchy（合并调用路径的 Total/Self/Calls/GC）和 Raw Hierarchy（不合并），支持线程选择与排序。

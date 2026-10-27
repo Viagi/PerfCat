@@ -4,4 +4,5 @@ from perfcattle.report.log_io import LogIO
 from perfcattle.report.aggregator import Aggregator
 from perfcattle.report.excel_export import ExcelExporter
 from perfcattle.report.html_export import HtmlExporter
+from perfcattle.report.compare_html_export import CompareHtmlExporter
 from perfcattle.report.manager import ReportManager, ReportStore

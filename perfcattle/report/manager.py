@@ -13,6 +13,7 @@ from perfcattle.report.log_io import LogIO
 from perfcattle.report.aggregator import Aggregator
 from perfcattle.report.excel_export import ExcelExporter
 from perfcattle.report.html_export import HtmlExporter
+from perfcattle.report.compare_html_export import CompareHtmlExporter
 from perfcattle.report.package_export import (
     ComparePackageExporter,
     ReportPackageExporter,
@@ -291,6 +292,9 @@ class ReportStore(ReportManager):
             self._log_io, self._aggregator, self._package_exporter
         )
         self._html_exporter = HtmlExporter(self._log_io)
+        self._compare_html_exporter = CompareHtmlExporter(
+            self._log_io, self._aggregator, self._compare_exporter
+        )
 
     # === LogIO 委托方法 ===
 
@@ -493,3 +497,7 @@ class ReportStore(ReportManager):
     def make_ios_html(self, scene, summary: dict, report_path=None):
         """生成 iOS HTML 报告"""
         return self._html_exporter.make_ios_html(scene, summary, report_path)
+
+    def make_compare_html(self, platform, scenes, lan=None):
+        """生成对比报告 HTML（自包含，可离线查看）"""
+        return self._compare_html_exporter.export(platform, scenes, lan=lan)
