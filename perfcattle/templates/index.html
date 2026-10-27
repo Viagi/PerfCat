@@ -672,7 +672,7 @@ PerfCattle - Application Performance Monitoring
 
     function ruteCheck(){
         if(['Android','iOS'].indexOf(platform) === -1 || platform && ['cn','en'].indexOf(lan) === -1 && lan){
-            this.location.href = '/?platform=Android&lan=en';
+            this.location.href = '/?platform=Android&lan=' + (lan || 'cn');
         }
     }
 

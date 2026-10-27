@@ -146,9 +146,9 @@ def open_url(host: str, port: int):
     # Wait for server ready
     while status(host, port):
         time.sleep(0.5)
-    open_browser("http://{}:{}/?platform=Android&lan=en".format(host, port))
+    open_browser("http://{}:{}/?platform=Android&lan=cn".format(host, port))
     logger.info(
-        "Running on http://{}:{}/?platform=Android&lan=en (Press CTRL+C to quit)".format(
+        "Running on http://{}:{}/?platform=Android&lan=cn (Press CTRL+C to quit)".format(
             host, port
         ),
         extra=STARTUP_LOG_EXTRA,

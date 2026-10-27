@@ -173,7 +173,7 @@
 
     function ruteCheck(){
         if(['2-devices','2-app'].indexOf(model) === -1 && model){
-            this.location.href = '/?model=2-devices&lan=en';
+            this.location.href = '/?model=2-devices&lan=' + (lan || 'cn');
         }
     }
 

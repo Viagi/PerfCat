@@ -16,30 +16,41 @@ d = Devices()
 m = Method()
 f = ReportStore()
 
+DEFAULT_LAN = "cn"
+SUPPORTED_LANS = ("cn", "en")
+
+
+def _page_lan():
+    """页面语言：未指定或非法时默认中文。"""
+    lan = request.args.get("lan")
+    return lan if lan in SUPPORTED_LANS else DEFAULT_LAN
+
 
 @page.app_errorhandler(404)
 def page_404(e):
     settings = m._settings(request)
+    lan = _page_lan()
     return render_template("404.html", **locals()), 404
 
 
 @page.app_errorhandler(500)
 def page_500(e):
     settings = m._settings(request)
+    lan = _page_lan()
     return render_template("500.html", **locals()), 500
 
 
 @page.route("/")
 def index():
     platform = request.args.get("platform")
-    lan = request.args.get("lan")
+    lan = _page_lan()
     settings = m._settings(request)
     return render_template("index.html", **locals())
 
 
 @page.route("/pk")
 def pk():
-    lan = request.args.get("lan")
+    lan = _page_lan()
     model = request.args.get("model")
     settings = m._settings(request)
     return render_template("pk.html", **locals())
@@ -47,7 +58,7 @@ def pk():
 
 @page.route("/report")
 def report():
-    lan = request.args.get("lan")
+    lan = _page_lan()
     settings = m._settings(request)
     report_dir = os.path.join(os.getcwd(), "report")
     if not os.path.exists(report_dir):
@@ -87,7 +98,7 @@ def report():
 
 @page.route("/analysis", methods=["post", "get"])
 def analysis():
-    lan = request.args.get("lan")
+    lan = _page_lan()
     scene = request.args.get("scene")
     app = request.args.get("app")
     platform = request.args.get("platform")
@@ -125,7 +136,7 @@ def analysis():
 
 @page.route("/pk_analysis", methods=["post", "get"])
 def analysis_pk():
-    lan = request.args.get("lan")
+    lan = _page_lan()
     scene = request.args.get("scene")
     app = request.args.get("app")
     model = request.args.get("model")
@@ -272,7 +283,7 @@ def _valid_compare_scenes(requested):
 @page.route("/compare_analysis", methods=["post", "get"])
 def analysis_compare():
     platform = request.args.get("platform")
-    lan = request.args.get("lan")
+    lan = _page_lan()
     app = request.args.get("app")
     settings = m._settings(request)
     scenes, meta_app, meta_platform = _valid_compare_scenes(_compare_scene_names())
